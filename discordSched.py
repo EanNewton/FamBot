@@ -31,8 +31,7 @@ tzAbbrs = [
 	['new-york', 'America/New_York'],
 	['los-angeles', 'America/Los_Angeles'],
 	['los angeles', 'America/Los_Angeles']
-	]
-	
+	]	
 adminRoles = ['admin', 'mod', 'discord mod']
 divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
  
