@@ -50,7 +50,6 @@ async def on_message(message):
 		return
 	
 	admin = is_admin(message.author.roles)
-	admin = False
 	args = message.content.split()	
 	profane = False
 	try:
