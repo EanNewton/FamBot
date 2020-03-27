@@ -11,6 +11,8 @@ DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
 blacklistLow = {"jap"}
 blacklistStrict = {"xxx"}
 
+divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
+
 def importBlacklists():
 	path = DEFAULT_DIR+'/blacklists/blacklist_ethnic.txt'
 	with open(path, 'r') as f:
@@ -51,23 +53,11 @@ def addWord(level, word):
 	print(level + " " + word)
 	if level == '1':
 		print("Adding "+word)
-		path = DEFAULT_DIR+'/blacklists/blacklist_ethnic.txt'
-		with open(path, 'a') as f:
-			f.write(word)	
-		path = DEFAULT_DIR+'/blacklists/blacklist_sex.txt'
-		with open(path, 'a') as f:
-			f.write(word)	
-		path = DEFAULT_DIR+'/blacklists/blacklist_ru.txt'
-		with open(path, 'a') as f:
-			f.write(word)
 		path = DEFAULT_DIR+'/blacklists/blacklist_custom_low.txt'
 		with open(path, 'a') as f:
 			f.write(word)
 	if level == '2':
 		print("Adding "+word)
-		path = DEFAULT_DIR+'/blacklists/blacklist_1716.txt'
-		with open(path, 'a') as f:
-			f.write(word)
 		path = DEFAULT_DIR+'/blacklists/blacklist_custom_strict.txt'
 		with open(path, 'a') as f:
 			f.write(word)
@@ -93,22 +83,19 @@ def sql_insert_filter(con, entities):
 		cursorObj = con.cursor()    
 		cursorObj.execute('INSERT INTO filters(id, level) VALUES(?, ?)', entities)
 		con.commit()
-		print("Added... ", entities)
-		return "Success. "
+		return "Set filter for current channel "
 	except Error:
 		print("Error while insert ", Error)
 
-def sql_delete_filter(con, entities): 
-	print("In delete")
-	print(entities)	
+def delete_filter(con, arg):
 	try:
-		cursorObj = con.cursor()   
-		cursorObj.execute("UPDATE filters SET level=? WHERE id=?", '0', entities)
+		sql = 'DELETE FROM filters WHERE id=?'
+		cur = con.cursor()
+		cur.execute(sql, (int(arg),))
 		con.commit()
-		print("Added... ", entities)
-		return "Success. "
+		return "Successfully removed quote."
 	except Error:
-		print("Error while insert ", Error)
+		print("Error while delete ", Error)
 
 def sql_drop(con):
 	try:
@@ -124,7 +111,7 @@ def sql_reset_filters(con):
 		cursorObj.execute('DROP table if exists filters')
 		cursorObj.execute("CREATE TABLE IF NOT EXISTS filters(id integer PRIMARY KEY, level)")
 		con.commit()
-		return "TABLE filters RESET"
+		return "All filters reset."
 	except Error:
 		print("Error while drop ", Error)
 
@@ -141,19 +128,25 @@ def getFilter(toFetch):
 def helper(operator, args):
 	return {
 		'get': lambda: getFilter(args),
-		'set': lambda: updateEntry(args),
+		'set': lambda: sql_insert_filter(con, args),
 		'clear': lambda: sql_delete_filter(con, args),
 		'clearAll': lambda: sql_reset_filters(con),
-		'help': lambda: getHelp(),
+		'help': lambda: getHelp(args),
 		'add': lambda: addWord(args[0], args[1]),
 	}.get(operator, lambda: None)()
 
-def getHelp():
-	return "get, set, clear, clearall"
-
-def updateEntry(args):
-	#sql_delete_filter(con, args)
-	sql_insert_filter(con, args)
+def getHelp(admin):
+	if admin:
+		banner = "**Filter Help**\n"+divider
+		banner += "`!filter get` check the current channel\s filter level.\n"
+		banner += "`!filter set LEVEL` set a filter level for the current channel. "
+		banner += "Options are 1 for Low or 2 for Strict.\n"
+		banner += "`!filter clearall` clear all channel\'s filters.\n"
+		banner += "`!filter add LEVEL WORD` add a word to the filter. "
+		banner += "Currently only supports single words without spaces.\n\n"
+	else:
+		banner = "\n"
+	return banner
 
 global con
 con = sql_connection()

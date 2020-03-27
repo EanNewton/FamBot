@@ -14,6 +14,7 @@ import discordFilter
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
+MOD_CHANNEL = os.getenv('MOD_CHANNEL')
 VERSION = '3.27.2020'
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -21,6 +22,8 @@ bot = discord.Client()
 adminRoles = {'admin', 'mod', 'discord mod'}
 blacklistLow = discordFilter.getBlacklistLow()
 blacklistStrict = discordFilter.getBlacklistStrict()
+
+divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
 
 def is_admin(author):
 	for roles in author:
@@ -46,13 +49,15 @@ async def on_message(message):
 	if message.author == bot.user:
 		return
 	
+	admin = is_admin(message.author.roles)
+	admin = False
 	args = message.content.split()	
 	profane = False
 	try:
-		if is_admin(message.author.roles) == False:
+		if admin:
 			if discordFilter.helper('get', message.channel.id) == "Filter level: 2":
 				for word in args:
-					if word in blacklistStrict:
+					if word in blacklistStrict or word in blacklistLow:
 						profane = True
 						await message.channel.send("Watch your language!")
 			elif discordFilter.helper('get', message.channel.id) == "Filter level: 1":
@@ -60,10 +65,10 @@ async def on_message(message):
 					if word in blacklistLow:
 						profane = True
 						await message.channel.send("Watch your language!")
-	except:
-		pass
+	except Error:
+		print("Error on profanity filter: ", Error)
 	if not profane:
-		if args[0] == '.quote':
+		if args[0] == '!quote':
 			try:
 				if len(args) > 1:
 					toFetch = message.content[7:]
@@ -75,22 +80,21 @@ async def on_message(message):
 			except Error:
 				print("Error while fetch rand", Error)
 
-		elif args[0] == '.schedule':
+		elif args[0] == '!schedule':
 			if len(args) > 1:
 				if args[1] == 'help':
-					print ("getting help")
 					if len(args) > 2:					
-						banner = discordSched.dispatch_dict('help', args[2].lower(), None)
+						banner = discordSched.helper('help', args[2].lower(), None)
 					else:
-						banner = discordSched.dispatch_dict('help', 'default', None)
+						banner = discordSched.helper('help', 'default', None)
 				elif args[1] == 'set':
-					banner = discordSched.dispatch_dict('set', args[2], message.author)
+					banner = discordSched.helper('set', args[2], message.author)
 				elif args[1] == 'override':
-					banner = discordSched.dispatch_dict('override', args[2:], message.author)
+					banner = discordSched.helper('override', args[2:], message.author)
 				else:
-					banner = discordSched.dispatch_dict('get', args[1:], message.author.id)
+					banner = discordSched.helper('get', args[1:], message.author.id)
 			else:
-				banner = discordSched.dispatch_dict('get', None, message.author.id)
+				banner = discordSched.helper('get', None, message.author.id)
 			print(banner)
 			await message.channel.send(banner)	
 				
@@ -99,7 +103,7 @@ async def on_message(message):
 			await message.channel.send(str(banner))
 			
 		elif args[0] == '!filter':
-			if is_admin(message.author.roles):
+			if admin:
 				if len(args) > 1:
 					if args[1] == 'set':
 						banner = discordFilter.helper('set', [message.channel.id, args[2]])
@@ -114,6 +118,18 @@ async def on_message(message):
 					elif args[1] == 'add':
 						banner = discordFilter.helper('add', [args[2], args[3]])
 					await message.channel.send(banner)
+		elif args[0] == '!help':
+			#print("getting help")
+			banner = discordQuotes.helper('help', admin)
+			#print(banner)
+			banner += discordFilter.helper('help', admin)
+			#print(banner)
+			banner += discordSched.helper('help', 'default', admin)+divider
+			#print(banner)
+			banner += "\n**Word of the Day**\n"+divider
+			banner += "`!word` to get the word of the day. Updates once every 24 hours."
+			#print(banner)
+			await message.channel.send(banner)
 		else:
 			return
 
@@ -139,9 +155,20 @@ async def on_reaction_add(reaction, user):
 				for word in args:
 					if word in blacklistLow:
 						profane = True
+			users = await reaction.users().flatten()
+			for user in users:
+				if is_admin(user.roles):
+					profane = False
 			if not profane: 
-				discordQuotes.sql_insert_quote(con, entity)
+				discordQuotes.helper('add', entity)
 				banner = 'Adding: "' +str(entity[2])+'" by '+str(entity[1])+' on '+str(timeStamp)
+				await reaction.message.channel.send(banner)
+	
+	if reaction.emoji == '❌':
+		users = await reaction.users().flatten()
+		for user in users:
+			if is_admin(user.roles):
+				banner = discordQuotes.helper('clear', reaction.message.id)
 				await reaction.message.channel.send(banner)
 
 @bot.event 

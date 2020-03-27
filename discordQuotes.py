@@ -8,6 +8,7 @@ from sqlite3 import Error
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'quotes.db')
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
  
+divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
 def sql_connection():
     try:
         con = sqlite3.connect(DEFAULT_PATH)
@@ -51,6 +52,17 @@ def sql_reset_quotedb(con):
 	except Error:
 		print("Error while drop ", Error)
 
+def delete_quote(con, arg):
+	try:
+		sql = 'DELETE FROM famQuotes WHERE id=?'
+		cur = con.cursor()
+		cur.execute(sql, (arg,))
+		con.commit()
+		print("Removed quote.")
+		return "Successfully removed quote."
+	except Error:
+		print("Error while delete ", Error)
+    
 def fetchQuote(toFetch):		
 	try:
 		cursorObj = con.cursor()
@@ -67,7 +79,26 @@ def fetchQuote(toFetch):
 		return str(banner)
 	except Error:
 		print("Error while fetch rand", Error)
-
+		
+def get_help(admin):
+	banner = "**Quote Help**\n"+divider
+	banner += "`!quote` pull up a random quote.\n"
+	banner += "`!quote USER` pull up a quote from a specific user. "
+	banner += "This is the user\'s full username, not their server nickname. "
+	banner += "It is case sensitive.\n"
+	banner += "React to a message with 🗨 to add it to the database.\n"
+	if admin:
+		banner += "React to a message with ❌ to remove it.\n\n"
+	return banner
+		
+def helper(operator, args):
+	return {
+		'clear': lambda: delete_quote(con, args),
+		'add': lambda: sql_insert_quote(con, args),
+		'get': lambda: fetchQuote(con, args),
+		'help': lambda: get_help(args),
+	}.get(operator, lambda: None)()
+	
 global con
 con = sql_connection()
 sql_table(con)

@@ -31,7 +31,8 @@ tzAbbrs = [
 	['new-york', 'America/New_York'],
 	['los-angeles', 'America/Los_Angeles'],
 	['los angeles', 'America/Los_Angeles']
-	]	
+	]
+	
 adminRoles = ['admin', 'mod', 'discord mod']
 divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
  
@@ -135,16 +136,16 @@ def get_schedule(locale, extended):
 	except e:
 		print(e)
 
-def get_sched_help(locale):
+def get_sched_help(locale, admin):
 	if locale == 'default':
-		banner = 'Commands are:\n'
+		banner = '**Schedule Help**\n'+divider
+		if admin:
+			banner += '`!schedule override USER.ID USER.NAME LOCATION` to change a user\'s set location.\n' 
 		banner += '`!schedule` to see the schedule for your default location.\n'
 		banner += '`!schedule CONTINENT/CITY` to see the schedule for another location.\n'
 		banner += '`!schedule help CONTINENT` to see cities for that location.\n'
 		banner += '`!schedule set CONTINENT/CITY` to change your default location.\n'
-		#if is_admin(author.roles):
-			#banner += '`!schedule override USER.ID USER.NAME LOCATION to change a user\'s set location.\n' 
-		banner += divider+'Continents include: \n'+get_sched_help('continents')
+		banner += divider+'Continents include: \n'+get_sched_help('continents', admin)
 		return banner
 	else:
 		path = DEFAULT_DIR+'/locales/'+locale+'.txt'
@@ -158,12 +159,11 @@ def is_admin(author):
 			return True
 	return False
 
-def dispatch_dict(operator, args, author):
-	print(args)
+def helper(operator, args, author):
 	return {
 		'get': lambda: getSched(args, author),
 		'set': lambda: setSched(args, author),
-		'help': lambda: get_sched_help(args),
+		'help': lambda: get_sched_help(args, author),
 		'override': lambda: override(args, author),
 	}.get(operator, lambda: None)()
 
