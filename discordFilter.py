@@ -79,21 +79,30 @@ def sql_table(con):
 		print("Error while create ", Error)
     
 def sql_insert_filter(con, entities): 
-	try:
-		cursorObj = con.cursor()    
-		cursorObj.execute('INSERT INTO filters(id, level) VALUES(?, ?)', entities)
-		con.commit()
-		return "Set filter for current channel "
-	except Error:
-		print("Error while insert ", Error)
+	exists = getFilter(entities[0])
+	if exists == "Filter level: not set":
+		try:
+			cursorObj = con.cursor()    
+			cursorObj.execute('INSERT INTO filters(id, level) VALUES(?, ?)', entities)
+			con.commit()
+			return "Set filter for current channel to "+str(entities[1])
+		except Error:
+			print("Error while insert ", Error)
+	else:
+		delete_filter(con, entities[0])
+		sql_insert_filter(con, entities)
+	return "Set filter for current channel to: "+str(entities[1])
 
 def delete_filter(con, arg):
+	print("in delete filter")
+	print(arg)
 	try:
 		sql = 'DELETE FROM filters WHERE id=?'
 		cur = con.cursor()
 		cur.execute(sql, (int(arg),))
 		con.commit()
-		return "Successfully removed quote."
+		print("deleted")
+		return "Successfully removed filter."
 	except Error:
 		print("Error while delete ", Error)
 
@@ -120,32 +129,34 @@ def getFilter(toFetch):
 		cursorObj = con.cursor()
 		cursorObj.execute('SELECT * FROM filters WHERE id=? LIMIT 1', (str(toFetch),))
 		result = cursorObj.fetchall()
-		level = result[0][1]
+		if not result:
+			level = "not set"
+		else:
+			level = result[0][1]
 		return "Filter level: "+str(level)
 	except Error:
 		print("Error while fetch filter", Error)
 		
 def helper(operator, args):
+	print("in helper")
+	print(args)
 	return {
 		'get': lambda: getFilter(args),
 		'set': lambda: sql_insert_filter(con, args),
-		'clear': lambda: sql_delete_filter(con, args),
+		'clear': lambda: sql_insert_filter(con, [args, 0]),
 		'clearAll': lambda: sql_reset_filters(con),
-		'help': lambda: getHelp(args),
+		'help': lambda: getHelp(),
 		'add': lambda: addWord(args[0], args[1]),
 	}.get(operator, lambda: None)()
 
-def getHelp(admin):
-	if admin:
-		banner = "**Filter Help**\n"+divider
-		banner += "`!filter get` check the current channel\s filter level.\n"
-		banner += "`!filter set LEVEL` set a filter level for the current channel. "
-		banner += "Options are 1 for Low or 2 for Strict.\n"
-		banner += "`!filter clearall` clear all channel\'s filters.\n"
-		banner += "`!filter add LEVEL WORD` add a word to the filter. "
-		banner += "Currently only supports single words without spaces.\n\n"
-	else:
-		banner = "\n"
+def getHelp():
+	banner = "**Filter Help**\n"+divider
+	banner += "`!filter get` check the current channel\s filter level.\n"
+	banner += "`!filter set LEVEL` set a filter level for the current channel. "
+	banner += "Options are 1 for Low or 2 for Strict.\n"
+	banner += "`!filter clearall` clear all channel\'s filters.\n"
+	banner += "`!filter add LEVEL WORD` add a word to the filter. "
+	banner += "Currently only supports single words without spaces.\n\n"
 	return banner
 
 global con

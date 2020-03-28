@@ -33,7 +33,7 @@ tzAbbrs = [
 	['los angeles', 'America/Los_Angeles']
 	]
 	
-adminRoles = ['admin', 'mod', 'discord mod']
+adminRoles = {'admin', 'mod', 'discord mod'}
 divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
  
 def sql_connection():
@@ -137,9 +137,10 @@ def get_schedule(locale, extended):
 		print(e)
 
 def get_sched_help(locale, admin):
+	#print(locale + " " + admin)
 	if locale == 'default':
 		banner = '**Schedule Help**\n'+divider
-		if admin:
+		if admin == True:
 			banner += '`!schedule override USER.ID USER.NAME LOCATION` to change a user\'s set location.\n' 
 		banner += '`!schedule` to see the schedule for your default location.\n'
 		banner += '`!schedule CONTINENT/CITY` to see the schedule for another location.\n'
@@ -160,10 +161,14 @@ def is_admin(author):
 	return False
 
 def helper(operator, args, author):
+	print(operator)
+	print(args)
+	print(author)
+	admin = is_admin(author.roles)
 	return {
 		'get': lambda: getSched(args, author),
 		'set': lambda: setSched(args, author),
-		'help': lambda: get_sched_help(args, author),
+		'help': lambda: get_sched_help(args, admin),
 		'override': lambda: override(args, author),
 	}.get(operator, lambda: None)()
 

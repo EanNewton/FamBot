@@ -8,7 +8,15 @@ from sqlite3 import Error
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'quotes.db')
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
  
-divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
+divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 	
+adminRoles = {'admin', 'mod', 'discord mod'}
+
+def is_admin(author):
+	for roles in author:
+		if str(roles).lower() in adminRoles:
+			return True
+	return False
+	
 def sql_connection():
     try:
         con = sqlite3.connect(DEFAULT_PATH)
@@ -25,6 +33,7 @@ def sql_table(con):
 		print("Error while create ", Error)
     
 def sql_insert_quote(con, entities): 
+	#entity = [reaction.message.id, userName[:-5], reaction.message.content, str(timeStamp)]		
 	try:
 		cursorObj = con.cursor()    
 		cursorObj.execute('INSERT INTO famQuotes(id, name, text, date) VALUES(?, ?, ?, ?)', entities)
@@ -62,7 +71,19 @@ def delete_quote(con, arg):
 		return "Successfully removed quote."
 	except Error:
 		print("Error while delete ", Error)
-    
+     
+def check_if_exists(toFetch):		
+	try:
+		cursorObj = con.cursor()
+		cursorObj.execute('SELECT * FROM famQuotes WHERE id=? LIMIT 1', (toFetch,))
+		result = cursorObj.fetchall()
+		if not result:
+			return False
+		else:
+			return True
+	except Error:
+		print("Error while fetch rand", Error)
+		   
 def fetchQuote(toFetch):		
 	try:
 		cursorObj = con.cursor()
@@ -81,6 +102,7 @@ def fetchQuote(toFetch):
 		print("Error while fetch rand", Error)
 		
 def get_help(admin):
+	admin = is_admin(admin.roles)
 	banner = "**Quote Help**\n"+divider
 	banner += "`!quote` pull up a random quote.\n"
 	banner += "`!quote USER` pull up a quote from a specific user. "
@@ -97,6 +119,7 @@ def helper(operator, args):
 		'add': lambda: sql_insert_quote(con, args),
 		'get': lambda: fetchQuote(con, args),
 		'help': lambda: get_help(args),
+		'exists': lambda: check_if_exists(args),
 	}.get(operator, lambda: None)()
 	
 global con
