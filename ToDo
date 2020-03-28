@@ -4,3 +4,4 @@ Add user strike count
 Add user heuristics reports for moderators (strikes, profanity rate, server usage, etc)
 Add profanity soundex and 1337 speak variation filters
 Add "flag for mod review" reaction method
+!schedule override is broken
