@@ -10,12 +10,13 @@ import wotd
 import discordQuotes
 import discordSched
 import discordFilter
+import discordRiddles
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD = os.getenv('DISCORD_GUILD')
 MOD_CHANNEL = os.getenv('MOD_CHANNEL')
-VERSION = '3.27.2020'
+VERSION = '3.30.2020'
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 bot = discord.Client()
@@ -66,7 +67,7 @@ async def on_message(message):
 	except Error:
 		print("Error on profanity filter: ", Error)
 	if not profane:
-		if args[0] == '.quote':
+		if args[0] == '!quote':
 			try:
 				if len(args) > 1:
 					if args[1] == 'help':
@@ -81,7 +82,7 @@ async def on_message(message):
 			except Error:
 				print("Error while fetch rand", Error)
 
-		elif args[0] == '.schedule':
+		elif args[0] == '!schedule':
 			if len(args) > 1:
 				if args[1] == 'help':
 					if len(args) > 2:					
@@ -99,11 +100,71 @@ async def on_message(message):
 			print(banner)
 			await message.channel.send(banner)	
 				
-		elif args[0] == '.word':
+		elif args[0] == '!word':
 			banner = wotd.getTodaysWord(True)
 			await message.channel.send(str(banner))
-			
-		elif args[0] == '.filter':
+		
+		elif args[0] == '!riddle':
+			try:
+				banner = None
+				if len(args) > 1:
+					if args[1] == 'help':
+						banner = discordRiddles.helper('help', None, message.author)
+
+					elif args[1] == 'add':
+						#id, name, text, solution
+						name = ' '.join(args[2:])
+						name = name.split(':')
+						name = name[0]
+						print("Name: " + str(name))
+						solution = message.content.split('||')
+						solution = solution[1].lower()
+						print("Solution: " + str(solution))
+						
+						riddle = message.content.split(':')
+						riddle = riddle[1].split('||')
+						riddle = riddle[0].strip()
+						print("Riddle: " + str(riddle))
+						
+						entity = [message.id, name, riddle, solution]
+						print(entity)
+						banner = entity
+						banner = discordRiddles.helper('addRiddle', entity, message.author)
+						
+					elif args[1] == 'get':
+						if len(args) > 2:
+							banner = discordRiddles.helper('getRiddle', 'current', message.author)
+						else:
+							banner = discordRiddles.helper('getRiddle', 'new', message.author)
+							
+					elif args[1] == 'solve':
+						riddleID = args[2]
+						solution = args[3:]
+						solution = ' '.join(solution)
+						entity = [riddleID, solution.lower()]
+						banner = discordRiddles.helper('check', entity, message.author)
+					
+					elif args[1] == 'score':
+						banner = discordRiddles.helper('score', None, message.author)
+						
+					elif args[1] == 'leaderboard':
+						if len(args) > 2:
+							banner = discordRiddles.helper('leaderboard', None, args[2])
+						else:
+							banner = discordRiddles.helper('leaderboard', None, None)	
+					elif args[1] == 'delete':
+						if len(args) > 2 and is_admin(message.author.roles):
+							banner = discordRiddles.helper('clear', args[2])
+					
+					elif args[1] == 'reset':
+						if is_admin(message.author.roles) and args[2] == 'YES':
+							banner = discordRiddles.helper('reset', None, message.author)
+				if banner is not None:
+					await message.channel.send(str(banner))
+			except Error:
+				print("Error while fetch riddle", Error)
+				
+		elif args[0] == '!filter':
 			if is_admin(message.author.roles):
 				if len(args) > 1:
 					if args[1] == 'set':
@@ -119,12 +180,13 @@ async def on_message(message):
 					elif args[1] == 'add':
 						banner = discordFilter.helper('add', [args[2], args[3:]])
 					await message.channel.send(banner)
-		elif args[0] == '.help':
+		elif args[0] == '!help':
 			print("getting help")
 			banner = discordQuotes.helper('help', message.author)
 			if is_admin(message.author.roles):
 				banner += discordFilter.helper('help', None)
 			banner += discordSched.helper('help', 'default', message.author)+divider
+			banner += discordRiddles.helper('help', None, message.author)+divider
 			banner += "\n**Word of the Day**\n"+divider
 			banner += "`!word` to get the word of the day. Updates once every 24 hours."
 			await message.channel.send(banner)
