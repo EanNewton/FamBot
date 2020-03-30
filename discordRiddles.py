@@ -5,7 +5,7 @@ import random
 import sqlite3
 from sqlite3 import Error
 
-debug = False
+debug = True
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'quotes.db')
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -89,9 +89,12 @@ def has_solved(con, userID, riddleID):
 		print(userID)
 		print(riddleID)
 	user = get_user(userID)
+	print("found user")
 	solvedSet = user[4].split(";")
 	if riddleID in solvedSet:
+		print("has solved")
 		return True
+	print("has not solved")
 	return False
 		
 def get_user(toFetch):
@@ -237,16 +240,26 @@ def fetch_riddle_name(toFetch, author):
 				cursorObj.execute('SELECT * FROM riddles WHERE id=? ORDER BY RANDOM() LIMIT 1', (str(toFetch),))	
 		else:
 			flag = True
-			rows = cursorObj.execute('SELECT Count(*) FROM riddles')
+			#cursorObj.execute('SELECT Count(*) FROM riddles')
+			cursorObj.execute('SELECT * FROM riddles')
+			rows = len(cursorObj.fetchall())
 			count = 0
 			while flag:
+				if debug:
+					print("in while")
+					print(flag)
+					print(count)
+					print(rows)
 				cursorObj.execute('SELECT * FROM riddles WHERE id IN (SELECT id FROM riddles ORDER BY RANDOM() LIMIT 1)')
+				result = cursorObj.fetchall()
+				#print("FETCHED")
+				#print(result)
 				flag = has_solved(con, author.id, result[0][0])
 				count = count + 1
 				if count > rows:
 					return "Congratulations! You have completed all available riddles! Check back soon or add a new one yourself."
-		result = cursorObj.fetchall()
-		print(result)
+
+		print("broke from while")
 		riddleID = result[0][0]
 		text = result[0][2]
 		name = result[0][1]
