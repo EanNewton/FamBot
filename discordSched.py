@@ -80,6 +80,7 @@ def sql_reset_scheddb(con):
 		print("Error while drop ", Error)
 		
 def get_schedule(locale, extended):
+	print("in get schedule")
 	try:
 		mySchedDup = [
 			pendulum.now(tz='Asia/Tokyo'), #monday
@@ -105,20 +106,22 @@ def get_schedule(locale, extended):
 		while(mySchedDup[0].day_of_week != pendulum.MONDAY):
 			for day in range(0, len(mySchedDup)):
 				mySchedDup[day] = mySchedDup[day].add(days=1)
+		
+		if now_in_tokyo.day_of_week != pendulum.MONDAY:	
+			while(mySchedDupSec[0].day_of_week != pendulum.MONDAY):
+				for day in range(0, len(mySchedDupSec)):
+					mySchedDupSec[day] = mySchedDupSec[day].add(days=-1)
 			
-		while(mySchedDupSec[0].day_of_week != pendulum.MONDAY):
+		if now_in_tokyo.day_of_week != pendulum.MONDAY:	
 			for day in range(0, len(mySchedDupSec)):
-				mySchedDupSec[day] = mySchedDupSec[day].add(days=-1)
-					
-		for day in range(0, len(mySchedDupSec)):
-			mySchedDupSec[day] = mySchedDupSec[day].at(mySchedHours[day])
-			mySchedDupSec[day] = mySchedDupSec[day].in_tz(dtLocalName)
-			if mySchedDupSec[day].format('DDDD') >= dt.format('DDDD'):
-				if mySchedDupSec[day].format('DDDD') == dt.format('DDDD'):
-					banner += '**'+mySchedDupSec[day].to_day_datetime_string()+'**\n'
-				else:
-					banner += mySchedDupSec[day].to_day_datetime_string()+'\n'
-						
+				mySchedDupSec[day] = mySchedDupSec[day].at(mySchedHours[day])
+				mySchedDupSec[day] = mySchedDupSec[day].in_tz(dtLocalName)
+				if mySchedDupSec[day].format('DDDD') >= dt.format('DDDD'):
+					if mySchedDupSec[day].format('DDDD') == dt.format('DDDD'):
+						banner += '**'+mySchedDupSec[day].to_day_datetime_string()+'**\n'
+					else:
+						banner += mySchedDupSec[day].to_day_datetime_string()+'\n'
+			
 		for day in range(0, len(mySchedDup)):
 			mySchedDup[day] = mySchedDup[day].at(mySchedHours[day])
 			mySchedDup[day] = mySchedDup[day].in_tz(dtLocalName)
@@ -126,27 +129,27 @@ def get_schedule(locale, extended):
 				banner += '**'+mySchedDup[day].to_day_datetime_string()+'**\n'
 			else:
 				banner += mySchedDup[day].to_day_datetime_string()+'\n'
-
 		# For if the user does not have a tz saved in .db yet		
 		if extended:
 			banner += divider
 			banner += 'You can set your schedule location with `!schedule set LOCATION`\n'
 			banner += 'Use `!schedule help` for more information.'
+		#print(banner)
 		return banner
 	except e:
 		print(e)
 
-def get_sched_help(locale, admin):
+def get_sched_help(locale, author):
 	#print(locale + " " + admin)
 	if locale == 'default':
 		banner = '**Schedule Help**\n'+divider
-		if admin == True:
+		if is_admin(author.roles) == True:
 			banner += '`!schedule override USER.ID USER.NAME LOCATION` to change a user\'s set location.\n' 
 		banner += '`!schedule` to see the schedule for your default location.\n'
 		banner += '`!schedule CONTINENT/CITY` to see the schedule for another location.\n'
 		banner += '`!schedule help CONTINENT` to see cities for that location.\n'
 		banner += '`!schedule set CONTINENT/CITY` to change your default location.\n'
-		banner += divider+'Continents include: \n'+get_sched_help('continents', admin)
+		banner += divider+'Continents include: \n'+get_sched_help('continents', author)
 		return banner
 	else:
 		path = DEFAULT_DIR+'/locales/'+locale+'.txt'
@@ -164,11 +167,11 @@ def helper(operator, args, author):
 	print(operator)
 	print(args)
 	print(author)
-	admin = is_admin(author.roles)
+	#admin = is_admin(author.roles)
 	return {
 		'get': lambda: getSched(args, author),
 		'set': lambda: setSched(args, author),
-		'help': lambda: get_sched_help(args, admin),
+		'help': lambda: get_sched_help(args, author),
 		'override': lambda: override(args, author),
 	}.get(operator, lambda: None)()
 
@@ -222,7 +225,7 @@ def setSched(args, author):
 			return 'Set your schedule location to: '+str(locale)
 	
 def getSched(args, author):
-	if args:
+	if args is not None:
 		for index in range(0, len(tzAbbrs)):
 			if args[0].lower() == tzAbbrs[index][0]:
 				locale = tzAbbrs[index][1]
@@ -236,11 +239,13 @@ def getSched(args, author):
 			cursorObj = con.cursor()
 			c = cursorObj.execute("""SELECT EXISTS (SELECT 1 FROM schedule WHERE id=? LIMIT 1)""", (author, )).fetchone()[0]
 			if c:
+				print("user found")
 				cursorObj.execute('SELECT locale FROM schedule WHERE id=?', (author,))
 				result = cursorObj.fetchone()	
 				banner = get_schedule(result[0], False)
 				return str(banner)
 			else:
+				print("getting Tokyo")
 				locale = 'Asia/Tokyo'
 				banner = get_schedule(locale, True)
 				return str(banner)
