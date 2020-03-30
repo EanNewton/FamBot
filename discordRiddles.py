@@ -238,6 +238,7 @@ def fetch_riddle_name(toFetch, author):
 				return "You have not started yet, use `!riddle get` to get your first riddle.\n Check `!riddle help` for options."
 			else:
 				cursorObj.execute('SELECT * FROM riddles WHERE id=? ORDER BY RANDOM() LIMIT 1', (str(toFetch),))	
+				result = cursorObj.fetchall()
 		else:
 			flag = True
 			#cursorObj.execute('SELECT Count(*) FROM riddles')
