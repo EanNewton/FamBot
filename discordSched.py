@@ -204,6 +204,9 @@ def override(args, author):
 			return 'Format is [user.id] [user.name] [locale]'
 
 def setSched(args, author):
+	print('in set sched')
+	print(args)
+	print(author)
 	if len(args) > 0:
 		for index in range(0, len(tzAbbrs)):
 			if args == tzAbbrs[index][0]:
@@ -211,14 +214,17 @@ def setSched(args, author):
 				break
 			else:
 				locale = args
+		print('getting user')
 		cursorObj = con.cursor()
 		c = cursorObj.execute("""SELECT EXISTS (SELECT 1 FROM schedule WHERE id=? LIMIT 1)""", (author.id, )).fetchone()[0]
 		if c:
+			print('user found')
 			cursorObj.execute('UPDATE schedule SET locale = ? where id = ?', (locale, author.id,))
 			con.commit()
 			print('UPDATED LOCALE TO ' + str(locale)+ ' FOR USER '+str(author))
 			return 'Updated your schedule location to: '+str(locale)
 		else:
+			print('user not found')
 			entity = [int(message.author.id), str(author), str(locale)]
 			sql_insert_sched(con, entity)
 			print('SETTING '+str(message.author)+'\'s SCHEDULE TO: '+locale)

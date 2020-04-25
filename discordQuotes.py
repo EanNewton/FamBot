@@ -22,7 +22,7 @@ def sql_connection():
         con = sqlite3.connect(DEFAULT_PATH)
         return con
     except Error:
-        print("Error while connection ", Error)
+        print("[!] Error while connection ", Error)
  
 def sql_table(con): 
 	try:
@@ -30,18 +30,17 @@ def sql_table(con):
 		cursorObj.execute("CREATE TABLE IF NOT EXISTS famQuotes(id integer PRIMARY KEY, name, text, date)")
 		con.commit()
 	except Error:
-		print("Error while create ", Error)
+		print("[!] Error while create ", Error)
     
 def sql_insert_quote(con, entities): 
-	#entity = [reaction.message.id, userName[:-5], reaction.message.content, str(timeStamp)]		
 	try:
 		cursorObj = con.cursor()    
 		cursorObj.execute('INSERT INTO famQuotes(id, name, text, date) VALUES(?, ?, ?, ?)', entities)
 		con.commit()
-		print("Added... ", entities)
+		print("[+] Quote added... ", entities)
 		return
 	except Error:
-		print("Error while insert ", Error)
+		print("[!] Error while insert ", Error)
 
 def sql_drop(con):
 	try:
@@ -49,7 +48,7 @@ def sql_drop(con):
 		cursorObj.execute('DROP table if exists famQuotes')
 		con.commit()
 	except Error:
-		print("Error while drop ", Error)
+		print("[!] Error while drop ", Error)
  
 def sql_reset_quotedb(con):
 	try:
@@ -57,9 +56,9 @@ def sql_reset_quotedb(con):
 		cursorObj.execute('DROP table if exists famQuotes')
 		cursorObj.execute("CREATE TABLE IF NOT EXISTS famQuotes(id integer PRIMARY KEY, name, text, date)")
 		con.commit()
-		print("TABLE famQuotes RESET")
+		print("[+] TABLE famQuotes RESET")
 	except Error:
-		print("Error while drop ", Error)
+		print("[!] Error while drop ", Error)
 
 def delete_quote(con, arg):
 	try:
@@ -67,10 +66,10 @@ def delete_quote(con, arg):
 		cur = con.cursor()
 		cur.execute(sql, (arg,))
 		con.commit()
-		print("Removed quote.")
+		print("[+] Removed quote.")
 		return "Successfully removed quote."
 	except Error:
-		print("Error while delete ", Error)
+		print("[!] Error while delete ", Error)
      
 def check_if_exists(toFetch):		
 	try:
@@ -82,7 +81,7 @@ def check_if_exists(toFetch):
 		else:
 			return True
 	except Error:
-		print("Error while fetch rand", Error)
+		print("[!] Error while fetch rand", Error)
 		   
 def fetchQuote(toFetch):		
 	try:
@@ -99,7 +98,7 @@ def fetchQuote(toFetch):
 		banner = str(quote) + '\n ---' + str(author) + ' on ' + str(date)
 		return str(banner)
 	except Error:
-		print("Error while fetch rand", Error)
+		print("[!] Error while fetch rand", Error)
 		
 def get_help(admin):
 	admin = is_admin(admin.roles)

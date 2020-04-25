@@ -5,7 +5,7 @@ import random
 import sqlite3
 from sqlite3 import Error
 
-debug = True
+debug = False
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'quotes.db')
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -45,28 +45,49 @@ def check_answer(con, args, author):
 		print(args)
 	riddleExists = check_riddle_exists(args[0])
 	userExists = check_user_exists(author.id)
+	print("return from user exists")
+	print(userExists)
 	if riddleExists:
 		riddle = fetch_riddle_id(args[0])
+		if debug:
+			print("return from riddle fetch by id")
 	else:
 		return "Riddle does not exist, check ID"
 	if userExists == False:
-		print("User not found, creating user profile")
+		if debug:
+			print("User not found, creating user profile")
 		solved = "START;"
 		entity = [author.id, author.name, args[0], 0, solved]
 		sql_insert_user(con, entity)
 	
 	if args[1][:2] == '||' and args[1][-2:] == '||':
-		if args[1].strip('||') == riddle[0][3]:	
+		if debug:
+			print("IF 1")
+			print(args[1][2:-2])
+		if args[1][2:-2] == riddle[0][3]:	
+		#if args[1].strip('||') == riddle[0][3]:	
+			if debug:
+				print("IF 2")
 			if has_solved(con, author.id, args[0]):
+				if debug:
+					print("IF 3")
 				return "You have already solved this riddle."
 			else:
+				if debug:
+					print("ELSE 1")
 				increment_score(con, author.id, args[0])
 				return "Solved! " + str(get_user_score(author.id))
 		else:
-			banner = "Remember to spoiler tag your solution by putting `||` on both ends.\n"
-			banner += "Example: `!riddle solve RIDDLE.ID ||your solution here||`"
+			if debug:
+				print("ELSE 2")
+			return "Incorrect"
 	else:
-		return "Incorrect"
+		if debug:
+			print("ELSE 3")
+		banner = "Remember to spoiler tag your solution by putting `||` on both ends.\n"
+		banner += "Example: `!riddle solve RIDDLE.ID ||your solution here||`"
+		return banner
+		
 
 def increment_score(con, toFetch, riddleID):
 	if debug:
@@ -89,12 +110,15 @@ def has_solved(con, userID, riddleID):
 		print(userID)
 		print(riddleID)
 	user = get_user(userID)
-	print("found user")
+	if debug:
+		print("found user")
 	solvedSet = user[4].split(";")
 	if riddleID in solvedSet:
-		print("has solved")
+		if debug:
+			print("has solved")
 		return True
-	print("has not solved")
+	if debug:
+		print("has not solved")
 	return False
 		
 def get_user(toFetch):
@@ -110,7 +134,7 @@ def get_user(toFetch):
 		else:
 			return None
 	except Error:
-		print("Error while get user")
+		print("[!] Error while get user")
 		
 def get_user_score(toFetch):
 	if debug:
@@ -125,7 +149,7 @@ def get_user_score(toFetch):
 		else:
 			return None
 	except Error:
-		print("Error while get user score")
+		print("[!] Error while get user score")
 			
 def get_leaderboard(limit):
 	if debug:
@@ -145,19 +169,24 @@ def get_leaderboard(limit):
 		else:
 			return None
 	except Error:
-		print("Error while get user score")
+		print("[!] Error while get user score")
 		
 def fetch_riddle_id(toFetch):		
+	if debug:
+		print(divider)
+		print("[!] In fetch riddle by id")
 	try:
 		cursorObj = con.cursor()
 		cursorObj.execute('SELECT * FROM riddles WHERE id=? LIMIT 1', (toFetch,))
 		result = cursorObj.fetchall()
+		if debug:
+			print("[!] Fetch results: "+str(result))
 		if result:
 			return result 
 		else:
 			return None
 	except Error:
-		print("Error while fetch rand", Error)	
+		print("[!] Error while fetch rand", Error)	
 	
 def check_riddle_exists(toFetch):	
 	if debug:
@@ -172,22 +201,25 @@ def check_riddle_exists(toFetch):
 		else:
 			return True
 	except Error:
-		print("Error while fetch rand", Error)
+		print("[!] Error while fetch rand", Error)
 	
 def check_user_exists(toFetch):		
 	if debug:
 		print(divider)
 		print("in check user exists")
+		print(toFetch)
 	try:
 		cursorObj = con.cursor()
 		cursorObj.execute('SELECT * FROM riddlesUsers WHERE id=? LIMIT 1', (toFetch,))
 		result = cursorObj.fetchall()
+		if debug:
+			print(result)
 		if not result:
 			return False
 		else:
 			return True
 	except Error:
-		print("Error while fetch rand", Error)
+		print("[!] Error while fetch rand", Error)
 
 def sql_insert_user(con, entities): 	
 	if debug:
@@ -197,10 +229,10 @@ def sql_insert_user(con, entities):
 		cursorObj = con.cursor()    
 		cursorObj.execute('INSERT INTO riddlesUsers(id, name, current, score, solved) VALUES(?, ?, ?, ?, ?)', entities)
 		con.commit()
-		print("Added... ", entities)
+		print("[+] Added riddle user... ", entities)
 		return
 	except Error:
-		print("Error while insert ", Error)
+		print("[!] Error while insert ", Error)
 		
 def set_user_current(con, riddleID, userID):
 	if debug:
@@ -226,7 +258,8 @@ def fetch_riddle_name(toFetch, author):
 		print("In fetch by name")
 		print(toFetch)
 	if check_user_exists(author.id) == False:
-		print("User not found, creating user profile")
+		if debug:
+			print("User not found, creating user profile")
 		solved = "START;"
 		entity = [author.id, author.name, 0, 0, solved]
 		sql_insert_user(con, entity)
@@ -241,7 +274,6 @@ def fetch_riddle_name(toFetch, author):
 				result = cursorObj.fetchall()
 		else:
 			flag = True
-			#cursorObj.execute('SELECT Count(*) FROM riddles')
 			cursorObj.execute('SELECT * FROM riddles')
 			rows = len(cursorObj.fetchall())
 			count = 0
@@ -253,14 +285,13 @@ def fetch_riddle_name(toFetch, author):
 					print(rows)
 				cursorObj.execute('SELECT * FROM riddles WHERE id IN (SELECT id FROM riddles ORDER BY RANDOM() LIMIT 1)')
 				result = cursorObj.fetchall()
-				#print("FETCHED")
-				#print(result)
 				flag = has_solved(con, author.id, result[0][0])
 				count = count + 1
 				if count > rows:
 					return "Congratulations! You have completed all available riddles! Check back soon or add a new one yourself."
 
-		print("broke from while")
+		if debug:
+			print("broke from while")
 		riddleID = result[0][0]
 		text = result[0][2]
 		name = result[0][1]
@@ -268,7 +299,7 @@ def fetch_riddle_name(toFetch, author):
 		banner = "Riddle #"+str(riddleID)+"\n**"+str(name)+"**\n"+str(text)
 		return str(banner)
 	except Error:
-		print("Error while fetch rand", Error)
+		print("[!] Error while fetch rand", Error)
 
     
 def sql_insert_riddle(con, entities, author): 	
@@ -280,10 +311,10 @@ def sql_insert_riddle(con, entities, author):
 		cursorObj = con.cursor()    
 		cursorObj.execute('INSERT INTO riddles(id, name, text, solution) VALUES(?, ?, ?, ?)', entities)
 		con.commit()
-		print("Added... ", entities)
+		print("[+] Added riddle... ", entities)
 		return "Added new riddle "+str(entities[1])+" as riddle #"+str(entities[0])
 	except Error:
-		print("Error while insert ", Error)
+		print("[!] Error while insert ", Error)
 		
 #######	
 def sql_connection():
@@ -291,7 +322,7 @@ def sql_connection():
         con = sqlite3.connect(DEFAULT_PATH)
         return con
     except Error:
-        print("Error while connection ", Error)
+        print("[!] Error while connection ", Error)
  
 def sql_table(con): 
 	try:
@@ -300,7 +331,7 @@ def sql_table(con):
 		cursorObj.execute("CREATE TABLE IF NOT EXISTS riddlesUsers(id integer PRIMARY KEY, name, current, score, solved)")
 		con.commit()
 	except Error:
-		print("Error while create ", Error)
+		print("[!] Error while create ", Error)
 		 
 #Dangerous 
 def sql_reset_riddledb(con):
@@ -310,20 +341,21 @@ def sql_reset_riddledb(con):
 		cursorObj.execute('DROP table if exists riddlesUsers')
 		con.commit()
 		sql_table(con)
-		print("[!] TABLE riddles & riddlesUsers RESET")
+		print("[+] TABLE riddles & riddlesUsers RESET")
 	except Error:
-		print("Error while drop ", Error)
+		print("[!] Error while drop ", Error)
 
 def delete_riddle(con, arg):
 	try:
+		print("Trying to delete riddle")
 		sql = 'DELETE FROM riddles WHERE id=?'
 		cur = con.cursor()
 		cur.execute(sql, (arg,))
 		con.commit()
-		print("[!] Removed riddle.")
+		print("[+] Removed riddle.")
 		return "Successfully removed riddle."
 	except Error:
-		print("Error while delete ", Error)
+		print("[!] Error while delete ", Error)
 
 def delete_user(con, arg):
 	if debug:
@@ -334,10 +366,10 @@ def delete_user(con, arg):
 		cur = con.cursor()
 		cur.execute(sql, (arg,))
 		con.commit()
-		print("[!] Removed riddle user.")
+		print("[+] Removed riddle user.")
 		return "Successfully removed user."
 	except Error:
-		print("Error while delete ", Error)
+		print("[!] Error while delete ", Error)
 
 def fetch_user_id(toFetch):		
 	try:
@@ -349,7 +381,7 @@ def fetch_user_id(toFetch):
 		else:
 			return True
 	except Error:
-		print("Error while fetch rand", Error)
+		print("[!] Error while fetch rand", Error)
 		   
 def fetch_user_name(toFetch):		
 	try:
@@ -366,7 +398,7 @@ def fetch_user_name(toFetch):
 		banner = str(text) + '\n ---' + str(name) + ' on ' + str(solution)
 		return str(banner)
 	except Error:
-		print("Error while fetch rand", Error)
+		print("[!] Error while fetch rand", Error)
 		
 def get_help(author):
 	banner = "**Riddle Help**\n"+divider

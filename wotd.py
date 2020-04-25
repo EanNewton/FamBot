@@ -3,12 +3,15 @@
 import requests
 import urllib.request
 from bs4 import BeautifulSoup
+import asyncio
+import aiohttp
+import aiofiles
 import os
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'wordoftheday.txt')
 OUTPUT_FILE = os.path.join(os.path.dirname(__file__), 'output.txt')
 url = 'https://www.wordsmith.org/words/today.html'
-keywords = ['USAGE:\n', 'MEANING:\n', 'PRONUNCIATION:\n', 'ETYMOLOGY:\n', 'NOTES:\n']
+keywords = ['USAGE:\n', 'MEANING:\n', 'PRONUNCIATION:\n', 'ETYMOLOGY:\n', 'NOTES:\n']     
         
 def readFile(path):
 	with open(path, 'r') as f:
@@ -26,22 +29,26 @@ def stripBlank():
 			if not line.strip(): continue
 			outfile.write(line)
 		
-def getWebPage():
-	response = requests.get(url)
-	soup = BeautifulSoup(response.text, "html.parser")
-
-	pageText = soup.get_text()
-
-	step1 = pageText.split('with Anu Garg')
-	step2 = step1[1].split('A THOUGHT FOR TODAY')
-	step3 = step2[0].strip()
-	
-	writeFile(step3)
+async def getWebPage():
+	async with aiohttp.ClientSession() as session:
+		async with session.get(url) as resp:
+			if resp.status == 200:
+				print("[-] Status 200")
+				text = await resp.read()
+			else:
+				print("[!] Status "+str(resp.status))
+	soup = BeautifulSoup(text, "html.parser")
+	text = soup.get_text()
+	text = text.split('with Anu Garg')
+	text = text[1].split('A THOUGHT FOR TODAY')
+	text = text[0].strip()
+	writeFile(text)
 	stripBlank()
-
-def getTodaysWord(toUpdate):
+	return
+	
+async def getTodaysWord(toUpdate):
 	if toUpdate:
-		print('UPDATING WORD OF THE DAY')
-		getWebPage()
+		print('[+] Updating word of the day')
+		await getWebPage()
 	banner = readFile(OUTPUT_FILE)
 	return banner

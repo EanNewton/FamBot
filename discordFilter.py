@@ -50,14 +50,13 @@ def getBlacklistStrict():
 	return blacklistStrict
 	
 def addWord(level, word):
-	print(level + " " + word)
 	if level == '1':
-		print("Adding "+word)
+		#print("Adding "+word)
 		path = DEFAULT_DIR+'/blacklists/blacklist_custom_low.txt'
 		with open(path, 'a') as f:
 			f.write(word)
 	if level == '2':
-		print("Adding "+word)
+		#print("Adding "+word)
 		path = DEFAULT_DIR+'/blacklists/blacklist_custom_strict.txt'
 		with open(path, 'a') as f:
 			f.write(word)
@@ -94,8 +93,6 @@ def sql_insert_filter(con, entities):
 	return "Set filter for current channel to: "+str(entities[1])
 
 def delete_filter(con, arg):
-	print("in delete filter")
-	print(arg)
 	try:
 		sql = 'DELETE FROM filters WHERE id=?'
 		cur = con.cursor()
@@ -138,8 +135,6 @@ def getFilter(toFetch):
 		print("Error while fetch filter", Error)
 		
 def helper(operator, args):
-	print("in helper")
-	print(args)
 	return {
 		'get': lambda: getFilter(args),
 		'set': lambda: sql_insert_filter(con, args),
