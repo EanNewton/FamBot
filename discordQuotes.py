@@ -4,18 +4,9 @@ import os
 import random
 import sqlite3
 from sqlite3 import Error
+from discordUtils import debug, fetchFile, is_admin
 
-DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'quotes.db')
-DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
- 
-divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 	
-adminRoles = {'admin', 'mod', 'discord mod'}
-
-def is_admin(author):
-	for roles in author:
-		if str(roles).lower() in adminRoles:
-			return True
-	return False
+DEFAULT_PATH = os.path.join(os.path.dirname(__file__), './log/quotes.db')
 	
 def sql_connection():
     try:
@@ -31,8 +22,9 @@ def sql_table(con):
 		con.commit()
 	except Error:
 		print("[!] Error while create ", Error)
-    
-def sql_insert_quote(con, entities): 
+
+@debug    
+def sql_insert_quote(entities): 
 	try:
 		cursorObj = con.cursor()    
 		cursorObj.execute('INSERT INTO famQuotes(id, name, text, date) VALUES(?, ?, ?, ?)', entities)
@@ -60,17 +52,23 @@ def sql_reset_quotedb(con):
 	except Error:
 		print("[!] Error while drop ", Error)
 
-def delete_quote(con, arg):
+@debug
+def delete_quote(arg):
 	try:
 		sql = 'DELETE FROM famQuotes WHERE id=?'
 		cur = con.cursor()
 		cur.execute(sql, (arg,))
 		con.commit()
-		print("[+] Removed quote.")
-		return "Successfully removed quote."
+		if check_if_exists(arg):
+			print("[!] Failed to remove quote")
+			return("Failed to remove quote")
+		else:
+			print("[+] Removed quote.")
+			return "Successfully removed quote."
 	except Error:
 		print("[!] Error while delete ", Error)
-     
+
+@debug     
 def check_if_exists(toFetch):		
 	try:
 		cursorObj = con.cursor()
@@ -82,7 +80,8 @@ def check_if_exists(toFetch):
 			return True
 	except Error:
 		print("[!] Error while fetch rand", Error)
-		   
+	
+@debug		   
 def fetchQuote(toFetch):		
 	try:
 		cursorObj = con.cursor()
@@ -95,32 +94,27 @@ def fetchQuote(toFetch):
 		quote = result[0][2]
 		author = result[0][1]
 		date = result[0][3]
-		banner = str(quote) + '\n ---' + str(author) + ' on ' + str(date)
-		return str(banner)
+		return str(quote) + '\n ---' + str(author) + ' on ' + str(date)
 	except Error:
 		print("[!] Error while fetch rand", Error)
-		
-def get_help(admin):
-	admin = is_admin(admin.roles)
-	banner = "**Quote Help**\n"+divider
-	banner += "`!quote` pull up a random quote.\n"
-	banner += "`!quote USER` pull up a quote from a specific user. "
-	banner += "This is the user\'s full username, not their server nickname. "
-	banner += "It is case sensitive.\n"
-	banner += "React to a message with 🗨 to add it to the database.\n"
-	if admin:
-		banner += "React to a message with ❌ to remove it.\n\n"
+
+@debug		
+def get_help(author):
+	banner = fetchFile('help', 'quotes')
+	if is_admin(author.roles):
+		banner += "React to a message with ❌ to remove it."
 	return banner
-		
-def helper(operator, args):
-	return {
-		'clear': lambda: delete_quote(con, args),
-		'add': lambda: sql_insert_quote(con, args),
-		'get': lambda: fetchQuote(con, args),
-		'help': lambda: get_help(args),
-		'exists': lambda: check_if_exists(args),
-	}.get(operator, lambda: None)()
 	
+@debug
+def helper(args, author):
+	if len(args) > 1:
+		if args[1] == 'help':
+			return get_help(author.roles)
+		else:
+			return fetchQuote(args[1])
+	else:
+		return fetchQuote(-1)
+
 global con
 con = sql_connection()
 sql_table(con)

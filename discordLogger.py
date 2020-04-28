@@ -8,10 +8,7 @@ import aiohttp
 import aiofiles
 
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String 
-
-debug = False
-
-divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 	
+ 	
 extSet_img = {
 	'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'
 	}   
@@ -41,10 +38,7 @@ extSet_documents = {
 	}
 
 def setup():
-	if debug:
-		engine = create_engine('sqlite:///logger.db', echo = True)
-	else:
-		engine = create_engine('sqlite:///logger.db', echo = False)
+	engine = create_engine('sqlite:///./log/logger.db', echo = False)
 	meta = MetaData()
 	corpus = Table(
 		'corpus', meta,
@@ -64,9 +58,8 @@ def setup():
 		)
 	meta.create_all(engine)
 	print('[+] End Corpus.db Setup')
-	#return engine, meta
 
-#def corpusInsert(engine, meta, message):	
+	
 def corpusInsert(message):
 	mChanMentions = ''
 	mAttach = ''
@@ -76,10 +69,7 @@ def corpusInsert(message):
 	dateTime = pendulum.now(tz='Asia/Tokyo')
 	timeStamp = str(dateTime.to_day_datetime_string())
 	
-	if debug:
-		engine = create_engine('sqlite:///logger.db', echo = True)
-	else:
-		engine = create_engine('sqlite:///logger.db', echo = False)
+	engine = create_engine('sqlite:///./log/logger.db', echo = False)
 	meta = MetaData()
 	corpus = Table(
 		'corpus', meta,
@@ -99,19 +89,19 @@ def corpusInsert(message):
 		)
 
 	if message.embeds:
-		for each in range(0, len(message.embeds)):
+		for each in range(len(message.embeds)):
 			mEmbeds += str(message.embeds)
 	if message.attachments:
-		for each in range(0, len(message.attachments)):
+		for each in range(len(message.attachments)):
 			mAttach += str(message.attachments[each].filename)
 	if message.mentions:
-		for each in range(0, len(message.mentions)):
+		for each in range(len(message.mentions)):
 			mMentions += str(message.mentions[each])
 	if message.channel_mentions:
-		for each in range(0, len(message.channel_mentions)):
+		for each in range(len(message.channel_mentions)):
 			mChanMentions += str(message.channel_mentions[each])
 	if message.role_mentions:
-		for each in range(0, len(message.role_mentions)):
+		for each in range(len(message.role_mentions)):
 			mRoleMentions += str(message.role_mentions[each])
 	
 	ins = corpus.insert().values(
@@ -130,49 +120,27 @@ def corpusInsert(message):
 		)
 	conn = engine.connect()
 	result = conn.execute(ins)
-	if debug:
-		print('[+] Logged message: ' + str(message.id))	
+
+async def fetcher(filetype, url, time, author):
+	async with aiohttp.ClientSession() as session:
+		filePath = "./log/"+filetype+"/"+author+"_"+time+"_"+url.split('/')[-1]
+		async with session.get(url) as resp:
+			if resp.status == 200:
+				f = await aiofiles.open(filePath, mode='wb')
+				await f.write(await resp.read())
+				await f.close()
+				print("[+] Saved "+filetype+": "+str(filePath))
 
 async def fetchEmbed(message, time):
 	url = str(message.attachments[0].url)
-	ext = url.split('.')[-1].lower()
+	ext = str(url.split('.')[-1].lower())
+	
 	if ext in extSet_img:
-		async with aiohttp.ClientSession() as session:
-			filePath = "./log/images/"+str(message.author.name)+"_"+str(time)+"_"+str(message.attachments[0].url).split('/')[-1]
-			async with session.get(url) as resp:
-				if resp.status == 200:
-					f = await aiofiles.open(filePath, mode='wb')
-					await f.write(await resp.read())
-					await f.close()
-					print("[+] Saved image: "+str(filePath))
-					return filePath
+		await fetcher("images", url, str(time), str(message.author.name))
 	elif ext in extSet_audio:
-		async with aiohttp.ClientSession() as session:
-			filePath = "./log/audio/"+str(message.author.name)+"_"+str(time)+"_"+str(message.attachments[0].url).split('/')[-1]
-			async with session.get(url) as resp:
-				if resp.status == 200:
-					f = await aiofiles.open(filePath, mode='wb')
-					await f.write(await resp.read())
-					await f.close()
-					print("[+] Saved audio: "+str(filePath))
-					return filePath
+		await fetcher("audio", url, str(time), str(message.author.name))
 	elif ext in extSet_video:
-		async with aiohttp.ClientSession() as session:
-			filePath = "./log/video/"+str(message.author.name)+"_"+str(time)+"_"+str(message.attachments[0].url).split('/')[-1]
-			async with session.get(url) as resp:
-				if resp.status == 200:
-					f = await aiofiles.open(filePath, mode='wb')
-					await f.write(await resp.read())
-					await f.close()
-					print("[+] Saved video: "+str(filePath))
-					return filePath
+		await fetcher("video", url, str(time), str(message.author.name))
 	elif ext in extSet_documents:
-		async with aiohttp.ClientSession() as session:
-			filePath = "./log/docs/"+str(message.author.name)+"_"+str(time)+"_"+str(message.attachments[0].url).split('/')[-1]
-			async with session.get(url) as resp:
-				if resp.status == 200:
-					f = await aiofiles.open(filePath, mode='wb')
-					await f.write(await resp.read())
-					await f.close()
-					print("[+] Saved document: "+str(filePath))
-					return filePath
+		await fetcher("docs", url, str(time), str(message.author.name))
+		

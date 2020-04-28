@@ -4,63 +4,57 @@ import os
 import random
 import sqlite3
 from sqlite3 import Error
+from discordUtils import debug, fetchFile
 
-DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'filters.db')
+DEFAULT_PATH = os.path.join(os.path.dirname(__file__), './log/filters.db')
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 blacklistLow = {"jap"}
 blacklistStrict = {"xxx"}
 
-divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
+def check(message):
+	text = message.content.split()
+	fLevel = getFilter(message.channel.id)
+	lists = {'Filter level: 2': (blacklistStrict), 'Filter level: 1': (blacklistLow)}
+	if fLevel in lists:
+		for word in text:
+			if word in lists[fLevel]:
+				return True
+	return False
 
 def importBlacklists():
-	path = DEFAULT_DIR+'/blacklists/blacklist_ethnic.txt'
-	with open(path, 'r') as f:
-		for line in f:
-			blacklistLow.add(line.strip())
-			blacklistStrict.add(line.strip())
-	path = DEFAULT_DIR+'/blacklists/blacklist_sex.txt'
-	with open(path, 'r') as f:
-		for line in f:
-			blacklistLow.add(line.strip())
-			blacklistStrict.add(line.strip())
-	path = DEFAULT_DIR+'/blacklists/blacklist_ru.txt'
-	with open(path, 'r') as f:
-		for line in f:
-			blacklistLow.add(line.strip())
-			blacklistStrict.add(line.strip())	
-	path = DEFAULT_DIR+'/blacklists/blacklist_1716.txt'
-	with open(path, 'r') as f:
-		for line in f:
-			blacklistStrict.add(line.strip())
-	#Custom
-	path = DEFAULT_DIR+'/blacklists/blacklist_custom_strict.txt'
-	with open(path, 'r') as f:
-		for line in f:
-			blacklistStrict.add(line.strip())
-	path = DEFAULT_DIR+'/blacklists/blacklist_custom_low.txt'
-	with open(path, 'r') as f:
-		for line in f:
-			blacklistLow.add(line.strip())
-
-def getBlacklistLow():
-	return blacklistLow
-
-def getBlacklistStrict():
-	return blacklistStrict
+	listOfFiles_low = list()
+	listOfFiles_high = list()
+	for (dirpath, dirnames, filenames) in os.walk(DEFAULT_DIR+'/blacklists'):
+		if 'low' in dirpath:
+			listOfFiles_low += [os.path.join(dirpath, file) for file in filenames]
+		if 'strict' in dirpath:
+			listOfFiles_high += [os.path.join(dirpath, file) for file in filenames]
 	
+	for file_ in listOfFiles_low:
+		with open(file_, 'r') as f:
+			for line in f:
+				blacklistLow.add(line.strip())
+				blacklistStrict.add(line.strip())
+	for file_ in listOfFiles_high:
+		with open(file_, 'r') as f:
+			for line in f:
+				blacklistStrict.add(line.strip())
+	blacklistStrict.remove('')
+	print("[+] Imported Filter Blacklists")
+
 def addWord(level, word):
+	path = None
 	if level == '1':
-		#print("Adding "+word)
-		path = DEFAULT_DIR+'/blacklists/blacklist_custom_low.txt'
+		path = DEFAULT_DIR+'/blacklists/low/blacklist_custom.txt'
+	elif level == '2':
+		path = DEFAULT_DIR+'/blacklists/high/blacklist_custom.txt'
+	if path:
 		with open(path, 'a') as f:
 			f.write(word)
-	if level == '2':
-		#print("Adding "+word)
-		path = DEFAULT_DIR+'/blacklists/blacklist_custom_strict.txt'
-		with open(path, 'a') as f:
-			f.write(word)
-	return "Success."
+			print("[!] Added "+word+" to level "+level+" custom filters")
+			return "Success"
+	return "Error"
 			
 def sql_connection():
     try:
@@ -133,26 +127,21 @@ def getFilter(toFetch):
 		return "Filter level: "+str(level)
 	except Error:
 		print("Error while fetch filter", Error)
-		
-def helper(operator, args):
+	
+def helper(message):
+	args = message.content.split()
+	operator = args[1].lower()
 	return {
-		'get': lambda: getFilter(args),
-		'set': lambda: sql_insert_filter(con, args),
-		'clear': lambda: sql_insert_filter(con, [args, 0]),
-		'clearAll': lambda: sql_reset_filters(con),
-		'help': lambda: getHelp(),
-		'add': lambda: addWord(args[0], args[1]),
+		'get': lambda: getFilter(message.channel.id),
+		'set': lambda: sql_insert_filter(con, [message.channel.id, args[2]]),
+		'clear': lambda: sql_insert_filter(con, [message.channel.id, 0]),
+		'clearall': lambda: sql_reset_filters(con),
+		'help': lambda: get_help(),
+		'add': lambda: addWord(args[2], args[3:]),
 	}.get(operator, lambda: None)()
 
-def getHelp():
-	banner = "**Filter Help**\n"+divider
-	banner += "`!filter get` check the current channel\s filter level.\n"
-	banner += "`!filter set LEVEL` set a filter level for the current channel. "
-	banner += "Options are 1 for Low or 2 for Strict.\n"
-	banner += "`!filter clearall` clear all channel\'s filters.\n"
-	banner += "`!filter add LEVEL WORD` add a word to the filter. "
-	banner += "Currently only supports single words without spaces.\n\n"
-	return banner
+def get_help():
+	return fetchFile('help', 'filters')
 
 global con
 con = sql_connection()

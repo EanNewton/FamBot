@@ -1,0 +1,8 @@
+**Filter Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+`!filter get` check the current channel\'s filter level.
+`!filter set LEVEL` set a filter level for the current channel.
+Options are 1 for Low or 2 for Strict.
+`!filter clearall` clear all channel\'s filters.
+`!filter add LEVEL WORD` add a word to the filter. 
+Currently only supports single words without spaces.

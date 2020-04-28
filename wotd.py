@@ -7,16 +7,12 @@ import asyncio
 import aiohttp
 import aiofiles
 import os
+from discordUtils import fetchFile
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'wordoftheday.txt')
-OUTPUT_FILE = os.path.join(os.path.dirname(__file__), 'output.txt')
 url = 'https://www.wordsmith.org/words/today.html'
 keywords = ['USAGE:\n', 'MEANING:\n', 'PRONUNCIATION:\n', 'ETYMOLOGY:\n', 'NOTES:\n']     
         
-def readFile(path):
-	with open(path, 'r') as f:
-		return f.read()
-
 def writeFile(content):
 	with open(DEFAULT_PATH, 'w') as f:
 		f.write(content)
@@ -33,7 +29,6 @@ async def getWebPage():
 	async with aiohttp.ClientSession() as session:
 		async with session.get(url) as resp:
 			if resp.status == 200:
-				print("[-] Status 200")
 				text = await resp.read()
 			else:
 				print("[!] Status "+str(resp.status))
@@ -44,11 +39,9 @@ async def getWebPage():
 	text = text[0].strip()
 	writeFile(text)
 	stripBlank()
-	return
 	
 async def getTodaysWord(toUpdate):
 	if toUpdate:
 		print('[+] Updating word of the day')
 		await getWebPage()
-	banner = readFile(OUTPUT_FILE)
-	return banner
+	return fetchFile('.', 'output')
