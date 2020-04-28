@@ -4,7 +4,7 @@ import os
 import random
 import sqlite3
 from sqlite3 import Error
-from discordUtils import debug, is_admin
+from discordUtils import debug, is_admin, fetchFile
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), './log/quotes.db')
 
