@@ -7,6 +7,7 @@ import asyncio
 import aiohttp
 import aiofiles
 
+from discordUtils import debug
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String 
  	
 extSet_img = {
@@ -38,9 +39,12 @@ extSet_documents = {
 	}
 
 def setup():
-	engine = create_engine('sqlite:///./log/logger.db', echo = False)
+	global engine
+	global meta
+	global Corpus
+	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
 	meta = MetaData()
-	corpus = Table(
+	Corpus = Table(
 		'corpus', meta,
 		Column('id', Integer, primary_key = True),
 		Column('content', String),
@@ -59,8 +63,8 @@ def setup():
 	meta.create_all(engine)
 	print('[+] End Corpus.db Setup')
 
-	
 def corpusInsert(message):
+	conn = engine.connect()	
 	mChanMentions = ''
 	mAttach = ''
 	mMentions = ''
@@ -68,26 +72,7 @@ def corpusInsert(message):
 	mRoleMentions = ''
 	dateTime = pendulum.now(tz='Asia/Tokyo')
 	timeStamp = str(dateTime.to_day_datetime_string())
-	
-	engine = create_engine('sqlite:///./log/logger.db', echo = False)
-	meta = MetaData()
-	corpus = Table(
-		'corpus', meta,
-		Column('id', Integer, primary_key = True),
-		Column('content', String),
-		Column('user_name', String),
-		Column('user_id', String),
-		Column('time', String),
-		Column('channel', String),
-		Column('embeds', String),
-		Column('attachments', String),
-		Column('mentions', String),
-		Column('channel_mentions', String),
-		Column('role_mentions', String),
-		Column('msg_id', String),
-		Column('reactions', String)
-		)
-
+	print(timeStamp)
 	if message.embeds:
 		for each in range(len(message.embeds)):
 			mEmbeds += str(message.embeds)
@@ -103,8 +88,8 @@ def corpusInsert(message):
 	if message.role_mentions:
 		for each in range(len(message.role_mentions)):
 			mRoleMentions += str(message.role_mentions[each])
-	
-	ins = corpus.insert().values(
+
+	ins = Corpus.insert().values(
 		content = str(message.content),
 		user_name = str(message.author),
 		user_id = str(message.author.id),
@@ -118,8 +103,8 @@ def corpusInsert(message):
 		msg_id = str(message.id),
 		reactions = "none"
 		)
-	conn = engine.connect()
 	result = conn.execute(ins)
+	return True
 
 async def fetcher(filetype, url, time, author):
 	async with aiohttp.ClientSession() as session:

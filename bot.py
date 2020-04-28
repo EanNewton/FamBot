@@ -36,15 +36,13 @@ async def on_ready():
 	f'{guildHandle.name}(id: {guildHandle.id})\n'
 	f'Revision date: {VERSION}\n'
 	)
-	members = '\n - '.join([member.name for member in guildHandle.members])
+	#members = '\n - '.join([member.name for member in guildHandle.members])
 	print("Member count: "+str(len(guildHandle.members)))
-	print(f'Guild Members:\n - {members}')
+	#print(f'Guild Members:\n - {members}')
 
 @bot.event
 async def on_message(message):
-	if is_bot(message.author.roles):
-		return
-	else:
+	if not is_bot(message.author.roles):
 		#Log messages
 		discordLogger.corpusInsert(message)
 		if message.attachments:
@@ -52,35 +50,30 @@ async def on_message(message):
 			timestamp = timestamp.to_datetime_string()
 			await discordLogger.fetchEmbed(message, timestamp)
 		#Check for blacklisted words
-		if discordFilter.check(message) and is_admin(message.author) == False:
+		if discordFilter.check(message):# and is_admin(message.author) == False:
 			await message.channel.send("Watch your language "+str(message.author.name)+"!")	
 			return
 		else:
-			#Commands
+		#Commands
 			args = message.content.split()
 			if args[0] == '!quote':
 				banner = discordQuotes.helper(args, message.author)
-				await message.channel.send(banner)
 			elif args[0] == '!schedule':
 				banner = discordSched.helper(args, message.author)
-				await message.channel.send(banner)	
 			elif args[0] == '!word':
 				banner = await wotd.getTodaysWord(True)
-				await message.channel.send(banner)
 			elif args[0] == '.riddle':
 				banner = discordRiddles.helper(message, message.author)
-				await message.channel.send(banner)	
 			elif args[0] == '!filter':
 				if is_admin(message.author.roles):
+					print(args)
 					if len(args) > 1:
-						await message.channel.send(discordFilter.helper(message))
+						banner = discordFilter.helper(message)
 			elif args[0] == '!doip':
 				banner = discordQuotes.fetchQuote("LaDoIphin")
 				banner += "\n"+divider
 				banner += "https://cdn.discordapp.com/attachments/486198920255635456/698328194058682368/20190305_140408.jpg"
-				await message.channel.send(banner)
 			elif args[0] == '!help':
-				print("[-] Getting help")
 				banner = discordQuotes.get_help(message.author)+'\n'+divider
 				if is_admin(message.author.roles):
 					banner += discordFilter.get_help()+divider
@@ -88,18 +81,16 @@ async def on_message(message):
 				banner += discordRiddles.get_help(message.author)+divider
 				banner += "**Word of the Day**\n"+divider
 				banner += "`!word` to get the word of the day. Updates once every 24 hours."
-				await message.channel.send(banner)
 			else:
 				return
+			await message.channel.send(banner)	
 
 @bot.event
 async def on_reaction_add(reaction, user):
 	if str(reaction.emoji) == '🗨️':	 #Add a quote
-		if is_bot(reaction.message.author.roles) == False:
-			if discordQuotes.check_if_exists(reaction.message.id) == False:
-				if discordFilter.check(reaction.message):
-					return
-				else:
+		if not is_bot(reaction.message.author.roles):
+			if not discordQuotes.alch_checkExists(reaction.message.id):
+				if not discordFilter.check(reaction.message):
 					userName = str(reaction.message.author)
 					dateTime = pendulum.now(tz='Asia/Tokyo')
 					timeStamp = str(dateTime.to_day_datetime_string())
@@ -109,7 +100,7 @@ async def on_reaction_add(reaction, user):
 					for each in reaction.message.mentions:
 						entity[2] = entity[2].replace('<@!'+str(each.id)+'>', each.name)
 				
-					discordQuotes.sql_insert_quote(entity)
+					discordQuotes.alch_insertQuote(entity)
 					banner = 'Adding: "' +str(entity[2])+'" by '+str(entity[1])+' on '+str(timeStamp)
 					await reaction.message.channel.send(banner)
 	
@@ -117,7 +108,7 @@ async def on_reaction_add(reaction, user):
 		users = await reaction.users().flatten()
 		for user in users:
 			if is_admin(user.roles):
-				await reaction.message.channel.send(discordQuotes.delete_quote(str(reaction.message.id)))
+				await reaction.message.channel.send(discordQuotes.alch_deleteQuote(reaction.message.id))
 
 @bot.event 
 async def on_error(event, *args, **kwargs):

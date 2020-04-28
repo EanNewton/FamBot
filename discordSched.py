@@ -5,6 +5,8 @@ import random
 import sqlite3
 from sqlite3 import Error
 from discordUtils import debug, fetchFile, is_admin
+from sqlalchemy import create_engine, update, select, MetaData, Table, Column, Integer, String 
+
 import pendulum
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), './log/quotes.db')
@@ -35,50 +37,22 @@ tzAbbrs = {
 	}
 		
 divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
-
-def sql_connection():
-    try:
-        con = sqlite3.connect(DEFAULT_PATH)
-        return con
-    except Error:
-        print("Error while connection ", Error)
- 
-def sql_table(con): 
-	try:
-		cursorObj = con.cursor()
-		cursorObj.execute("CREATE TABLE IF NOT EXISTS schedule(id integer PRIMARY KEY, name, locale)")
-		con.commit()
-	except Error:
-		print("Error while create ", Error)
-    
-def sql_insert_sched(con, entities): 
-	try:
-		cursorObj = con.cursor()   
-		cursorObj.execute('INSERT INTO schedule(id, name, locale) VALUES(?, ?, ?)', entities)
-		con.commit()
-		print("Added... ", entities)
-		return
-	except Error:
-		print("Error while insert ", Error)
- 
-def sql_drop(con):
-	try:
-		cursorObj = con.cursor()
-		cursorObj.execute('DROP table if exists famQuotes')
-		con.commit()
-	except Error:
-		print("Error while drop ", Error)
-
-def sql_reset_scheddb(con):
-	try:
-		cursorObj = con.cursor()
-		cursorObj.execute('DROP table if exists schedule')
-		cursorObj.execute("CREATE TABLE IF NOT EXISTS schedule(id integer PRIMARY KEY, name, locale)")
-		con.commit()
-		print("TABLE schedule RESET")
-	except Error:
-		print("Error while drop ", Error)
-
+			
+def setup():
+	global engine
+	global meta
+	global Users
+	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
+	meta = MetaData()
+	Users = Table(
+		'schedule', meta,
+		Column('id', Integer, primary_key = True),
+		Column('name', String),
+		Column('locale', String),
+		)
+	meta.create_all(engine)
+	print('[+] End schedule Setup')
+	
 def get_schedule(locale, extended):
 	try:
 		mySchedHours = [10, 10, 16, 10, 16]
@@ -136,61 +110,75 @@ def get_schedule(locale, extended):
 def override(args, author):
 # Args should translate as: 1 id, 2 name, 3 locale
 	if is_admin(author.roles) and len(args) == 3:
-		try:
 			locale = tzAbbrs.get(args[2].lower(), args[2])
-			cursorObj = con.cursor()
-			c = cursorObj.execute("""SELECT EXISTS (SELECT 1 FROM schedule WHERE id=? LIMIT 1)""", (args[0], )).fetchone()[0]
-			if c:
-				cursorObj.execute('UPDATE schedule SET locale = ? WHERE id = ?', (locale, args[0],))
-				con.commit()
-				print(str(author)+' UPDATED LOCALE TO ' + str(locale)+ ' FOR USER '+str(args[1]))
+			user = alch_getUser(int(args[0]))
+			if user:
+				conn = engine.connect()	
+				query = Users.update().where(Users.c.id==args[0]).values(locale=locale)
+				results = conn.execute(query)
+				print('[+] '+str(author)+' UPDATED LOCALE TO ' + str(locale)+ ' FOR USER '+str(args[1]))
 				return 'Updated schedule location for '+str(args[1])+' to: '+str(locale)
 			else:
-				print(str(author)+' SETTING '+str(args[1])+'\'s SCHEDULE TO: '+locale)
-				entity = [int(args[1]), str(args[2]), str(locale)]
-				sql_insert_sched(con, entity)
+				print('[+] '+str(author)+' SETTING '+str(args[1])+'\'s SCHEDULE TO: '+locale)
+				alch_insertUser(args[0], args[1], locale)
 				return 'Set schedule location for '+str(args[1])+' to: '+str(locale)
-		except Error:
-			print('Error while override ', Error)
+	
+def alch_insertUser(id_, name, locale):
+	conn = engine.connect()
+	ins = Users.insert().values(
+		id = id_,
+		name = name,
+		locale = locale,
+	)
+	conn.execute(ins)
 
-def setSched(args, author):
-	locale = 'Asia/Tokyo' if len(args) < 3 else tzAbbrs.get(args[2].lower(), args[2])
-	cursorObj = con.cursor()
-	c = cursorObj.execute("""SELECT EXISTS (SELECT 1 FROM schedule WHERE id=? LIMIT 1)""", (author.id, )).fetchone()[0]
-	if c:
-		cursorObj.execute('UPDATE schedule SET locale = ? where id = ?', (locale, author.id,))
-		con.commit()
-		print('UPDATED LOCALE TO ' + str(locale)+ ' FOR USER '+str(author))
-		return 'Updated your schedule location to: '+str(locale)
+def alch_getUser(id_):
+	conn = engine.connect()	
+	select_st = select([Users]).where(
+		Users.c.id == id_)
+	res = conn.execute(select_st)
+	result = res.fetchall()
+	if result:
+		return result
 	else:
-		entity = [int(message.author.id), str(author), str(locale)]
-		sql_insert_sched(con, entity)
-		print('SETTING '+str(message.author)+'\'s SCHEDULE TO: '+locale)
-		return 'Set your schedule location to: '+str(locale)
+		return None
 
 def getSched(args, author):
 	locale = 'Asia/Tokyo'
 	if len(args) > 1:
 		locale = tzAbbrs.get(args[1].lower(), args[1])
 	else:
-		try:
-			cursorObj = con.cursor()
-			c = cursorObj.execute("""SELECT EXISTS (SELECT 1 FROM schedule WHERE id=? LIMIT 1)""", (author, )).fetchone()[0]
-			if c:
-				cursorObj.execute('SELECT locale FROM schedule WHERE id=?', (author,))
-				locale = cursorObj.fetchone()[0]
-				print(locale)
-		except Error:
-			print('Error while fetch time')
+		user = alch_getUser(author.id)
+		if user:
+			locale = user[0][2]
 	return get_schedule(locale, True)
 
+def alch_reset():
+	conn = engine.connect()
+	query = Users.drop(engine)
+	setup()
+	print("[!] TABLE schedule RESET")
+
+def setSched(args, author):
+	locale = 'Asia/Tokyo' if len(args) < 3 else tzAbbrs.get(args[2].lower(), args[2])
+	user = alch_getUser(author.id)
+	if user:
+		conn = engine.connect()	
+		query = Users.update().where(Users.c.id==author.id).values(locale=locale)
+		results = conn.execute(query)
+		return 'Updated your schedule location to: '+str(locale)
+	else:
+		alch_insertUser(author.id, author.name, locale)
+		return 'Set your schedule location to: '+str(locale)
 
 def helper(args, author):
 	operator = 'get'
 	if len(args) > 1:
+		if args[1] == 'drop' and is_admin(author.roles):
+			alch_reset()
 		operator = args[1]
 	return {
-		'get': lambda: getSched(args, author.id),
+		'get': lambda: getSched(args, author),
 		'set': lambda: setSched(args, author),
 		'help': lambda: get_help(args, author),
 		'override': lambda: override(args[2:], author),
@@ -204,7 +192,5 @@ def get_help(args, author):
 		return banner
 	else:
 		return fetchFile('locales', args[2].lower())
-			
-global con
-con = sql_connection()
-sql_table(con)
+		
+setup()
