@@ -1,6 +1,0 @@
-Apia, Auckland, Bougainville, Chatham, Chuuk, Easter, Efate, 
-Efate, Enderbury, Fakaofo, Fiji, Funafuti, Galapagos, Gambier, 
-Gambier, Guadalcanal, Guam, Honolulu, Kiritimati, Kosrae, 
-Kwajalein, Majuro, Marquessas, Nauru, Niue, Norfolk, 
-Noumea, Pago_Pago, Palau, Pitcairn, Pohnpei, Port_Moresby, 
-Rarotonga, Tahiti, Tarawa
