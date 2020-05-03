@@ -30,7 +30,7 @@ def getHelp(author):
 	
 def setup():
 	global engine, meta, rUsers, Riddles
-	engine = create_engine('sqlite:///./log/quotes.db', echo = True)
+	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
 	meta = MetaData()
 	rUsers = Table(
 		'riddlesUsers', meta,
