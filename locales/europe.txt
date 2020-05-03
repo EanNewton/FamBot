@@ -1,8 +1,0 @@
-Amsterdam, Andorra, Astrakhan, Athens, Belgrade, Berlin, 
-Brussels, Bucharest, Budapest, Chisinau, Copenhagen, Dublin, 
-Gibraltar, Helsinki, Istanbul, Kaliningrad, Kiev, Kirov, 
-Kirov, Lisbon, London, Luxemborg, Madrid, Malta, Minsk, 
-Monaco, Moscow, Oslo, Paris, Prague, Riga, Rome, Samara, 
-Saratov, Simferopol, Sofia, Stockholm, Tallinn, Tirane, 
-Ulyanovsk, Uzhgorod, Vienna, Vilnius, Volgograd, Warsaw, 
-Zaporozhye, Zurich
