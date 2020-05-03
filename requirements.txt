@@ -1,0 +1,14 @@
+seaborn==0.10.0
+discord.py==1.3.3
+nltk==3.5
+pandas==1.0.3
+aiofiles==0.5.0
+aiohttp==3.6.2
+SQLAlchemy==1.3.15
+wordcloud==1.6.0
+matplotlib==3.2.1
+beautifulsoup4==4.9.0
+discord==1.0.1
+pendulum==2.1.0
+python-dotenv==0.13.0
+scikit_learn==0.22.2.post1

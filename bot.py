@@ -15,6 +15,12 @@ import discordRiddles
 import discordLogger
 import discordStats
 from discordUtils import is_admin, is_bot, debug
+from pathlib import Path
+
+Path("./log/audio").mkdir(parents=True, exist_ok=True)
+Path("./log/docs").mkdir(parents=True, exist_ok=True)
+Path("./log/images").mkdir(parents=True, exist_ok=True)
+Path("./log/video").mkdir(parents=True, exist_ok=True)
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
