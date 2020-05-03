@@ -1,20 +1,29 @@
 #!/usr/bin/python3
 
-import os
 import random
-import sqlite3
-from sqlite3 import Error
 from discordUtils import debug, fetchFile, is_admin
 from sqlalchemy import create_engine, func, update, select, MetaData, Table, Column, Integer, String 
 
+@debug	
+def helper(args, author):
+	if len(args) > 1:
+		if args[1] == 'help':
+			return get_help(author.roles)
+		elif args[1] == 'clearall' and is_admin(author.roles):
+			reset()
+		else:
+			return getQuote(args[1])
+	else:
+		return getQuote()	
 
-DEFAULT_PATH = os.path.join(os.path.dirname(__file__), './log/quotes.db')
-
-			
+def getHelp(author):
+	banner = fetchFile('help', 'quotes')
+	if is_admin(author.roles):
+		banner += "React to a message with ❌ to remove it."
+	return banner		
+				
 def setup():
-	global engine
-	global meta
-	global Quotes
+	global engine, meta, Quotes
 	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
 	meta = MetaData()
 	Quotes = Table(
@@ -26,8 +35,14 @@ def setup():
 		)
 	meta.create_all(engine)
 	print('[+] End quotes Setup')
+
+def reset():
+	conn = engine.connect()
+	query = Quotes.drop(engine)
+	setup()
+	print("[!] TABLE schedule RESET")
 	
-def alch_insertQuote(entity):
+def insertQuote(entity):
 	(id_, name, text, date) = entity
 	conn = engine.connect()
 	ins = Quotes.insert().values(
@@ -37,62 +52,32 @@ def alch_insertQuote(entity):
 		date = date,
 	)
 	conn.execute(ins)
+	return 'Added: "{}" by {} on {}'.format(text, name, date)
 
-def alch_getQuote(id_):
-	conn = engine.connect()	
-	if id_ == -1:
-		select_st = select([Quotes]).order_by(func.random())
-	else:
+def getQuote(id_=None):
+	if id_:
 		select_st = select([Quotes]).where(Quotes.c.name == id_).order_by(func.random())
+	else:
+		select_st = select([Quotes]).order_by(func.random())
+	conn = engine.connect()	
 	res = conn.execute(select_st)
 	result = res.fetchone()
-	print(result)
 	if result:
-		author = result[1]
-		quote = result[2]
-		date = result[3]
-		return str(quote) + '\n ---' + str(author) + ' on ' + str(date)
-	else:
-		return None	
+		#result[1]: author, [2]: quote, [3]: date
+		return '{}\n ---{} on {}'.format(result[1], result[2], result[3])
 
-def alch_reset():
-	conn = engine.connect()
-	query = Quotes.drop(engine)
-	setup()
-	print("[!] TABLE schedule RESET")
-
-def alch_deleteQuote(id_):
+def deleteQuote(id_):
 	conn = engine.connect()
 	ins = Quotes.delete().where(Quotes.c.id == id_,)
 	conn.execute(ins)
 	return "Deleted quote"
 
-def alch_checkExists(id_):
+def checkExists(id_):
 	conn = engine.connect()	
 	select_st = select([Quotes]).where(
 		Quotes.c.id == id_)
 	res = conn.execute(select_st)
 	result = res.fetchall()
-	if result:
-		return True
-	else:
-		return False	
-		
-def get_help(author):
-	banner = fetchFile('help', 'quotes')
-	if is_admin(author.roles):
-		banner += "React to a message with ❌ to remove it."
-	return banner
-	
-def helper(args, author):
-	if len(args) > 1:
-		if args[1] == 'help':
-			return get_help(author.roles)
-		elif args[1] == 'clearall' and is_admin(author.roles):
-			alch_reset()
-		else:
-			return alch_getQuote(args[1])
-	else:
-		return alch_getQuote(-1)
+	return result is not None	
 
 setup()

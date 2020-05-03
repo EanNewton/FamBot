@@ -1,0 +1,10 @@
+**Schedule Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+Note that schedule commands are case sensitive.
+`!schedule` to see the schedule for your default location.
+`!schedule CONTINENT/CITY` to see the schedule for another location.
+`!schedule help CONTINENT` to see cities for that location.
+`!schedule set CONTINENT/CITY` to change your default location.
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+Continents include:
+Africa, America, Antarctica, Asia, Atlantic, Australia, Europe, Indian, Pacific

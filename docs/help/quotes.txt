@@ -1,0 +1,7 @@
+**Quote Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+`!quote` pull up a random quote.
+`!quote USER` pull up a quote from a specific user.
+This is the user\'s full username, not their server nickname.
+It is case sensitive.
+React to a message with 🗨 to add it to the database.

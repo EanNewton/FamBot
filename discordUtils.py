@@ -21,7 +21,7 @@ def debug(func):
 
 
 def fetchFile(directory, filename):
-	with open(DEFAULT_DIR+'/'+directory+'/'+filename+'.txt', 'r') as f:
+	with open(DEFAULT_DIR+'/docs/'+directory+'/'+filename+'.txt', 'r') as f:
 		return f.read()
 
 def is_admin(roles):

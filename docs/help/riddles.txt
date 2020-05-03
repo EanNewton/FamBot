@@ -1,0 +1,8 @@
+**Riddle Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+`!riddle get` get a riddle.
+`!riddle get current` redisplay last riddle you got.
+`!riddle solve RIDDLE.ID ||SOLUTION||` solve a riddle.
+`!riddle score` get your score.
+`!riddle leaderboard NUMBER` get the top X users, or leave blank for top 10.
+`!riddle add TITLE: TEXT ||SOLUTION||` add a new riddle.

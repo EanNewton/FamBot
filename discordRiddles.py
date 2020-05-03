@@ -1,20 +1,35 @@
 #!/usr/bin/python3
 
-import os
 import random
-import sqlite3
-from sqlite3 import Error
 from discordUtils import debug, is_admin, fetchFile
-from sqlalchemy import create_engine, select, MetaData, Table, Column, Integer, String 
-from sqlalchemy.sql import exists 	
+from sqlalchemy import create_engine, desc, select, MetaData, Table, Column, Integer, String 
 
-DEFAULT_PATH = os.path.join(os.path.dirname(__file__), './log/quotes.db')
-
+@debug		
+def helper(message, author):
+	args = message.content.split()
+	operator = 'get'
+	if len(args) > 1:
+		operator = args[1]
+	return {
+		'solve': lambda: checkAnswer(message, author),
+		'delete': lambda: deleteRiddle(args[2]),
+		'score': lambda: getScore(author.id),
+		'add': lambda: insertRiddle(message),
+		'get': lambda: getNewRiddle(args, author),
+		'help': lambda: getHelp(author),
+		'reset': lambda: reset(author.roles),
+		#'leaderboard': lambda: getLeaderboard(args),
+	}.get(operator, lambda: None)()
+		
+def getHelp(author):
+	banner = fetchFile('help', 'riddles')
+	if is_admin(author.roles):
+		banner += "`!riddle delete RIDDLE.ID` remove a riddle.\n"
+		banner += "`!riddle reset` DANGEROUS! delete all users and all riddles.\n"
+	return banner	
+	
 def setup():
-	global engine
-	global meta
-	global rUsers
-	global Riddles
+	global engine, meta, rUsers, Riddles
 	engine = create_engine('sqlite:///./log/quotes.db', echo = True)
 	meta = MetaData()
 	rUsers = Table(
@@ -35,31 +50,26 @@ def setup():
 	meta.create_all(engine)
 	print('[+] End riddle Setup')
 
+def reset(author):
+	if is_admin(author):
+		conn = engine.connect()
+		query = Riddles.drop(engine)
+		query = rUsers.drop(engine)
+		setup()
+		print("[!] TABLE filters RESET")
+
 @debug
-def alch_checkUserExists(id_):
+def checkExists(id_, table):
+	result = None
 	conn = engine.connect()	
-	select_st = select([rUsers]).where(
-		rUsers.c.id == id_)
+	select_st = select([table]).where(
+		table.c.id == id_)
 	res = conn.execute(select_st)
 	result = res.fetchall()
-	if result:
-		return True
-	else:
-		return False
-@debug
-def alch_checkRiddleExists(id_):
-	conn = engine.connect()	
-	select_st = select([Riddles]).where(
-		Riddles.c.id == id_)
-	res = conn.execute(select_st)
-	result = res.fetchall()
-	if result:
-		return True
-	else:
-		return False
+	return result is not None
 
 @debug	
-def alch_insertUser(entity):
+def insertUser(entity):
 	(id_, name, current, score, solved) = entity
 	conn = engine.connect()
 	ins = rUsers.insert().values(
@@ -72,7 +82,9 @@ def alch_insertUser(entity):
 	conn.execute(ins)
 
 @debug	
-def alch_insertRiddle(message):
+def insertRiddle(message):
+#Command format should be:
+#!riddle add Name: riddle text ||solution text||
 	args = message.content.split()
 	name = ' '.join(args[2:])
 	name = name.split(':')
@@ -92,43 +104,12 @@ def alch_insertRiddle(message):
 		solution = solution,
 	)
 	conn.execute(ins)
-	return "Added riddle #"+str(message.id)+" as: \n**"+name+"**\n "+riddle
+	return "Added riddle #{} as:\n**{}**\n{}".format(str(message.id), name, riddle)
 	
 @debug
-def check_answer(message, author):
-	args = message.content.split()
-	riddleID = args[2]
-	solution = args[3:]
-	solution = ' '.join(solution)
-	riddleExists = alch_checkRiddleExists(riddleID)
-	userExists = alch_checkUserExists(author.id)	
-	
-	if riddleExists:
-		riddle = alch_getRiddle(riddleID)
-	else:
-		return "Riddle does not exist, check ID"
-	if not userExists:
-		entity = [author.id, author.name, riddleID, 0, "START;"]
-		alch_insertUser(entity)
-		
-	if solution[:2] == '||' and solution[-2:] == '||':
-		if solution[2:-2] == riddle[3]:
-			if alch_checkSolved(author.id, riddleID):
-				return "You have already solved this riddle."
-			else:
-				alch_incScore(author.id, riddleID)
-				return "Solved! " + str(get_score(author.id))
-		else:
-			return "Incorrect"
-	else:
-		banner = "Remember to spoiler tag your solution by putting `||` on both ends.\n"
-		banner += "Example: `!riddle solve RIDDLE.ID ||your solution here||`"
-		return banner
-
-@debug
-def alch_incScore(userID, riddleID):
+def incScore(userID, riddleID):
 	conn = engine.connect()
-	user = alch_getUser(userID)
+	user = getEntry(userID, rUsers)
 	score = user[3]+1
 	solved = user[4]+str(riddleID)+";"
 	ins = rUsers.update().where(rUsers.c.id==userID).values(
@@ -138,32 +119,104 @@ def alch_incScore(userID, riddleID):
 	conn.execute(ins)
 	
 @debug
-def alch_checkSolved(userID, riddleID):
+def checkSolved(userID, riddleID):
 	conn = engine.connect()
-	user = alch_getUser(userID)
+	user = getEntry(userID, rUsers)
 	solvedSet = set(user[4].split(";"))
-	if riddleID in solvedSet:
-		return True
-	else:
-		return False
+	return riddleID in solvedSet
 
 @debug
-def alch_getUser(id_):
+def getEntry(id_, table):
+	result = None
 	conn = engine.connect()	
-	select_st = select([rUsers]).where(rUsers.c.id == id_)
+	select_st = select([table]).where(table.c.id == id_)
 	res = conn.execute(select_st)
 	result = res.fetchone()
-	if result:
-		return result
-	else:
-		return None	
+	return result
 
 @debug		
-def get_score(userID):
-	user = alch_getUser(userID)
+def getScore(userID):
+	user = getEntry(userID, rUsers)
 	if user:
-		return user[1]+"\'s score is: "+str(user[3])
+		return "{}\'s score is: {}".format(user[1], str(user[3]))
+	
+@debug	
+def getNewRiddle(riddleID, author):	
+	conn = engine.connect()	
+	if not checkExists(author.id, rUsers):
+		entity = [author.id, author.name, riddleID, 0, "START;"]
+		insertUser(entity)
+	user = getEntry(author.id, rUsers)
+	solvedSet = set(user[4].split(";"))
+	
+	select_st = select([Riddles])
+	res = conn.execute(select_st)
+	result = res.fetchall()
+	for each in result:
+		if str(each[0]) not in solvedSet:
+			#each[0]: ID, [1]: name, [2]: text
+			return "Riddle #{}\n**{}**\n{}".format(str(each[0]), each[1], each[2])
+	else:	
+		return "Congratulations! You have completed all available riddles! Check back soon or add a new one yourself."
+	
+@debug
+def checkAnswer(message, author):
+	args = message.content.split()
+	riddleID = args[2]
+	solution = args[3:]
+	solution = ' '.join(solution)
+	
+	if checkExists(riddleID, Riddles):
+		riddle = getEntry(riddleID, Riddles)
+	else: 
+		return "Riddle does not exist, check ID"
+	if not checkExists(author.id, rUsers):
+		entity = [author.id, author.name, riddleID, 0, "START;"]
+		insertUser(entity)
+		
+	if solution[:2] == '||' and solution[-2:] == '||':
+		if solution[2:-2] == riddle[3]:
+			if checkSolved(author.id, riddleID):
+				return "You have already solved this riddle."
+			else:
+				incScore(author.id, riddleID)
+				return "Solved! " + str(getScore(author.id))
+		else:
+			return "Incorrect"
+	else:
+		banner = "Remember to spoiler tag your solution by putting `||` on both ends.\n"
+		banner += "Example: `!riddle solve RIDDLE.ID ||your solution here||`"
+		return banner
 
+def deleteRiddle(id_):
+	conn = engine.connect()
+	ins = Riddles.delete().where(Riddles.c.id == id_,)
+	conn.execute(ins)
+	return "Deleted riddle"
+
+setup()			
+		
+'''
+#broken
+@debug		
+def getLeaderboard(args):
+	limit = 10 if len(args) != 3 else args[2]
+	print(limit)
+	banner = ''
+	conn = engine.connect()	
+	select_st = select([Riddles]).order_by(Riddles.c.score.desc())
+	print(select_st)
+	res = conn.execute(select_st)
+	result = res.fetchall()
+	print(result)
+	if result:
+		for count in range(limit):
+			banner += str(result[count][1])+": "+str(result[count][3])+"\n"
+		return banner
+	else:
+		return None
+
+#Old version of function
 @debug			
 def get_leaderboard(args):
 	limit = 10 if len(args) != 3 else args[2]
@@ -180,135 +233,4 @@ def get_leaderboard(args):
 			return None
 	except Error:
 		print("[!] Error while get user score")
-
-@debug		
-def alch_getRiddle(riddleID):
-	conn = engine.connect()	
-	select_st = select([Riddles]).where(Riddles.c.id == riddleID)
-	res = conn.execute(select_st)
-	result = res.fetchone()
-	print(result)
-	if result:
-		return result
-	else:
-		return None			
-	
-@debug	
-def fetch_riddle_name(riddleID, author):	
-	conn = engine.connect()	
-	if not alch_checkUserExists(author.id):
-		entity = [author.id, author.name, riddleID, 0, "START;"]
-		alch_insertUser(entity)
-	user = alch_getUser(author.id)
-	solvedSet = set(user[4].split(";"))
-	
-	select_st = select([Riddles])#.order_by(func.random())
-	res = conn.execute(select_st)
-	result = res.fetchall()
-	for each in result:
-		if str(each[0]) not in solvedSet:
-			riddleID = each[0]
-			name = each[1]
-			text = each[2]
-			return "Riddle #"+str(riddleID)+"\n**"+str(name)+"**\n"+str(text)
-	else:	
-		return "Congratulations! You have completed all available riddles! Check back soon or add a new one yourself."
-
-
-@debug
-def fetch_user_id(toFetch):		
-	try:
-		cursorObj = con.cursor()
-		cursorObj.execute('SELECT * FROM riddlesUsers WHERE id=? LIMIT 1', (toFetch,))
-		result = cursorObj.fetchall()
-		if not result:
-			return False
-		else:
-			return True
-	except Error:
-		print("[!] Error while fetch rand", Error)
-
-@debug		   
-def fetch_user_name(toFetch):		
-	try:
-		cursorObj = con.cursor()
-		if toFetch == -1:
-			cursorObj.execute('SELECT * FROM riddlesUsers WHERE id IN (SELECT id FROM riddlesUsers ORDER BY RANDOM() LIMIT 1)')
-
-		else:
-			cursorObj.execute('SELECT * FROM riddlesUsers WHERE name=? ORDER BY RANDOM() LIMIT 1', (str(toFetch),))
-		result = cursorObj.fetchall()
-		text = result[0][2]
-		name = result[0][1]
-		solution = result[0][3]
-		return str(text) + '\n ---' + str(name) + ' on ' + str(solution)
-	except Error:
-		print("[!] Error while fetch rand", Error)
-		 
-#Dangerous 
-def sql_reset_riddledb(con, args, author):
-	if args[2] == 'YES' and is_admin(author.roles):
-		try:
-			cursorObj = con.cursor()
-			cursorObj.execute('DROP table if exists riddles')
-			cursorObj.execute('DROP table if exists riddlesUsers')
-			con.commit()
-			sql_table(con)
-			print("[+] TABLE riddles & riddlesUsers RESET")
-			return "Deleted riddles database."
-		except Error:
-			print("[!] Error while drop ", Error)
-
-def delete_riddle(con, arg, author):
-	if is_admin(author.roles):
-		arg = arg[2]
-		try:
-			print("Trying to delete riddle")
-			sql = 'DELETE FROM riddles WHERE id=?'
-			cur = con.cursor()
-			cur.execute(sql, (arg,))
-			con.commit()
-			print("[+] Removed riddle.")
-			return "Successfully removed riddle."
-		except Error:
-			print("[!] Error while delete ", Error)
-
-def delete_user(con, arg):
-	try:
-		sql = 'DELETE FROM riddlesUsers WHERE id=?'
-		cur = con.cursor()
-		cur.execute(sql, (arg,))
-		con.commit()
-		print("[+] Removed riddle user.")
-		return "Successfully removed user."
-	except Error:
-		print("[!] Error while delete ", Error)
-
-@debug		
-def helper(message, author):
-	args = message.content.split()
-	if len(args) == 1:
-		operator = 'get'
-	elif len(args) > 1:
-		operator = args[1]
-	return {
-		'solve': lambda: check_answer(message, author),
-		'delete': lambda: delete_riddle(con, args, author),
-		'score': lambda: get_user_score(author.id),
-		'add': lambda: alch_insertRiddle(message),
-		'get': lambda: fetch_riddle_name(args, author),
-		'getUser': lambda: fetch_riddle_name(args),
-		'help': lambda: get_help(author),
-		'exists': lambda: fetch_user_id(args),
-		'reset': lambda: sql_reset_riddledb(con, args, author),
-		'leaderboard': lambda: get_leaderboard(args),
-	}.get(operator, lambda: None)()
-		
-def get_help(author):
-	banner = fetchFile('help', 'riddles')
-	if is_admin(author.roles):
-		banner += "`!riddle delete RIDDLE.ID` remove a riddle.\n"
-		banner += "`!riddle reset` DANGEROUS! delete all users and all riddles.\n"
-	return banner	
-
-setup()	
+'''

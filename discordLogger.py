@@ -1,47 +1,16 @@
 #!/usr/bin/python3
 
 import sqlalchemy
-import pendulum
-import logging
 import asyncio
 import aiohttp
 import aiofiles
-
-from discordUtils import debug
+from discordUtils import debug, fetchFile
 from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String 
- 	
-extSet_img = {
-	'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'
-	}   
-extSet_audio = {
-	'3gp', 'aa', 'aac', 'aax', 'act', 'aiff', 'alac', 'amr', 'ape',
-	'au', 'awb', 'dct', 'dss', 'dvf', 'flac', 'gsm', 'iklax', 'ivs',
-	'm4a', 'm4b', 'm4p', 'mmf', 'mp3', 'mpc', 'msv', 'nmf', 'nsf',
-	'ogg', 'oga', 'mogg', 'opus', 'ra', 'rm', 'raw', 'rf64', 'sln',
-	'tta', 'voc', 'vox', 'wav', 'wma', 'wv', 'webm', '8svx', 'cda'
-	}
-extSet_video = {
-	'webm', 'mkv', 'flv', 'vob', 'ogv', 'ogg', 'drc', 'gifv', 'mng',
-	'avi', 'mts', 'm2ts', 'ts', 'mov', 'qt', 'wmv', 'yuv', 'rm', 
-	'rmvb', 'asf', 'amv', 'mp4', 'm4p', 'm4v', 'mpg', 'mp2', 'mpeg',
-	'mpe', 'mpv', 'm4v', 'svi', '3gp', '3g2', 'mxf', 'roq', 'nsv',
-	'f4v', 'f4p', 'f4a', 'f4b'
-	}
-extSet_documents = {
-	'0', '1st', '600', '602', 'abw', 'acl', ' afp', 'ami', 'ans', 'asc',
-	'aww', 'ccf' 'csv', 'cwk', 'dbk', 'dita', 'doc', 'docm', 'docx', 'dot'
-	'dotx', 'dwd', 'egt', 'epub', 'ezw', 'fdx', 'ftm', 'ftx', 'gdoc', 
-	'html', 'hwp', 'hwpml', 'log', 'lwp', 'mbp', 'md', 'me', 'mcw', 'mobi',
-	'nb', 'nbp', 'neis', 'odm', 'odoc', 'odt', 'osheet', 'ott', 'omm',
-	'pages', 'pap', 'pdax', 'pdf', 'quox', 'rtf', 'rpt', 'sdw', 'se',
-	'stw', 'sxw', 'tex', 'info', 'troff', 'txt', 'uof', 'uoml', 'via',
-	'wpd', 'wps', 'wpt', 'wrd', 'wrf', 'wri', 'xhtml', 'xht', 'xml', 'xps'
-	}
+
+extSet = {}
 
 def setup():
-	global engine
-	global meta
-	global Corpus
+	global engine, meta, Corpus
 	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
 	meta = MetaData()
 	Corpus = Table(
@@ -61,18 +30,22 @@ def setup():
 		Column('reactions', String)
 		)
 	meta.create_all(engine)
+	importExts()
 	print('[+] End Corpus.db Setup')
 
-def corpusInsert(message):
-	conn = engine.connect()	
+def importExts():
+	listOfFiles = {'audio', 'docs', 'images', 'video'}
+	for file_ in listOfFiles:
+		f = fetchFile('ext', file_).strip('\n')
+		extSet[file_] = f.split()
+
+def corpusInsert(message, timeStamp):
 	mChanMentions = ''
 	mAttach = ''
 	mMentions = ''
 	mEmbeds = ''
 	mRoleMentions = ''
-	dateTime = pendulum.now(tz='Asia/Tokyo')
-	timeStamp = str(dateTime.to_day_datetime_string())
-	print(timeStamp)
+	
 	if message.embeds:
 		for each in range(len(message.embeds)):
 			mEmbeds += str(message.embeds)
@@ -89,6 +62,7 @@ def corpusInsert(message):
 		for each in range(len(message.role_mentions)):
 			mRoleMentions += str(message.role_mentions[each])
 
+	conn = engine.connect()	
 	ins = Corpus.insert().values(
 		content = str(message.content),
 		user_name = str(message.author),
@@ -104,28 +78,24 @@ def corpusInsert(message):
 		reactions = "none"
 		)
 	result = conn.execute(ins)
-	return True
 
+@debug
 async def fetcher(filetype, url, time, author):
+	filePath = "./log/"+filetype+"/"+author+"_"+time+"_"+url.split('/')[-1]
 	async with aiohttp.ClientSession() as session:
-		filePath = "./log/"+filetype+"/"+author+"_"+time+"_"+url.split('/')[-1]
 		async with session.get(url) as resp:
 			if resp.status == 200:
 				f = await aiofiles.open(filePath, mode='wb')
 				await f.write(await resp.read())
 				await f.close()
-				print("[+] Saved "+filetype+": "+str(filePath))
+				print("[+] Saved: {}".format(filePath))
 
+@debug
 async def fetchEmbed(message, time):
 	url = str(message.attachments[0].url)
 	ext = str(url.split('.')[-1].lower())
-	
-	if ext in extSet_img:
-		await fetcher("images", url, str(time), str(message.author.name))
-	elif ext in extSet_audio:
-		await fetcher("audio", url, str(time), str(message.author.name))
-	elif ext in extSet_video:
-		await fetcher("video", url, str(time), str(message.author.name))
-	elif ext in extSet_documents:
-		await fetcher("docs", url, str(time), str(message.author.name))
-		
+	for each in extSet:
+		if ext in extSet[each]:
+			await fetcher(each, url, time, message.author.name)
+
+setup()
