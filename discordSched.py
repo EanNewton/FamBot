@@ -11,26 +11,29 @@ tzAbbrs = {}
 with open('./docs/locales/abbr.txt', 'r') as f:
 	for line in f:
 		(key, val) = line.split(',')
+		val = val.strip('\n')
 		tzAbbrs[key] = val
-		
+
 def helper(args, author):
+	ops = {'get', 'set', 'help', 'override'}
 	operator = 'get'
 	if len(args) > 1:
 		if args[1] == 'drop' and is_admin(author.roles):
 			reset()
-		operator = args[1]
+		elif args[1] in ops:
+			operator = args[1]
 	return {
 		'get': lambda: getSchedule(args, author),
 		'set': lambda: setSchedule(args, author),
 		'help': lambda: getHelp(args, author),
 		'override': lambda: override(args[2:], author),
 	}.get(operator, lambda: None)()	
-		
+
 def getSchedule(args, author):
 	locale = 'Asia/Tokyo' #Default case
 	if len(args) > 1: #User requested specific location
 		locale = tzAbbrs.get(args[1].lower(), args[1])
-	else:
+	else: #Checking for saved locale in DB
 		user = getUser(author.id)
 		if user:
 			locale = user[0][2]	
