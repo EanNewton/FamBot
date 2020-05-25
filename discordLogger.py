@@ -27,7 +27,9 @@ def setup():
 		Column('channel_mentions', String),
 		Column('role_mentions', String),
 		Column('msg_id', String),
-		Column('reactions', String)
+		Column('reactions', String),
+		Column('guild', String),
+		Column('guild_name', String),
 		)
 	meta.create_all(engine)
 	importExts()
@@ -38,6 +40,7 @@ def importExts():
 	for file_ in listOfFiles:
 		f = fetchFile('ext', file_).strip('\n')
 		extSet[file_] = f.split()
+
 
 def corpusInsert(message, timeStamp):
 	mChanMentions = ''
@@ -75,11 +78,12 @@ def corpusInsert(message, timeStamp):
 		channel_mentions = str(mChanMentions),
 		role_mentions = str(mRoleMentions),
 		msg_id = str(message.id),
-		reactions = "none"
+		reactions = "none",
+		guild = str(message.guild.id),
+		guild_name = str(message.guild.name),
 		)
 	result = conn.execute(ins)
 
-@debug
 async def fetcher(filetype, url, time, author):
 	filePath = "./log/"+filetype+"/"+author+"_"+time+"_"+url.split('/')[-1]
 	async with aiohttp.ClientSession() as session:
@@ -90,7 +94,6 @@ async def fetcher(filetype, url, time, author):
 				await f.close()
 				print("[+] Saved: {}".format(filePath))
 
-@debug
 async def fetchEmbed(message, time):
 	url = str(message.attachments[0].url)
 	ext = str(url.split('.')[-1].lower())
@@ -98,4 +101,18 @@ async def fetchEmbed(message, time):
 		if ext in extSet[each]:
 			await fetcher(each, url, time, message.author.name)
 
+async def config_fetcher(url, guild):
+	filePath = "./docs/config/{}.json".format(guild)
+	async with aiohttp.ClientSession() as session:
+		async with session.get(url) as resp:
+			if resp.status == 200:
+				f = await aiofiles.open(filePath, mode='wb')
+				await f.write(await resp.read())
+				await f.close()
+				print("[+] Saved: {}".format(filePath))
+
+async def config_fetchEmbed(message):
+	url = str(message.attachments[0].url)
+	await config_fetcher(url, message.guild.id)
+	
 setup()

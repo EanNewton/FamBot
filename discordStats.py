@@ -21,19 +21,20 @@ DEFAULT_PATH = os.path.join(os.path.dirname(__file__), './log/quotes.db')
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
-def setup(user=None, channel=None):
+def setup(guild, user=None, channel=None):
 	global log_df, stop_words, clean_desc, stem_desc
 	pd.set_option('display.max_colwidth', None)
 	conn = sqlite3.connect(DEFAULT_PATH)
 	
 	if user:
-		sql_st = 'Select content from corpus where user_name like {}'.format('\''+user+'%\'')
+		sql_st = 'Select content from corpus where user_name like {} and guild={}'.format('\''+user+'%\'', guild)
 		log_df = pd.read_sql(sql_st, conn)
 	elif channel:
-		sql_st = 'Select content from corpus where channel like {}'.format('\''+channel+'%\'')
+		sql_st = 'Select content from corpus where channel like {} and guild={}'.format('\''+channel+'%\'', guild)
 		log_df = pd.read_sql(sql_st, conn)
 	else:
-		log_df = pd.read_sql('Select content from corpus', conn)
+		sql_st = 'Select content from corpus where guild={}'.format(guild)
+		log_df = pd.read_sql(sql_st, conn)
 	
 	log_df['word_count'] = log_df['content'].apply(lambda x: len(str(x).split(" ")))
 	stop_words = set(stopwords.words("english"))
@@ -62,7 +63,8 @@ def setup(user=None, channel=None):
 		"channel cannot used", 
 		"cannot used music", 
 		"used music command", 
-		"channel cannot used music command"
+		"channel cannot used music command",
+		"quote",
 	])
 
 	#Lemmatize words, such as running --> run
@@ -76,7 +78,7 @@ def setup(user=None, channel=None):
 		
 	print("[+] Stats setup complete with user={} channel={}".format(user, channel))
 
-def getFreq(args):
+def getFreq(args, guild):
 	limit = 10
 	if len(args) == 3:
 		limit = int(args[2])
@@ -90,25 +92,25 @@ def helper(message):
 	if len(args) > 1:
 		operator = args[1].lower()
 	if operator == 'user' and len(args) > 2:
-		setup(user=args[2])
-		banner = wordCloud(args[2])
-		setup()
+		setup(message.guild.id, user=args[2])
+		banner = wordCloud(args[2], message.guild.name)
 		return banner
 	elif operator == 'channel' and len(args) > 2:
-		setup(channel=args[2])
-		banner = wordCloud(args[2])
-		setup()
+		setup(message.guild.id, channel=args[2])
+		banner = wordCloud(args[2], message.guild.name)
 		return banner
+	else:
+		setup(message.guild.id)
 	return {
-		'common': lambda: getFreq(args),
-		'cloud': lambda: wordCloud(),
-		'count': lambda: wordCount(args),
-		'phrases': lambda: get_ngrams(args),
-		'update': lambda: setup(),
+		'common': lambda: getFreq(args, message.guild.name),
+		'cloud': lambda: wordCloud('the server', message.guild.name),
+		'count': lambda: wordCount(args, message.guild.name),
+		'phrases': lambda: get_ngrams(args, message.guild.name),
+		'update': lambda: setup(message.guild.id),
 		'help': lambda: getHelp(),
 	}.get(operator, lambda: None)()
 	
-def wordCount(args):
+def wordCount(args, guild):
 	if len(args) == 4:
 		low = int(args[2])
 		high = int(args[3])
@@ -124,12 +126,12 @@ def wordCount(args):
 	plt.xlabel("Message word length")
 	plt.ylabel("# of Messages")
 	fig = plt.hist(x, bins='auto', range=(low,high))
-	plt.savefig("wordcount.png")
+	plt.savefig("{}_wordcount.png".format(guild))
 	plt.clf()
 	banner = "Number of messages between length {} and {}.".format(str(low), str(high))
-	return ["wordcount.png", banner]
+	return ["{}_wordcount.png".format(guild), banner]
 
-def wordCloud(type_='the server'):
+def wordCloud(type_, guild):
 	wordcloud = WordCloud(
 		width=800, 
 		height=800, 
@@ -141,9 +143,9 @@ def wordCloud(type_='the server'):
 	fig = plt.figure(figsize=(8,8), facecolor=None)
 	plt.imshow(wordcloud)
 	plt.axis('off')
-	fig.savefig("wordcloud.png")
+	fig.savefig("{}_wordcloud.png".format(guild))
 	plt.clf()
-	return ["wordcloud.png", "The most common single words for {}.".format(type_)]
+	return ["{}_wordcloud.png".format(guild), "The most common single words for {}.".format(type_)]
 
 def make_ngrams(low, high, n=None):
 	vec = CountVectorizer(ngram_range=(low, high), max_features=20000).fit(stem_desc)
@@ -153,7 +155,8 @@ def make_ngrams(low, high, n=None):
 	words_freq = sorted(words_freq, key=lambda x: x[1], reverse=True)
 	return words_freq[:n]
 
-def get_ngrams(args):
+
+def get_ngrams(args, guild):
 	if len(args) >= 4:
 		low = int(args[2])
 		high = int(args[3])
@@ -181,10 +184,13 @@ def get_ngrams(args):
 	plt.tight_layout()
 	plt.axis('on')
 	figure = bp.get_figure()
-	figure.savefig("ngram.png")
+	figure.savefig("{}_ngram.png".format(guild))
 	plt.clf()	
 	banner = "The {} most common phrases of length {} to {}.".format(str(limit), str(low), str(high))
-	return ["ngram.png", banner]
+	return ["{}_ngram.png".format(guild), banner]
+
 
 def getHelp():
 	return [None, fetchFile('help', 'stats')]
+	
+#setup()
