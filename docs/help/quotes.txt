@@ -5,3 +5,5 @@
 This is the user\'s full username, not their server nickname.
 It is case sensitive.
 React to a message with 🗨 to add it to the database.
+For Admins:
+React to a message with ❌ to remove it.

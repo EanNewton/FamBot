@@ -7,4 +7,8 @@ Note that schedule commands are case sensitive.
 `!schedule set CONTINENT/CITY` to change your default location.
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>
 Continents include:
-Africa, America, Antarctica, Asia, Atlantic, Australia, Europe, Indian, Pacific
+Africa, America, Antarctica, Asia, Atlantic, Australia, Europe, Indian, Pacific,
+and abbr
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+For Admins:
+`!schedule override USER.ID USER.NAME LOCATION` to change a user's set location.
