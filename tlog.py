@@ -45,11 +45,6 @@ def setup():
 
 
 def corpusInsert(message, timeStamp):
-	# mMentions = [''.join(str(each)) for each in message.mentions if message.mentions]
-	# mEmbeds = [''.join(str(each.to_dict())) for each in message.embeds if message.embeds]
-	# mAttach = [''.join(str(each.filename)) for each in message.attachments if message.attachments]
-	# mChanMentions = [''.join(str(each)) for each in message.channel_mentions if message.channel_mentions]
-	# mRoleMentions = [''.join(str(each)) for each in message.role_mentions if message.role_mentions]
 	mMentions = [''.join(str(each)) for each in message.mentions]
 	mEmbeds = [''.join(str(each.to_dict())) for each in message.embeds]
 	mAttach = [''.join(str(each.filename)) for each in message.attachments]

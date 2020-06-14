@@ -1,13 +1,15 @@
 #!/usr/bin/python3
 
 import os
-from sqlalchemy import create_engine, update, select, MetaData, Table, Column, Integer, String 
+from sqlalchemy import create_engine, update, insert, select, and_
+from sqlalchemy import MetaData, Table, Column, Integer, String 
 
-from tutil import debug, fetchFile
+from tutil import debug, fetchFile, fetch_value, guildList
 
 DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
-blacklistLow = {"jap"}
-blacklistStrict = {"xxx"}
+blacklistLow = set()
+blacklistStrict = set()
+blacklistCustom = dict()
 
 
 def setup():
@@ -18,8 +20,10 @@ def setup():
 		'filters', meta,
 		Column('id', Integer, primary_key = True),
 		Column('level', Integer),
+		Column('guild_id', String),
 		)
 	meta.create_all(engine)
+	importBlacklists()
 	print('[+] End filters Setup')
 	
 		
@@ -27,24 +31,26 @@ def helper(message):
 	args = message.content.split()
 	operator = args[1].lower()
 	return {
-		'get': lambda: getFilter(message.channel.id),
-		'set': lambda: insertFilter(message.channel.id, args[2]),
-		'clear': lambda: insertFilter(message.channel.id, 0),
-		'clearall': lambda: reset(),
+		'get': lambda: getFilter(message),
+		'set': lambda: insertFilter(message, args[2]),
+		'clear': lambda: insertFilter(message, 0),
 		'help': lambda: getHelp(),
-		'add': lambda: addWord(args[2], args[3:]),
 	}.get(operator, lambda: None)()
 
 
 def check(message):
-	text = message.content.split()
-	fLevel = getFilter(message.channel.id)
-	lists = {'2': (blacklistStrict), '1': (blacklistLow)}
-	if fLevel in lists:
-		for word in text:
-			if word in lists[fLevel]:
-				return True 
-	return False 
+	try:
+		text = message.content.split()
+		fLevel = getFilter(message)
+		custom = blacklistCustom[str(message.guild.id)]
+		lists = {'2': (blacklistStrict), '1': (blacklistLow), '3': (custom)}
+		if fLevel in lists:
+			for word in text:
+				if word in lists[fLevel]:
+					return True 
+		return False 
+	finally:
+		return False
 
 
 def importBlacklists():
@@ -66,39 +72,44 @@ def importBlacklists():
 		with open(file_, 'r') as f:
 			for line in f:
 				blacklistStrict.add(line.strip())
+	for each in guildList():
+		importCustom(each)
+			
 	blacklistStrict.remove('')
 	print("[+] Imported Filter Blacklists")
 
 
-def addWord(level, word):
-	word = ' '.join(word)
-	fileDict = {
-		'1': DEFAULT_DIR+'/docs/blacklists/low/blacklist_custom.txt',
-		'2': DEFAULT_DIR+'/docs/blacklists/strict/blacklist_custom.txt',
-		}
-		
-	path = fileDict.get(level, None)
-	if path:
-		with open(path, 'a') as f:
-			f.write(word)
-			print("[+] Added {} to level {} custom filters".format(word, level))
-			return "Success, added: `{}` to Filter level {}".format(word, level)
-	return "Error"
+def importCustom(guild):
+	result = fetch_value(guild, 8)
+	if result:
+		blacklistCustom[str(guild)] = set(result)
+	else:
+		blacklistCustom[str(guild)] = None
 
-	
-def insertFilter(id_, level):
+
+def insertFilter(message, level):
 	with engine.connect() as conn:
-		if getFilter(id_):
-			ins = Filters.update().where(Filters.c.id==id_).values(level=level)	
+		if getFilter(message):
+			ins = Filters.update().where(and_(
+				Filters.c.id == message.channel.id,
+				Filters.c.guild_id == message.guild.id,
+				)).values(level = level)	
 		else:
-			ins = Filters.insert().values(id = id_, level = level,)
+			ins = Filters.insert().values(
+				id = message.channel.id,
+				level = level,
+				guild_id = str(message.guild.id),
+				)
 		conn.execute(ins)
 	return "Set filter for current channel to {}".format(level)
 
 
-def getFilter(id_):
+def getFilter(message):
 	with engine.connect() as conn:
-		select_st = select([Filters]).where(Filters.c.id == id_)
+		select_st = select([Filters]).where(and_(
+			Filters.c.id == message.channel.id,
+			Filters.c.guild_id == message.guild.id
+			))
 		result = conn.execute(select_st).fetchone()
 		if result:
 			return result[1]

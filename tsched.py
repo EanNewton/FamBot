@@ -145,8 +145,9 @@ def getSchedule(message):
 				banner += '{}\n'.format(schedule[day].to_day_datetime_string())
 				
 		banner += '{}{}\n{}'.format(divider, url, divider)
-		banner += 'You can set your schedule location with `!schedule set LOCATION`\n'
-		banner += 'Use `!schedule help` for more information on available locations.'
+		banner += 'Donation link: <{}>\n'.format('https://www.patreon.com/tangerinebot')
+		banner += 'Invite link: <{}>\n'.format('https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot')
+		banner += 'Use `!schedule help` for more information.'
 
 	else:
 		banner = 'A schedule has not been setup for this server yet.\n'
@@ -157,7 +158,7 @@ def getSchedule(message):
 def override(message):
 #Admin command to manually change a user's saved location
 #Args should translate as: 1 id, 2 name, 3 locale
-	if is_admin(message.author.roles):
+	if is_admin(message.author):
 		args = message.content.split()
 		if len(args) != 5:
 			return 'Formatting is: `!schedule override [USER.ID] [USER.NAME] [TIMEZONE]`'
@@ -231,10 +232,10 @@ def getUser(guild_, id_):
 	
 	
 def load_config(guild):
-	conn = engine.connect()	
-	select_st = select([Config]).where(Config.c.id == guild)
-	res = conn.execute(select_st)
-	result = res.fetchone()
+	with engine.connect() as conn:
+		select_st = select([Config]).where(Config.c.id == guild)
+		res = conn.execute(select_st)
+		result = res.fetchone()
 	if result:
 		return result
 	return None
@@ -243,7 +244,7 @@ def load_config(guild):
 def getHelp(args, author):
 	if len(args) < 3:
 		banner = fetchFile('help', 'schedule')
-		if not is_admin(author.roles):
+		if not is_admin(author):
 			banner = banner.split('For Admins:')[0]
 	else: #Get list of cities or continents
 		banner = fetchFile('locales', args[2].lower())

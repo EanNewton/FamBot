@@ -28,19 +28,19 @@ DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
 def setup(guild, user=None, channel=None):
 	global log_df, stop_words, clean_desc, stem_desc
 	pd.set_option('display.max_colwidth', None)
-	conn = sqlite3.connect(DEFAULT_PATH)
 	
-	if user:
-		sql_st = 'Select content from corpus where user_name like {} and guild={}'.format(
-			'\''+user+'%\'', guild)
-		log_df = pd.read_sql(sql_st, conn)
-	elif channel:
-		sql_st = 'Select content from corpus where channel like {} and guild={}'.format(
-			'\''+channel+'%\'', guild)
-		log_df = pd.read_sql(sql_st, conn)
-	else:
-		sql_st = 'Select content from corpus where guild={}'.format(guild)
-		log_df = pd.read_sql(sql_st, conn)
+	with sqlite3.connect(DEFAULT_PATH) as conn:
+		if user:
+			sql_st = 'Select content from corpus where user_name like {} and guild={}'.format(
+				'\''+user+'%\'', guild)
+			log_df = pd.read_sql(sql_st, conn)
+		elif channel:
+			sql_st = 'Select content from corpus where channel like {} and guild={}'.format(
+				'\''+channel+'%\'', guild)
+			log_df = pd.read_sql(sql_st, conn)
+		else:
+			sql_st = 'Select content from corpus where guild={}'.format(guild)
+			log_df = pd.read_sql(sql_st, conn)
 	
 	log_df['word_count'] = log_df['content'].apply(lambda x: len(str(x).split(" ")))
 	stop_words = set(stopwords.words("english"))
@@ -57,7 +57,9 @@ def setup(guild, user=None, channel=None):
 	log_df['clean_desc'] = clean_desc
 	word_frequency = pd.Series(' '.join(log_df['clean_desc']).split()).value_counts()[:30]
 	
-	add_stopwords = "www http https com youtube ' ` im like watch get got override schedule cc discordapp".split()
+	#TODO move to file
+	add_stopwords = "www http https com youtube ' ` im like \
+		watch get got override schedule cc discordapp".split()
 	stop_words = stop_words.union(add_stopwords)
 	stop_words = stop_words.union([
 		"channel cannot", 
@@ -72,7 +74,7 @@ def setup(guild, user=None, channel=None):
 		"channel cannot used music command",
 		"quote",
 	])
-
+	
 	#Lemmatize words, such as running --> run
 	stem_desc = []
 	for w in range(len(log_df['clean_desc'])):
@@ -95,8 +97,14 @@ def getFreq(args, guild):
 
 
 def helper(message):
-	args = message.content.split()
+	text = message.content
+	for each in message.mentions:
+		text = text.replace('<@!{}>'.format(each.id), each.name)
+	for each in message.channel_mentions:
+		text = text.replace('<#{}>'.format(each.id), each.name)
+	args = text.split()
 	operator = 'cloud'
+	
 	if len(args) > 1:
 		operator = args[1].lower()
 	if operator == 'user' and len(args) > 2:
@@ -109,6 +117,7 @@ def helper(message):
 		return banner
 	else:
 		setup(message.guild.id)
+	
 	return {
 		'common': lambda: getFreq(args, message.guild.name),
 		'cloud': lambda: wordCloud('the server', message.guild.name),
@@ -128,17 +137,23 @@ def wordCount(args, guild):
 	else:
 		low = 1
 		high = 20
-	if low < 1: low = 1
-	if high < 2: high = 2
-	if high < low: high = low + 1
+	if low < 1: 
+		low = 1
+	if high < 2: 
+		high = 2
+	if high < low: 
+		high = low + 1
+	
 	x = log_df['word_count']
 	plt.xlabel("Message word length")
 	plt.ylabel("# of Messages")
 	fig = plt.hist(x, bins='auto', range=(low,high))
 	plt.savefig("{}_wordcount.png".format(guild))
 	plt.clf()
-	banner = "Number of messages between length {} and {}.".format(str(low), str(high))
-	return ["{}_wordcount.png".format(guild), banner]
+	return [
+		"{}_wordcount.png".format(guild),
+		 "Number of messages between length {} and {}.".format(str(low), str(high))
+		 ]
 
 
 def wordCloud(type_, guild):
@@ -150,12 +165,16 @@ def wordCloud(type_, guild):
 		max_words=1000, 
 		min_font_size=20
 	).generate(str(stem_desc))
+	
 	fig = plt.figure(figsize=(8,8), facecolor=None)
 	plt.imshow(wordcloud)
 	plt.axis('off')
 	fig.savefig("{}_wordcloud.png".format(guild))
 	plt.clf()
-	return ["{}_wordcloud.png".format(guild), "The most common single words for {}.".format(type_)]
+	return [
+		"{}_wordcloud.png".format(guild), 
+		"The most common single words for {}.".format(type_)
+		]
 
 
 def make_ngrams(low, high, n=None):
@@ -186,6 +205,7 @@ def get_ngrams(args, guild):
 	if len(args) == 3:
 		limit = int(args[2])
 	if limit < 1: limit = 1
+	
 	ngrams = make_ngrams(int(low), int(high), n=int(limit))
 	trigram_df = pd.DataFrame(ngrams)
 	trigram_df.columns=["Trigram", "Freq"]
@@ -197,8 +217,10 @@ def get_ngrams(args, guild):
 	figure = bp.get_figure()
 	figure.savefig("{}_ngram.png".format(guild))
 	plt.clf()	
-	banner = "The {} most common phrases of length {} to {}.".format(str(limit), str(low), str(high))
-	return ["{}_ngram.png".format(guild), banner]
+	return [
+		"{}_ngram.png".format(guild),
+		"The {} most common phrases of length {} to {}.".format(limit, low, high)
+		]
 
 
 def getHelp():

@@ -49,20 +49,10 @@ def helper(message):
 		
 	if args[0] == '!lore':
 		if len(args) > 1:
-			if args[1] == 'add' and is_admin(message.author.roles):
-				config = load_config(message.guild.id)
-				if config:
-					server_locale = config[2]
-				else:
-					server_locale = 'Asia/Tokyo'
-				entity = [
-					message.id, 
-					args[2],
-					' '.join(args[3:]), 
-					pendulum.now(tz=server_locale).to_formatted_date_string(),
-					str(message.guild.id),
-				]	
-				return insertQuote(Lore, entity)
+			if args[1] == 'add' and is_admin(message.author):
+				return insertQuote(Lore, message)
+			elif args[1] == 'help' and is_admin(message.author):
+				return getHelp(message.author).split('@LORE')[1]
 			else: 
 				return getQuote(Lore, message.guild.id, ' '.join(args[1:]))
 		else:
@@ -70,13 +60,13 @@ def helper(message):
 			
 	elif len(args) > 1:
 		if args[1] == 'help':
-			return getHelp(message.author)
+			return getHelp(message.author).split('@LORE')[0]
 		else:
 			return getQuote(Quotes, message.guild.id, ' '.join(args[1:]))
 	else:
 		return getQuote(Quotes, message.guild.id)
 	
-	
+
 def insertQuote(Table, message):
 	if Table == None:
 		Table = Quotes
@@ -95,18 +85,31 @@ def insertQuote(Table, message):
 		text = text.replace('<@!{}>'.format(each.id), each.name)
 	for each in message.role_mentions:
 		text = text.replace('<@&{}>'.format(each.id), each.name)
+	args = text.split()	
 	
 	with engine.connect() as conn:
-		ins = Table.insert().values(
-			id = message.id,
-			name = message.author.name,
-			text = text,
-			date = date,
-			guild = str(message.guild.id),
-			guild_name = message.guild.name,
-		)
-		conn.execute(ins)
-	return stm.format(text, message.author.name, date)
+		if Table.name == 'famQuotes':
+			ins = Table.insert().values(
+				id = message.id,
+				name = message.author.name,
+				text = text,
+				date = date,
+				guild = str(message.guild.id),
+				guild_name = message.guild.name,
+			)
+			conn.execute(ins)
+			return stm.format(text, message.author.name, date)
+		elif Table.name == 'famLore':
+			ins = Table.insert().values(
+				id = message.id,
+				name = args[2],
+				text = ' '.join(args[3:]),
+				date = date,
+				guild = str(message.guild.id),
+				#guild_name = message.guild.name,
+			)
+			conn.execute(ins)
+			return stm.format(' '.join(args[3:]), args[2], date)
 
 
 def getQuote(Table, guild_, id_=None):
@@ -158,6 +161,7 @@ def checkExists(guild_, id_):
 		if conn.execute(select_st).fetchall(): return True
 	return False	
 	
+	
 def load_config(guild):
 	with engine.connect() as conn:
 		select_st = select([Config]).where(Config.c.id == guild)
@@ -166,11 +170,13 @@ def load_config(guild):
 		return result
 	return None
 
+
 def getHelp(author):
 	banner = fetchFile('help', 'quotes')
-	if not is_admin(author.roles):
+	if not is_admin(author):
 		banner = banner.split('For Admins:')[0]
 	return banner	
+	
 	
 setup()
 
