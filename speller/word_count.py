@@ -2,7 +2,7 @@ import json
 import re
 from collections import Counter, OrderedDict
 
-from autocorrect.constants import word_regexes
+from speller.constants import word_regexes
 
 
 def get_words(filename, lang):

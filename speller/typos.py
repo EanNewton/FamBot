@@ -1,6 +1,6 @@
 from itertools import chain
 
-from autocorrect.constants import alphabets
+from speller.constants import alphabets
 
 
 class Word(object):

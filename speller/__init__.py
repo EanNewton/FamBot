@@ -6,8 +6,8 @@ import tarfile
 import textwrap
 from contextlib import closing
 
-from autocorrect.constants import word_regexes
-from autocorrect.typos import Word
+from speller.constants import word_regexes
+from speller.typos import Word
 
 PATH = os.path.abspath(os.path.dirname(__file__))
 
