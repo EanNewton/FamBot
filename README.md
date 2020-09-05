@@ -125,7 +125,7 @@ Help pay for server costs: https://www.patreon.com/tangerinebot
 Invite the bot to your server: https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot
 Use !schedule help for more information.
 ```
-## !quote <a name = "!quote></a>
+## !quote <a name = "!quote"></a>
 Users can react to any message in the discord with the :speech_left: reaction to add it to a list of quotes. 
 Quotes may be any message that is not from a bot, including text, images, videos, embeds, or files.
 A random quote can then be displayed by using the !quote command.
@@ -138,7 +138,7 @@ Optional parameters are:
 Aliased names for the command are:
 + !q
 
-## !lore <a name = "!lore></a>
+## !lore <a name = "!lore"></a>
   Works almost exactly the same as !quote but new entries can only be added by administrators, a sort of VIP version of !quote or a randomized version of a pinned message.
   
   Optional parameters are:
