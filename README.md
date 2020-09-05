@@ -46,7 +46,7 @@ Optional parameters are:
 Aliased names for the command are:
 
 **Example Config File**
-
+```
 {
     "Server ID": 012340123401234,
     "Server Name": "My First Server",
@@ -90,6 +90,7 @@ Lore Format: How lore should be displayed when a user enters "!lore".
     
 Quote Added Format: What is displayed when a user reacts with :speech_left: to add a new quote. 
     It also follows the {} order of text, author, date.
+```
 
 ## !sched <a name = "!sched"></a>
 Display a schedule of upcoming events for the server in the user's own time zone. Any events occurring today will be bolded.
@@ -107,6 +108,7 @@ Optional parameters are:
 + !sched override [USER ID] [USER NAME] [CONTINENT]/[CITY] --- an administrator only command to change any user's location
 
 **Example Output**
+```
 Sat, Sep 5, 2020 11:41 AM in America/Phoenix
 Sun, Sep 6, 2020 3:41 AM in Asia/Tokyo
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>
@@ -122,7 +124,7 @@ Come hang with us at: https://www.twitch.tv/
 Help pay for server costs: https://www.patreon.com/tangerinebot
 Invite the bot to your server: https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot
 Use !schedule help for more information.
-
+```
 ## !quote <a name = "!quote></a>
 Users can react to any message in the discord with the :speech_left: reaction to add it to a list of quotes. 
 Quotes may be any message that is not from a bot, including text, images, videos, embeds, or files.
@@ -155,6 +157,7 @@ Optional parameters are:
 
 **Example**
 > !dict computer
+```
 noun 
 Etymology
 From compute +‎ -er.
@@ -182,3 +185,4 @@ Rhymes: -uːtə(r)
 https://upload.wikimedia.org/wikipedia/commons/5/5c/En-uk-computer.ogg 
 https://upload.wikimedia.org/wikipedia/commons/a/a1/En-us-computer.ogg
 
+```
