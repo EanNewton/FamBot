@@ -359,7 +359,7 @@ The core design philosophies for the project are that it should be: easy to use,
 
 + [Packages](#packages)
 + [A Note on Users](#users)
-+ [How it Works](#workings)
++ [How Stuff Works](#workings)
 
 ## Packages <a name = "packages"></a>
 The backend makes heavy use of SQLite 3 via the SQLAlchemy project to keep with the Reliable philosophy.
@@ -467,7 +467,33 @@ def config_create(guild):
 			return config_create(guild)
 ```
 
-## How it Works <a name = "workings"></a>
+When retrieving the config from the user we simply reverse the process. We first split off the appended help text, load the remaining JSON into a dict, swap the text back into a database friendly format, and connect it to the appropiate table entry.
+
+```
+def config_load(guild):
+	with open('{}/docs/config/{}.json'.format(DEFAULT_DIR, guild), 'r') as f:
+		dict_ = json.loads(f.read().split('```', maxsplit=1)[0])
+	for each in jsonFormatter[1]:		
+		dict_[each[0]] = dict_.pop(each[1])
+	for each in jsonFormatter[0]:
+		dict_['schedule'] = dict_['schedule'].replace(each[1], each[0])
+	
+	with engine.connect() as conn:
+		ins = Config.update().where(Config.c.id == guild).values(
+					locale = dict_['locale'],
+					schedule = dict_['schedule'],
+					quote_format = dict_['quote_format'],
+					lore_format = dict_['lore_format'],
+					url = dict_['url'],
+					qAdd_format = dict_['qAdd_format'],
+					filtered = dict_['filtered'],
+					mod_roles = dict_['mod_roles'],
+					)
+		conn.execute(ins)
+	modRoles[guild] = fetch_value(guild, 9, ';')
+```
+
+## How Stuff Works <a name = "workings"></a>
 
 The general top-level work flow of the bot is very straight forward. It first loads its API tokens for Discord and Wolfram from the local .env file, creates generic connections to the local SQLite database, sets up a local log file to keep track of any errors, and then connects to Discord's servers.
 
