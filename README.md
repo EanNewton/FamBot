@@ -15,12 +15,12 @@
 
 ---
 
-## 📝 Table of Contents
+# 📝 Table of Contents
 + [About](#about)
 + [List of Commands](#commandlist)
-+ [
++ [Info for Geeks](#geeky)
 
-## List of Commands <a name = "commandlist"></a>
+# List of Commands <a name = "commandlist"></a>
 + [!help](#!help)
 + [!config](#!config)
 + [!sched](#!sched)
@@ -340,3 +340,4 @@ creased in a thousand places, like an unfolded bit of origami.”
 Dot Gumbi; The Pirates of Maryland Point; 2016.
 See more usage examples of origami in Vocabulary.com’s dictionary.
 ```
+# Info for Geeks <a name = "geeky"></a>
