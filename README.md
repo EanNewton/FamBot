@@ -1,6 +1,6 @@
 <p align="center">
   <a href="" rel="noopener">
- <img width=200px height=200px src="https://i.imgur.com/FxL5qM0.jpg" alt="Bot logo"></a>
+ <img width=1600px height=400px src="https://i.imgur.com/M3wjra4.png" alt="Bot logo"></a>
 </p>
 
 <h3 align="center">Bot Name</h3>
