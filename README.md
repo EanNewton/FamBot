@@ -8,6 +8,8 @@
 <div align="center">
 
   [![Status](https://img.shields.io/badge/status-active-success.svg)]
+  [![Platform](https://img.shields.io/badge/platform-discord-blue.svg)]
+  [![Platform](https://img.shields.io/badge/language-python-yellow.svg)]
 
 </div>
 
@@ -19,8 +21,10 @@
 
 ## 📝 Table of Contents
 + [About](#about)
++ [List of Commands](#commandlist)
++ [
 
-## List of Commands
+## List of Commands <a name = "commandlist"></a>
 + [!help](#!help)
 + [!config](#!config)
 + [!sched](#!sched)
@@ -38,8 +42,6 @@ Generates a config file in JSON format. Only usable by the server owner and role
 
 Optional parameters are: 
 + !config reset --- return to a default configuration
-
-Aliased names for the command are:
 
 **Example Config File**
 ```
@@ -127,23 +129,24 @@ Quotes may be any message that is not from a bot, including text, images, videos
 A random quote can then be displayed by using the !quote command.
 Administrators can use :x: on a message that has a received a :speech_left: to remove it from the quotes list. Multiple users reacting with :speech_left: will not add the quote multiple times.
   
+Aliased names for the command are:
++ !q
+
 Optional parameters are:
 + !quote [USER] --- Display a quote that was said by that specific user. Note that this is their actual username (case sensitive) and not their display nickname so as to prevent confusion as users change nicknames often. If you are unsure click on the user in either the right panel users list or on their profile picture next to any message they've sent to see their actual username. This does not include the discriminator, which is a # sign folowed by four numbers.
 + !quote help --- Display a brief explanation of the command usage available to the user.
 
-Aliased names for the command are:
-+ !q
 
 ## !lore <a name = "!lore"></a>
   Works almost exactly the same as !quote but new entries can only be added by administrators, a sort of VIP version of !quote or a randomized version of a pinned message.
+  
+  Aliased names for the command are:
+  + !l
   
   Optional parameters are:
   + !lore help --- Display a brief explanation of the command usage available to the user.
   + !lore [USER] --- Display a piece of lore from a specific user.
   + !lore add [USER] [TEXT] --- Add a new lore entry of [TEXT] with the author set as [USER] at the current date and time. Note that the [USER] must be a single word, any text after the first whitespace will be part of [TEXT]. Administrators may add a :x: reaction to the "!lore add" message to remove the entry.
-  
-  Aliased names for the command are:
-  + !l
   
 ## !dict <a name = "!dict"></a>
 Returns the English Wiktionary entry for a word or phrase. This does not necessarily need to be an English word, it simply needs to have an entry in the https://en.wiktionary.org site.
@@ -222,3 +225,12 @@ Optional parameters are:
 ---
 ![stats common](https://i.imgur.com/AkxHHUD.png)
 ---
+
+## !8ball <a name = "!8ball"></a>
+The classic magic eight ball, now on your Discord.
+Use !8ball followed by a question to have your fortune read.
+
+Aliased names for the command are:
++ !8
++ !eight
++ !eightball
