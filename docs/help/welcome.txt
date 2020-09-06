@@ -1,0 +1,3 @@
+To get started use `!config` and `!help`. 
+Anyone with a role named 'mod' or 'admin' can use the admin commands, including editing the server config.
+
