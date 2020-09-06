@@ -361,7 +361,7 @@ The core design philosophies for the project are that it should be: easy to use,
 + [A Note on Users](#users)
 
 ## Packages <a name = "packages"></a>
-The backend makes heavy use of SQLite 3 via the SQLAlchemy project.
+The backend makes heavy use of SQLite 3 via the SQLAlchemy project to keep with the Reliable philosophy.
 
 The full list of external Python packages directly imported is:
 + [Pendulum](https://pendulum.eustace.io/)
@@ -381,7 +381,11 @@ The full list of external Python packages directly imported is:
 
 I feel it is important to remember that software is made to be used. Often there is a disconnect between what the developer sees when they make it and what the users see when they actually use it. As makers it is our duty to bridge that gap the best we can.
 
-One of the first things I noticed on 
+One of the first things I noticed when having people test out the bot was that they had trouble remembering exactly *what* the commands are, or how to spell them. I have implemented two ways of combating these problems. 
+
+The first and simplest is to alias the commands. For example, if a user wants to get the definition for a word they should be able to enter `!dictionary`, `!dict`, `!definition`, or `!def` with the same end result. 
+
+The second part took a little more doing, that is, how to handle what to do when a user forgets how exactly to spell "dictionary". This was a problem I was seeing frequently (but not only) from users whose first language wasn't my own, and whose language's spelling conventions didn't mesh with the often times odd rules of English. Those users would be trying something like `!dikt`, `!deph`, or `!dektionary`. The solution was to implement a basic form of auto-correct, like you might find on your phone. The actual code for this is located in the ./speller/ directory and is a stripped down and modified version of Filip Sondej's project [autocorrect](https://github.com/fsondej/autocorrect). Filip's code is a work of art and I encourage you to peruse it. It works by making clever use of Python's concept of arrays, iterables, permutations, and generators, alongside regular expressions. It takes textual input, splits it into individual words, generates many variations of those words with array slices, and then compares them to a custom built dictionary of word frequency pairs to find the most likely candidate for what the word should be before then reforming and returning the corrected text.
 
 ## How it Works <a name = "workings"></a>
 
@@ -418,4 +422,36 @@ This message is sent to the guild's system_channel (by default the first text ch
 
 ### On Reactions Added <a name = "reaction"></a>
 
+There are two related instances of when we want the bot to notice a user has added a reaction to a message and take action: to add a new quote, and to remove an existing quote. The Python Discord API provides two similar events for this, on_reaction_add and on_raw_reaction_add, the important difference for us is that the latter allows for users to add messages that were posted at any point in time, even before the bot was added to the server, to the quotes database. This does however mean that we need to fetch the message rather than operating directly with it.
 
+A few additional considerations (that were added after a series of 'interesting' events) are to ensure that the message that is being added was not posted by a bot, that the message is not already in the database, and that the message does not contain any phrases blacklisted by the server (unless the author was themself an administrator). This became the following the code snippet:
+
+```
+@bot.event
+async def on_raw_reaction_add(payload): 
+	channel = bot.get_channel(payload.channel_id)
+	message = await channel.fetch_message(payload.message_id)
+	
+	#Add a quote
+	if str(payload.emoji) == '🗨️' and not message.author.bot:
+		if not tquote.checkExists(message.guild.id, message.id):
+			if not tfilter.check(message) or is_admin(payload.member):
+				await message.channel.send(tquote.insertQuote(None, message))
+	
+	#Remove a quote
+	if str(payload.emoji) == '❌'and is_admin(payload.member): 
+		await message.channel.send(tquote.deleteQuote(message.guild.id, message.id))
+```
+
+Another lesson that was quickly learned from this was the need to suppress @user and @role mentions, but to do so without stripping the context of the original message. This is done via a standard string match and replace operation before sending it off to the database. From tquote.py:
+
+```
+def insertQuote(Table, message):
+...
+text = message.content
+for each in message.mentions:
+	text = text.replace('<@!{}>'.format(each.id), each.name)
+for each in message.role_mentions:
+	text = text.replace('<@&{}>'.format(each.id), each.name)
+...
+```
