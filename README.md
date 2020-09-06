@@ -370,12 +370,24 @@ The full list of external Python packages directly imported is:
 + [SQLAlchemy](https://www.sqlalchemy.org/)
 + [AIOHTTP](https://docs.aiohttp.org/en/stable/)
 + [AIOFiles](https://github.com/Tinche/aiofiles)
++ [BeautifulSoup4](https://www.crummy.com/software/BeautifulSoup/)
++ [WiktionaryParser](https://github.com/Suyash458/WiktionaryParser)
 + [Pandas](https://pandas.pydata.org/)
 + [NLTK](https://www.nltk.org/)
 + [word_cloud](https://github.com/amueller/word_cloud)
 + [PyPlot](https://matplotlib.org/)
 + [SciKit-learn](https://scikit-learn.org/stable/)
 + [Seaborn](https://seaborn.pydata.org/)
+
+Native imports are:
++ from os import getenv, listdir, path, walk
++ from pathlib import Path
++ from urllib.parse import quote_plus
++ import random
++ import re
++ import sqlite3
++ import json
++ import functools
 
 ## A Note on Users <a name = "users"></a>
 
