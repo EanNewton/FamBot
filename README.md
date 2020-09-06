@@ -1,9 +1,9 @@
 <p align="center">
   <a href="" rel="noopener">
- <img src="https://i.imgur.com/M3wjra4.png" alt="Bot logo"></a>
+ <img src="https://i.imgur.com/M3wjra4.png" alt="Tangerine Bot logo"></a>
 </p>
 
-<h3 align="center">Bot Name</h3>
+<h3 align="center">Tangerine Bot</h3>
 
 <div align="center">
 
@@ -14,10 +14,6 @@
 </div>
 
 ---
-
-<p align="center"> 🤖 Few lines describing what your bot does.
-    <br> 
-</p>
 
 ## 📝 Table of Contents
 + [About](#about)
@@ -33,6 +29,9 @@
 + [!dict](#!dict)
 + [!stats](#!stats)
 + [!8ball](#!8ball)
++ [!wolfram](#!wolfram)
++ [!google](#!google)
+
 
 ## !help <a name = "!help"></a>
 Displays a list of available commands and a brief description of what they do.
@@ -151,6 +150,9 @@ Optional parameters are:
 ## !dict <a name = "!dict"></a>
 Returns the English Wiktionary entry for a word or phrase. This does not necessarily need to be an English word, it simply needs to have an entry in the https://en.wiktionary.org site.
 
+Aliased names for the command are:
++ !dictionary
+
 Optional parameters are:
 + !dict [TEXT] --- Display an explanation of any single word or phrase.
 
@@ -227,10 +229,32 @@ Optional parameters are:
 ---
 
 ## !8ball <a name = "!8ball"></a>
-The classic magic eight ball, now on your Discord.
+The classic 1950's magic eight ball by Carter and Bookman, now on your Discord. 
 Use !8ball followed by a question to have your fortune read.
 
 Aliased names for the command are:
 + !8
 + !eight
 + !eightball
+
+Possible responses are:
++ It is certain.
++ It is decidely so.
++ Without a doubt.
++ Yes -- definitely.
++ You may rely on it.
++ As I see it, yes.
++ Most likely.
++ Outlook good.
++ Yes.
++ Signs point to yes.
++ Reply hazy, try again.
++ Ask again later.
++ Better not tell you now.
++ Cannot predict now.
++ Concentrate and ask again.
++ Don't count on it.
++ My reply is no.
++ My sources say no.
++ Outlook not so good.
++ Very doubtful.
