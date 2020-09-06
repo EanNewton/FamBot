@@ -401,6 +401,72 @@ The first and simplest is to alias the commands. For example, if a user wants to
 
 The second part took a little more doing, that is, how to handle what to do when a user forgets how exactly to spell "dictionary". This was a problem I was seeing frequently (but not only) from users whose first language wasn't my own, and whose language's spelling conventions didn't mesh with the often times odd rules of English. Those users would be trying something like `!dikt`, `!deph`, or `!dektionary`. The solution was to implement a basic form of auto-correct, like you might find on your phone. The actual code for this is located in the ./speller/ directory and is a stripped down and modified version of Filip Sondej's project [autocorrect](https://github.com/fsondej/autocorrect). Filip's code is a work of art and I encourage you to peruse it. It works by making clever use of Python's concept of arrays, iterables, permutations, and generators, alongside regular expressions. It takes textual input, splits it into individual words, generates many variations of those words with array slices, and then compares them to a custom built dictionary of word frequency pairs to find the most likely candidate for what the word should be before then reforming and returning the corrected text.
 
+Another notable place that Ease of Use manifested itself is in allowing server administrators to change key values whenever they desire, and to do so quickly. I decided that the best approach would be to have a configuration table within the database and to allow users to interface with it via a JSON file. The use of a drag-and-drop file system allows server adminstrators to keep multiple configurations stored on their own local systems and change between them at any moment. To further the ease of use we modify this file to a more human readable form inbetween its creation from the config table to the user, and its return from the user to the config table. 
+
+When sending the config file to the user we first query the database to see whether or not a config entry already exists. If it does not we create one with default values and try again. Once we are sure a config exists we get the values in a JSON format, use a Python dict (named jsonFormatter here) to replace text into a user friendly form, append a brief explanation of the entries from ./docs/help/config.txt and send it out. This whole process is located in tutil.py and looks like:
+
+```
+jsonFormatter = [[
+		['0=', 'Monday = '],
+		['1=', 'Tuesday = '],
+		['2=', 'Wednesday = '],
+		['3=', 'Thursday = '],
+		['4=', 'Friday = '],
+		['5=', 'Saturday = '],
+		['6=', 'Sunday = '],
+		[',', ', '],
+		[';', '; '],
+	],[
+		['id', 'Server ID'],
+		['guild_name', 'Server Name'],
+		['locale', 'Server Locale'],
+		['schedule', 'Schedule'],
+		['url', 'URL Footer'],
+		['quote_format', 'Quote Format'],
+		['qAdd_format', 'Quote Added Format'],
+		['lore_format', 'Lore Format'],
+		['filtered', 'Blacklisted Words'],
+		['mod_roles', 'Moderator Roles'],
+	]]
+
+def config_create(guild):
+	with engine.connect() as conn:
+		select_st = select([Config]).where(Config.c.id == guild.id)
+		result = conn.execute(select_st).fetchone()
+		if result:
+			columns = []
+			for each in Config.c:
+				columns.append(each.name)
+			dict_ = dict(zip(columns, result))
+			
+			#For pretty printing, make the user's life easier
+			for each in jsonFormatter[0]:
+				dict_['schedule'] = dict_['schedule'].replace(each[0], each[1])
+			for each in jsonFormatter[1]:
+				dict_[each[1]] = dict_.pop(each[0])
+						
+			with open('{}/docs/config/{}.json'.format(DEFAULT_DIR, guild.id), 'w') as f:
+				json.dump(dict_, f, indent=4)
+				f.write('\n\n{}'.format(fetchFile('help', 'config')))	
+			return '{}/docs/config/{}.json'.format(DEFAULT_DIR, guild.id)		
+		
+		else:
+			ins = Config.insert().values(
+				id = guild.id,
+				guild_name = guild.name,
+				locale = 'Asia/Tokyo',
+				schedule = '0=10,17:15;1=10,12;2=16,10:15;3=2:44;4=10;5=16:30;',
+				quote_format = '{0}\n ---{1} on {2}',
+				lore_format = '{0}\n ---Scribed by the Lore Master {1}, on the blessed day of {2}',
+				url = 'Come hang with us at: <https://www.twitch.tv/>',
+				qAdd_format = 'Added:\n "{0}"\n by {1} on {2}',
+				filtered = 'none',
+				mod_roles = 'mod;admin;discord mod;',
+			)		
+			conn.execute(ins)
+			return config_create(guild)
+```
+
 ## How it Works <a name = "workings"></a>
 
 The general top-level work flow of the bot is very straight forward. It first loads its API tokens for Discord and Wolfram from the local .env file, creates generic connections to the local SQLite database, sets up a local log file to keep track of any errors, and then connects to Discord's servers.
