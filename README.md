@@ -21,6 +21,15 @@
 + [List of Commands](#commandlist)
 + [Info for Geeks](#geeky)
 
+# About <a name = "about"></a>
+
+I initially created this bot to address a problem I saw occurring frequently: Twitch was helping to connect people from all over the globe, which is a wonderful thing, but it brought the problem of communicating across all those disparate places. A streamer would say something like, "Hey friends! I'll be streaming every Tuesday at 6:00PM!" but when exactly that 6:00PM on Tuesday actually is would be different for people located in London vs New York vs Melbourne. I wanted a simple and intuitive way for anyone to find out when it would occur for them with a single command. The project has been growing and adding features as requested since then.
+
+Invite the bot to your server: https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot
+
+Or, clone the the project to a local directory and launch it with:
+`pipenv run python3 main.py`
+
 # List of Commands <a name = "commandlist"></a>
 + [!help](#!help)
 + [!config](#!config)
@@ -345,10 +354,11 @@ See more usage examples of origami in Vocabulary.com’s dictionary.
 
 This project is written entirely in Python 3 as a passion project, as well as my first project in Python. You are encouraged to use, modify, fork, contribute, hack, or do whatever your heart desires with it within the confines of the GNU General Public License Version 3. Pull requests are warmly welcomed.
 
-The core design philosophies for the bot are that it should be: easy to use, easy to maintain and modify, and reliable. Python may not always have the comparable speed of C or its compatriots but I'll be damned if it isn't beautiful.
+The core design philosophies for the project are that it should be: easy to use, easy to maintain and modify, and reliable. Python may not always have the comparable speed of C or its compatriots but I'll be damned if it isn't beautiful.
 
 + [Packages](#packages)
 + [How it Works](#workings)
++ [A Note on Users](#users)
 
 ## Packages <a name = "packages"></a>
 The backend makes heavy use of SQLite 3 via the SQLAlchemy project.
@@ -367,6 +377,11 @@ The full list of external Python packages directly imported is:
 + [SciKit-learn](https://scikit-learn.org/stable/)
 + [Seaborn](https://seaborn.pydata.org/)
 
+## A Note on Users <a name = "users"></a>
+
+I feel it is important to remember that software is made to be used. Often there is a disconnect between what the developer sees when they make it and what the users see when they actually use it. As makers it is our duty to bridge that gap the best we can.
+
+One of the first things I noticed on 
 
 ## How it Works <a name = "workings"></a>
 
