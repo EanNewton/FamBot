@@ -10,6 +10,7 @@
   ![Status](https://img.shields.io/badge/status-active-success.svg)
   ![Platform](https://img.shields.io/badge/platform-discord-blue.svg)
   ![Language](https://img.shields.io/badge/language-python-yellow.svg)
+  ![License](https://img.shields.io/badge/license-GNU%20GPL%20v3-green)
 
 </div>
 
@@ -341,3 +342,21 @@ Dot Gumbi; The Pirates of Maryland Point; 2016.
 See more usage examples of origami in Vocabulary.com’s dictionary.
 ```
 # Info for Geeks <a name = "geeky"></a>
+
+This project is written entirely in Python 3 as a passion project, as well as my first project in Python. You are encouraged to use, modify, fork, contribute, hack, or do whatever your heart desires with it within the confines of the GNU General Public License Version 3. Pull requests are warmly welcomed.
+
+The backend makes heavy use of SQLite 3 via the SQLAlchemy project.
+
+The full list of external Python packages directly imported is:
++ [Pendulum](https://pendulum.eustace.io/)
++ [Discord](https://pythondiscord.com/)
++ [DotEnv](https://github.com/theskumar/python-dotenv)
++ [SQLAlchemy](https://www.sqlalchemy.org/)
++ [AIOHTTP](https://docs.aiohttp.org/en/stable/)
++ [AIOFiles](https://github.com/Tinche/aiofiles)
++ [Pandas](https://pandas.pydata.org/)
++ [NLTK](https://www.nltk.org/)
++ [word_cloud](https://github.com/amueller/word_cloud)
++ [PyPlot](https://matplotlib.org/)
++ [SciKit-learn](https://scikit-learn.org/stable/)
++ [Seaborn](https://seaborn.pydata.org/)
