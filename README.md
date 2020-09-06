@@ -48,7 +48,7 @@ Aliased names for the command are:
     "Server Name": "My First Server",
     "Server Locale": "Asia/Tokyo",
     "Schedule": "Monday = 10; Tuesday = 10; Wednesday = 16; Friday = 10; Saturday = 16; ",
-    "URL Footer": "Come hang with us at: <https://www.twitch.tv/blluist>",
+    "URL Footer": "Come hang with us at: <https://www.twitch.tv/>",
     "Quote Format": "{0}\n ---{1} on {2}",
     "Quote Added Format": "Added:\n \"{0}\"\n by {1} on {2}",
     "Lore Format": "{0}\n ---Scribed by the Lore Master {1}, on the blessed day of {2}",
@@ -182,3 +182,31 @@ https://upload.wikimedia.org/wikipedia/commons/5/5c/En-uk-computer.ogg
 https://upload.wikimedia.org/wikipedia/commons/a/a1/En-us-computer.ogg
 
 ```
+## !stats <a name = "!stats"></a>
+Display some fun info about the messages being sent. The default command will generate a word cloud of the most common words for the server.
+
+Optional parameters are:
++ !stats user [USERNAME] --- Create a word cloud for the specified user. Like !quote this is the case sensitive version of the username without the discriminator.
++ !stats channel [CHANNEL] --- Create a word cloud for the specified channel. This is provided as the #channel-name tag.
++ !stats count [LOW] [HIGH] --- Create a bar graph showing the number of messages of length between LOW and HIGH.
++ !stats phrases [LOW] [HIGH] [LIMIT] --- Create a graph showing the most common phrases / n-grams of length between LOW and HIGH. LIMIT is the amount of n-grams to display.
++ !stats common [LIMIT] --- Create a textual list of the most common single words for the server, up to LIMIT.
+
+**Examples**
+>!stats
+![stats default](https://i.imgur.com/RtQR9kJ.png)
+
+>!stats user
+![stats user](https://i.imgur.com/YNXJUy0.png)
+
+>!stats channel
+![stats channel](https://i.imgur.com/Fi7RRRy.png)
+
+>!stats count 2 20
+![stats count](https://i.imgur.com/lgu9Z3U.png)
+
+>!stats phrases 2 5 10
+![stats phrases](https://i.imgur.com/PcEZXSZ.png)
+
+>!stats common 10
+![stats common](https://i.imgur.com/AkxHHUD.png)
