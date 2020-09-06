@@ -195,23 +195,23 @@ Optional parameters are:
 **Examples**
 >!stats
 ![stats default](https://i.imgur.com/RtQR9kJ.png)
-
+---
 
 >!stats user
 ![stats user](https://i.imgur.com/YNXJUy0.png)
-
+---
 
 >!stats channel
 ![stats channel](https://i.imgur.com/Fi7RRRy.png)
-
+---
 
 >!stats count 2 20
 ![stats count](https://i.imgur.com/lgu9Z3U.png)
-
+---
 
 >!stats phrases 2 5 10
 ![stats phrases](https://i.imgur.com/PcEZXSZ.png)
-
+---
 
 >!stats common 10
 ![stats common](https://i.imgur.com/AkxHHUD.png)
