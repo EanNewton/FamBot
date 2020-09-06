@@ -345,6 +345,12 @@ See more usage examples of origami in Vocabulary.com’s dictionary.
 
 This project is written entirely in Python 3 as a passion project, as well as my first project in Python. You are encouraged to use, modify, fork, contribute, hack, or do whatever your heart desires with it within the confines of the GNU General Public License Version 3. Pull requests are warmly welcomed.
 
+The core design philosophies for the bot are that it should be: easy to use, easy to maintain and modify, and reliable. Python may not always have the comparable speed of C or its compatriots but I'll be damned if it isn't beautiful.
+
++ [Packages](#packages)
++ [How it Works](#workings)
+
+## Packages <a name = "packages"></a>
 The backend makes heavy use of SQLite 3 via the SQLAlchemy project.
 
 The full list of external Python packages directly imported is:
@@ -360,3 +366,41 @@ The full list of external Python packages directly imported is:
 + [PyPlot](https://matplotlib.org/)
 + [SciKit-learn](https://scikit-learn.org/stable/)
 + [Seaborn](https://seaborn.pydata.org/)
+
+
+## How it Works <a name = "workings"></a>
+
+The general top-level work flow of the bot is very straight forward. It first loads its API tokens for Discord and Wolfram from the local .env file, creates generic connections to the local SQLite database, sets up a local .log file to keep track of any errors, and then connects to the Discord interface.
+
+It then watches for a handful of events: 
++ [being invited to a new guild](#join)
++ [a reaction being added to a message](#reaction)
++ [an error](#errors)
++ [or a message being sent](#messages)
+
+### On Joining a Guild <a name = "join"></a>
+
+When the bot joins a guild for the first time we want to hit that first design philosophy and Make Things Easy. So, we send a title image and a welcome message.
+
+There are several events that occur frequently with slight variations, e.g. reading from a file or checking if a user is an administrator. For these common tasks I have created the `tutil.py` file. 
+
+Here we will encounter the call to fetchFile() in tutil.py for the first time of many. This function looks into our ./docs/ directory for given file in a given directory and simply returns it to be used in our banner. Any time the bot will be displaying content to the end users I refer to it as a banner. I implemented it this way as part of the second core philosophy, Easy to Modify, so that these common messages can be changed on the fly without needing to interrupt service to users by stopping and reloading the entire bot to change internal code. 
+
+```
+@bot.event
+async def on_guild_join(guild):
+	banner = 'Hello {}! \n{}'.format(guild.owner.mention, fetchFile('help', 'welcome'))
+	await guild.system_channel.send(banner, file=discord.File('./docs/header.png'))
+```
+--->
+```
+def fetchFile(directory, filename):
+	with open('{}/docs/{}/{}.txt'.format(DEFAULT_DIR, directory, filename), 'r') as f:
+		return f.read()
+```
+
+This message is sent to the guild's system_channel (by default the first text channel created, though in practice it is often changed by users to a hidden admin channel) and prompts the server owner through basic config setup for the bot.
+
+### On Reactions Added <a name = "reaction"></a>
+
+
