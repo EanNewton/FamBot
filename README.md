@@ -609,9 +609,33 @@ def debug(func):
 
 Whenever a message is posted in a server it triggers the on_message(message) event in main.py. This first checks the author was not a bot, then logs the message in the database, checks if the message was a config file for the server and if so updates as needed, if it looks to be a command it will attempt any needed auto-corrections, do the appropiate operations for a valid command entry, and finally return any needed output.
 
-Upon recognizing a command it forwards the message to a helper function within the related module. The helper function parses any optional parameters and sends them to dict whose keys are the operator and values are lambda designations to functions. This works like a switch in other languages. 
+Upon recognizing a command it forwards the message to a helper function within the related module. The helper function parses any optional parameters and sends them to dict whose keys are the operator and values are lambda designations to functions. This works like a switch in other languages and is how we interace with the modules. The one located in tsched.py is simple and makes for a good example of how these work in all the other modules. 
 
 #### tsched.py
+
+```python
+def helper(message):
+	args = message.content.split()
+	ops = {'get', 'set', 'help', 'override', 'config'}
+	operator = 'get' #Set a default operator
+	if len(args) > 1 and args[1] in ops:
+		operator = args[1]
+	return {
+		'get': lambda: getSchedule(message),
+		'set': lambda: setSchedule(message),
+		'help': lambda: getHelp(args, message.author),
+		'override': lambda: override(message),
+	}.get(operator, lambda: None)()	
+```
+
+Such that calls to modules from main.py are a sort of OOP / Functional hybrid and as Easy to Use as:
+
+```python
+...			
+elif args[0] in {'!schedule', '!sched', '!s'}:
+	banner = tsched.helper(message)
+...
+```
 
 When the bot is first initialized from the command line with `pipenv run python3 main.py` it imports all the local modules, and those that need to access the database call their setup() functions at this point. They all look more or less the same, setting up any default values, as well as creating an engine and MetaData objects for SQLAlchemy linked to appropiate tables. As an example the one for tsched.py is:
 
@@ -648,31 +672,6 @@ def setup():
 	print('[+] End Schedule Setup')
 ```
 
-Interfacing with the module is done through the previously mentioned helper function. The one located in tsched.py is simple and makes for a good example of how these work in all the other modules. 
-
-```python
-def helper(message):
-	args = message.content.split()
-	ops = {'get', 'set', 'help', 'override', 'config'}
-	operator = 'get' #Set a default operator
-	if len(args) > 1 and args[1] in ops:
-		operator = args[1]
-	return {
-		'get': lambda: getSchedule(message),
-		'set': lambda: setSchedule(message),
-		'help': lambda: getHelp(args, message.author),
-		'override': lambda: override(message),
-	}.get(operator, lambda: None)()	
-```
-
-Such that calls to modules from main.py are a sort of OOP / Functional hybrid and as Easy to Use as:
-
-```python
-...			
-elif args[0] in {'!schedule', '!sched', '!s'}:
-	banner = tsched.helper(message)
-...
-```
 
 Most modules also include a standard getHelp(args, author) that checks the context of what kind of help the user is requesting and if the response should include administrative commands or not, and loads them from the relevant ./docs/help file. For Ease of Maintenance and Modifying the full help message is located in a single file and split at the appropiate location within the file, instead of accessing and combining multiple txt files.
 
@@ -819,9 +818,12 @@ def getUser(guild_, id_):
 			return result
 ```
 
-Which will look something like:
+Which will look something like this for the config table:
 
 ![config entry](https://i.imgur.com/YVm2fIf.png)
+
+And for the user table:
+
 ![user entry](https://i.imgur.com/ix7LXB3.png)
 
 Breaking down the 'schedule' entry in the config table into a list of Pendulum datetime objects. We also create a temporary entry at the beginning of the list.
