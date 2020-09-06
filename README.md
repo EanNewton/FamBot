@@ -130,6 +130,7 @@ Administrators can use :x: on a message that has a received a :speech_left: to r
   
 Aliased names for the command are:
 + !q
++ !quote
 
 Optional parameters are:
 + !quote [USER] --- Display a quote that was said by that specific user. Note that this is their actual username (case sensitive) and not their display nickname so as to prevent confusion as users change nicknames often. If you are unsure click on the user in either the right panel users list or on their profile picture next to any message they've sent to see their actual username. This does not include the discriminator, which is a # sign folowed by four numbers.
@@ -141,6 +142,7 @@ Optional parameters are:
   
   Aliased names for the command are:
   + !l
+  + !lore
   
   Optional parameters are:
   + !lore help --- Display a brief explanation of the command usage available to the user.
@@ -151,6 +153,7 @@ Optional parameters are:
 Returns the English Wiktionary entry for a word or phrase. This does not necessarily need to be an English word, it simply needs to have an entry in the https://en.wiktionary.org site.
 
 Aliased names for the command are:
++ !dict
 + !dictionary
 
 Optional parameters are:
@@ -234,6 +237,7 @@ Use !8ball followed by a question to have your fortune read.
 
 Aliased names for the command are:
 + !8
++ !8ball
 + !eight
 + !eightball
 
@@ -270,11 +274,11 @@ Aliased names for the command are:
 **Examples**
 >!wolf Evaluate ∫4x6−2x3+7x−4dx
 ---
-https://i.imgur.com/aDZOwK4.png
+![wolf example 1](https://i.imgur.com/aDZOwK4.png)
 ---
 >!wolf Canada healthcare expenditures
 ---
-https://i.imgur.com/RIgUbvR.png
+![wolf  example 2](https://i.imgur.com/RIgUbvR.png)
 ---
 
 ## !google <a name = "!google"></a>
@@ -287,6 +291,7 @@ Aliased names for the command are:
 
 **Examples**
 > !google Evaluate ∫4x6−2x3+7x−4dx
+---
 `https://google.com/search?q=Evaluate+%E2%88%AB4x6%E2%88%922x3+7x%E2%88%924dx`
 
 ## !gif <a name = "!gif"></a>
