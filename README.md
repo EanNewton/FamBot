@@ -258,3 +258,80 @@ Possible responses are:
 + My sources say no.
 + Outlook not so good.
 + Very doubtful.
+
+## !wolfram <a name = "!8ball"></a>
+Query the Wolfram computational intelligence engine.
+
+Aliased names for the command are:
++ !w
++ !wolf
++ !wolfram
+
+**Examples**
+>!wolf Evaluate ∫4x6−2x3+7x−4dx
+---
+https://i.imgur.com/aDZOwK4.png
+---
+>!wolf Canada healthcare expenditures
+---
+https://i.imgur.com/RIgUbvR.png
+---
+
+## !google <a name = "!google"></a>
+Did someone ask a question that could have been Googled? Send a link to the Google search for a phrase.
+
+Aliased names for the command are:
++ !g
++ !google
++ !lmgtfy
+
+**Examples**
+> !google Evaluate ∫4x6−2x3+7x−4dx
+`https://google.com/search?q=Evaluate+%E2%88%AB4x6%E2%88%922x3+7x%E2%88%924dx`
+
+## !gif <a name = "!gif"></a>
+Display a random gif or add a new one.
+
+Aliased names for the command are:
++ !gif
++ !react
++ !meme
+
+Optional Parameters include:
++ !gif add --- Drag and drop a gif to add it to the possible responses when !gif is used.
++ !gif add nsfw --- Same as `!gif add` but marks it as NSFW.
++ !gif nsfw --- Include gifs marked as NSFW in possible responses.
+
+## !word <a name = "!word"></a>
+Get the Word of the Day from https://wordsmith.org/words/today.html
+
+Aliased names for the command are:
++ !word
++ !wotd
+
+**Examples**
+```
+origami
+PRONUNCIATION:
+(or-i-GAH-mee)
+MEANING:
+noun:
+1. The art of folding paper into various shapes.
+2. An object made by folding paper.
+ETYMOLOGY:
+ From Japanese origami, from ori (fold) + kami (paper). Earliest
+documented use: 1948.
+NOTES:
+Origami is not just folding paper cranes. Aliaksei Zholner has built a
+working V8 engine with just paper and gray matter: video (3 min.). I bow in his general direction. Origami has practical
+applications too. For example, in a folding airbag in a car to a solar-panel
+array on a satellite.
+USAGE:
+“But tasting exposes origami folds of scents and flavors.”
+Andrew Ross; At The Garrison, ‘Thoughtful’ Food You Won’t Soon Forget;
+Portland Press Herald (Maine); Nov 10, 2019.
+“A toothy man in dungarees grinned back at me. Slim sort, with a face
+creased in a thousand places, like an unfolded bit of origami.”
+Dot Gumbi; The Pirates of Maryland Point; 2016.
+See more usage examples of origami in Vocabulary.com’s dictionary.
+```
