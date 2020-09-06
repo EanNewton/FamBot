@@ -29,6 +29,7 @@ Invite the bot to your server: https://discord.com/api/oauth2/authorize?client_i
 
 Or, clone the the project to a local directory and launch it with:
 `pipenv run python3 main.py`
+You will need a bot token from the Discord Developer portal as well as one from Wolfram, placed into ./.env
 
 # List of Commands <a name = "commandlist"></a>
 + [!help](#!help)
