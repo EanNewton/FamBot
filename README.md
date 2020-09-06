@@ -357,8 +357,8 @@ This project is written entirely in Python 3 as a passion project, as well as my
 The core design philosophies for the project are that it should be: easy to use, easy to maintain and modify, and reliable. Python may not always have the comparable speed of C or its compatriots but I'll be damned if it isn't beautiful.
 
 + [Packages](#packages)
-+ [How it Works](#workings)
 + [A Note on Users](#users)
++ [How it Works](#workings)
 
 ## Packages <a name = "packages"></a>
 The backend makes heavy use of SQLite 3 via the SQLAlchemy project to keep with the Reliable philosophy.
@@ -403,7 +403,7 @@ When the bot joins a guild for the first time we want to hit that first design p
 
 There are several events that occur frequently with slight variations, e.g. reading from a file or checking if a user is an administrator. For these common tasks I have created the `tutil.py` file. 
 
-Here we will encounter the call to fetchFile() in tutil.py for the first time of many. This function looks into our ./docs/ directory for given file in a given directory and simply returns it to be used in our banner. Any time the bot will be displaying content to the end users I refer to it as a banner. I implemented it this way as part of the second core philosophy, Easy to Modify, so that these common messages can be changed on the fly without needing to interrupt service to users by stopping and reloading the entire bot to change internal code. 
+Here we will encounter the call to fetchFile() in tutil.py for the first time of many. This function looks into our ./docs/ directory for a given file in a given directory and simply returns it to be used in our banner. Any time the bot will be displaying content to the end users I refer to it as a banner. I implemented it this way as part of the second core philosophy, Easy to Modify, so that these common messages can be changed on the fly without needing to interrupt service to users by stopping and reloading the entire bot to change internal code. 
 
 ```
 @bot.event
@@ -448,10 +448,53 @@ Another lesson that was quickly learned from this was the need to suppress @user
 ```
 def insertQuote(Table, message):
 ...
-text = message.content
-for each in message.mentions:
-	text = text.replace('<@!{}>'.format(each.id), each.name)
-for each in message.role_mentions:
-	text = text.replace('<@&{}>'.format(each.id), each.name)
+	text = message.content
+	for each in message.mentions:
+		text = text.replace('<@!{}>'.format(each.id), each.name)
+	for each in message.role_mentions:
+		text = text.replace('<@&{}>'.format(each.id), each.name)
 ...
+```
+
+### On Error <a name = "errors"></a>
+
+This aspect is handled entirely by Python's built in `import logging` and PyDiscord's `on_error`. It was important while trying to locate the nitpicky problems users were running into.
+
+```
+@bot.event 
+async def on_error(event, *args, **kwargs):
+	with open('./log/err.log', 'a') as f:
+		if event == 'on_message':
+			timestamp = pendulum.now(tz='America/Phoenix').to_datetime_string()
+			print(timestamp)
+			print('[!] Error in: {}; {}'.format(args[0].channel.name, args[0].guild.name))
+			print('[!] Error content: {}'.format(args[0].content))
+			print('[!] Error author: {}'.format(args[0].author))
+			f.write(f'{timestamp}\nUnhandled message:\n{args[0]}\n\n')
+		else:
+			raise
+			
+			
+logger = logging.getLogger('discord')
+logger.setLevel(logging.WARNING)
+handler = logging.FileHandler(filename='./log/discord.log', encoding='utf-8', mode='a')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)	
+```
+
+However, during development simple logging was not enough to fully diagnose most issues. For this I turned to Python's decorator functions and dropped a wrapper into tutil.py. Placing `@debug` above any function definition prints out to the terminal what function is being called and its arguments before actually entering into the function, and what that function is returning before breaking back into its parent. A sort of refined stack trace if you will. This looks like:
+
+```
+def debug(func):
+    """Print the function signature and return value"""
+    @functools.wraps(func)
+    def wrapper_debug(*args, **kwargs):
+        args_repr = [repr(a) for a in args]
+        kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
+        signature = ", ".join(args_repr + kwargs_repr)
+        print(f"Calling {func.__name__}({signature})\n")
+        value = func(*args, **kwargs)
+        print(f"{func.__name__!r} returned {value!r}\n")
+        return value
+    return wrapper_debug
 ```
