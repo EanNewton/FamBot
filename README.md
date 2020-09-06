@@ -7,9 +7,9 @@
 
 <div align="center">
 
-  [![Status](https://img.shields.io/badge/status-active-success.svg)]
-  [![Platform](https://img.shields.io/badge/platform-discord-blue.svg)]
-  [![Platform](https://img.shields.io/badge/language-python-yellow.svg)]
+  ![Status](https://img.shields.io/badge/status-active-success.svg)
+  ![Platform](https://img.shields.io/badge/platform-discord-blue.svg)
+  ![Language](https://img.shields.io/badge/language-python-yellow.svg)
 
 </div>
 
