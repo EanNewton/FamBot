@@ -528,7 +528,7 @@ This message is sent to the guild's system_channel (by default the first text ch
 
 ### On Reactions Added <a name = "reaction"></a>
 
-There are two related instances of when we want the bot to notice a user has added a reaction to a message and take action: to add a new quote, and to remove an existing quote. The Python Discord API provides two similar events for this, on_reaction_add and on_raw_reaction_add, the important difference for us is that the latter allows for users to add messages that were posted at any point in time, even before the bot was added to the server, to the quotes database. This does however mean that we need to fetch the message rather than operating directly with it.
+There are two related instances of when we want the bot to notice a user has added a reaction to a message and take action: to add a new quote, and to remove an existing quote. The Python Discord API provides two similar events for this, on_reaction_add and on_raw_reaction_add. The important difference for us is that the latter allows for users to add messages that were posted at any point in time, even before the bot was added to the server, to the quotes database. This does however mean that we need to fetch the message rather than operating directly with it.
 
 A few additional considerations (that were added after a series of 'interesting' events) are to ensure that the message that is being added was not posted by a bot, that the message is not already in the database, and that the message does not contain any phrases blacklisted by the server (unless the author was themself an administrator). This became the following the code snippet:
 
@@ -863,3 +863,6 @@ The remainder of the function:
 + loops over the list to set the hour and minute of each day with the calls to `schedule[day].at(schedTime[day])`,
 + sets it the correct timezone with `schedule[day].in_tz(dtLocalName)`,
 + and adds a footer message to the banner before returning
+
+### On Logging
+### Project Map
