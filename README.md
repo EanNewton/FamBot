@@ -383,13 +383,14 @@ I feel it is important to remember that software is made to be used. Often there
 
 One of the first things I noticed when having people test out the bot was that they had trouble remembering exactly *what* the commands are, or how to spell them. I have implemented two ways of combating these problems. 
 
-The first and simplest is to alias the commands. For example, if a user wants to get the definition for a word they should be able to enter `!dictionary`, `!dict`, `!definition`, or `!def` with the same end result. 
+The first and simplest is to alias the commands. For example, if a user wants to get the definition for a word they should be able to enter `!dictionary`, `!dict`, `!definition`, or `!def` with the same end result. Python makes this simple with the use of hash tables and is done as:
+`elif args[0] in {'!8ball', '!8', '!eightball', '!eight'}:`
 
 The second part took a little more doing, that is, how to handle what to do when a user forgets how exactly to spell "dictionary". This was a problem I was seeing frequently (but not only) from users whose first language wasn't my own, and whose language's spelling conventions didn't mesh with the often times odd rules of English. Those users would be trying something like `!dikt`, `!deph`, or `!dektionary`. The solution was to implement a basic form of auto-correct, like you might find on your phone. The actual code for this is located in the ./speller/ directory and is a stripped down and modified version of Filip Sondej's project [autocorrect](https://github.com/fsondej/autocorrect). Filip's code is a work of art and I encourage you to peruse it. It works by making clever use of Python's concept of arrays, iterables, permutations, and generators, alongside regular expressions. It takes textual input, splits it into individual words, generates many variations of those words with array slices, and then compares them to a custom built dictionary of word frequency pairs to find the most likely candidate for what the word should be before then reforming and returning the corrected text.
 
 ## How it Works <a name = "workings"></a>
 
-The general top-level work flow of the bot is very straight forward. It first loads its API tokens for Discord and Wolfram from the local .env file, creates generic connections to the local SQLite database, sets up a local .log file to keep track of any errors, and then connects to the Discord interface.
+The general top-level work flow of the bot is very straight forward. It first loads its API tokens for Discord and Wolfram from the local .env file, creates generic connections to the local SQLite database, sets up a local log file to keep track of any errors, and then connects to Discord's servers.
 
 It then watches for a handful of events: 
 + [being invited to a new guild](#join)
@@ -498,3 +499,5 @@ def debug(func):
         return value
     return wrapper_debug
 ```
+
+### On Message <a name = "messages"></a>
