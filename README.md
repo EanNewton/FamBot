@@ -394,7 +394,7 @@ Native imports are:
 
 I feel it is important to remember that software is made to be used. Often there is a disconnect between what the developer sees when they make it and what the users see when they actually use it. As makers it is our duty to bridge that gap the best we can.
 
-One of the first things I noticed when having people test out the bot was that they had trouble remembering exactly *what* the commands are, or how to spell them. I have implemented two ways of combating these problems. 
+One of the first things I noticed when having people test out the bot was that they had trouble remembering exactly *what* the commands are, or how to spell them. In addition to the usual help commands I have implemented two ways of combating these problems. 
 
 The first and simplest is to alias the commands. For example, if a user wants to get the definition for a word they should be able to enter `!dictionary`, `!dict`, `!definition`, or `!def` with the same end result. Python makes this simple with the use of hash tables and is done as:
 `elif args[0] in {'!8ball', '!8', '!eightball', '!eight'}:`
@@ -405,7 +405,7 @@ Another notable place that Ease of Use manifested itself is in allowing server a
 
 When sending the config file to the user we first query the database to see whether or not a config entry already exists. If it does not we create one with default values and try again. Once we are sure a config exists we get the values in a JSON format, use a Python dict (named jsonFormatter here) to replace text into a user friendly form, append a brief explanation of the entries from ./docs/help/config.txt and send it out. This whole process is located in tutil.py and looks like:
 
-```
+```python
 jsonFormatter = [[
 		['0=', 'Monday = '],
 		['1=', 'Tuesday = '],
@@ -469,7 +469,7 @@ def config_create(guild):
 
 When retrieving the config from the user we simply reverse the process. We first split off the appended help text, load the remaining JSON into a dict, swap the text back into a database friendly format, and connect it to the appropiate table entry.
 
-```
+```python
 def config_load(guild):
 	with open('{}/docs/config/{}.json'.format(DEFAULT_DIR, guild), 'r') as f:
 		dict_ = json.loads(f.read().split('```', maxsplit=1)[0])
@@ -511,14 +511,14 @@ There are several events that occur frequently with slight variations, e.g. read
 
 Here we will encounter the call to fetchFile() in tutil.py for the first time of many. This function looks into our ./docs/ directory for a given file in a given directory and simply returns it to be used in our banner. Any time the bot will be displaying content to the end users I refer to it as a banner. I implemented it this way as part of the second core philosophy, Easy to Modify, so that these common messages can be changed on the fly without needing to interrupt service to users by stopping and reloading the entire bot to change internal code. 
 
-```
+```python
 @bot.event
 async def on_guild_join(guild):
 	banner = 'Hello {}! \n{}'.format(guild.owner.mention, fetchFile('help', 'welcome'))
 	await guild.system_channel.send(banner, file=discord.File('./docs/header.png'))
 ```
 --->
-```
+```python
 def fetchFile(directory, filename):
 	with open('{}/docs/{}/{}.txt'.format(DEFAULT_DIR, directory, filename), 'r') as f:
 		return f.read()
@@ -532,7 +532,7 @@ There are two related instances of when we want the bot to notice a user has add
 
 A few additional considerations (that were added after a series of 'interesting' events) are to ensure that the message that is being added was not posted by a bot, that the message is not already in the database, and that the message does not contain any phrases blacklisted by the server (unless the author was themself an administrator). This became the following the code snippet:
 
-```
+```python
 @bot.event
 async def on_raw_reaction_add(payload): 
 	channel = bot.get_channel(payload.channel_id)
@@ -551,7 +551,7 @@ async def on_raw_reaction_add(payload):
 
 Another lesson that was quickly learned from this was the need to suppress @user and @role mentions, but to do so without stripping the context of the original message. This is done via a standard string match and replace operation before sending it off to the database. From tquote.py:
 
-```
+```python
 def insertQuote(Table, message):
 ...
 	text = message.content
@@ -566,7 +566,7 @@ def insertQuote(Table, message):
 
 This aspect is handled entirely by Python's built in `import logging` and PyDiscord's `on_error`. It was important while trying to locate the nitpicky problems users were running into.
 
-```
+```python
 @bot.event 
 async def on_error(event, *args, **kwargs):
 	with open('./log/err.log', 'a') as f:
@@ -590,7 +590,7 @@ logger.addHandler(handler)
 
 However, during development simple logging was not enough to fully diagnose most issues. For this I turned to Python's decorator functions and dropped a wrapper into tutil.py. Placing `@debug` above any function definition prints out to the terminal what function is being called and its arguments before actually entering into the function, and what that function is returning before breaking back into its parent. A sort of refined stack trace if you will. This looks like:
 
-```
+```python
 def debug(func):
     """Print the function signature and return value"""
     @functools.wraps(func)
@@ -606,3 +606,258 @@ def debug(func):
 ```
 
 ### On Message <a name = "messages"></a>
+
+Whenever a message is posted in a server it triggers the on_message(message) event in main.py. This first checks the author was not a bot, then logs the message in the database, checks if the message was a config file for the server and if so updates as needed, if it looks to be a command it will attempt any needed auto-corrections, do the appropiate operations for a valid command entry, and finally return any needed output.
+
+Upon recognizing a command it forwards the message to a helper function within the related module. The helper function parses any optional parameters and sends them to dict whose keys are the operator and values are lambda designations to functions. This works like a switch in other languages. 
+
+#### tsched.py
+
+When the bot is first initialized from the command line with `pipenv run python3 main.py` it imports all the local modules, and those that need to access the database call their setup() functions at this point. They all look more or less the same, setting up any default values, as well as creating an engine and MetaData objects for SQLAlchemy linked to appropiate tables. As an example the one for tsched.py is:
+
+```python
+def setup():
+	global engine, meta, Users, Config
+	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
+	meta = MetaData()
+	Users = Table(
+		'schedule', meta,
+		Column('id', Integer, primary_key = True),
+		Column('name', String),
+		Column('locale', String),
+		Column('guild', String),
+		Column('guild_name', String),
+		)
+	Config = Table(
+		'config', meta,
+		Column('id', Integer, primary_key = True),
+		Column('guild_name', String),
+		Column('locale', String),
+		Column('schedule', String),
+		Column('quote_format', String),
+		Column('lore_format', String),
+		Column('url', String),
+		Column('qAdd_format', String),
+		)
+	meta.create_all(engine)
+	with open('./docs/locales/abbr.txt', 'r') as f:
+		for line in f:
+			(key, val) = line.split(',')
+			val = val.strip('\n')
+			tzAbbrs[key] = val
+	print('[+] End Schedule Setup')
+```
+
+Interfacing with the module is done through the previously mentioned helper function. The one located in tsched.py is simple and makes for a good example of how these work in all the other modules. 
+
+```python
+def helper(message):
+	args = message.content.split()
+	ops = {'get', 'set', 'help', 'override', 'config'}
+	operator = 'get' #Set a default operator
+	if len(args) > 1 and args[1] in ops:
+		operator = args[1]
+	return {
+		'get': lambda: getSchedule(message),
+		'set': lambda: setSchedule(message),
+		'help': lambda: getHelp(args, message.author),
+		'override': lambda: override(message),
+	}.get(operator, lambda: None)()	
+```
+
+Such that calls to modules from main.py are a sort of OOP / Functional hybrid and as Easy to Use as:
+
+```python
+...			
+elif args[0] in {'!schedule', '!sched', '!s'}:
+	banner = tsched.helper(message)
+...
+```
+
+Most modules also include a standard getHelp(args, author) that checks the context of what kind of help the user is requesting and if the response should include administrative commands or not, and loads them from the relevant ./docs/help file. For Ease of Maintenance and Modifying the full help message is located in a single file and split at the appropiate location within the file, instead of accessing and combining multiple txt files.
+
+```python
+def getHelp(args, author):
+	if len(args) < 3: #Get general help
+		banner = fetchFile('help', 'schedule')
+		if not is_admin(author):
+			banner = banner.split('For Admins:')[0]
+	else: #Get list of cities or continents
+		banner = fetchFile('locales', args[2].lower())
+	return banner
+```
+
+Let's dive into the heart of the schedule code. This is possibly the ugliest section of code in the entire project so please bear with me. The entire function is:
+
+```python
+def getSchedule(message):
+	config = load_config(message.guild.id)
+	if config:
+		server_locale = config[2]
+		locale = server_locale
+		schedRawStr = config[3]
+		url = config[6]
+			
+		args = message.content.split()
+		if len(args) > 1: #User requested specific location
+			locale = tzAbbrs.get(args[1].lower(), args[1])
+		else: #Checking for saved locale in DB
+			user = getUser(message.guild.id, message.author.id)
+			if user:
+				locale = user[2]	
+
+		dt = pendulum.now(tz=locale)
+		dtLocalName = dt.timezone.name
+		now_in_server = pendulum.now(tz=server_locale)
+
+		#Convert our raw config string from db into a workable array
+		days = schedRawStr.split(';')
+		dict_ = {}
+		schedTime = []
+		schedule = []
+		hours = [day.split('=') for day in days]
+		
+		schedule.append(pendulum.now(tz=server_locale))
+		
+		for each in hours:
+			if each[0] != '' and each[1] != '':
+				if each[0] != ' ' and each[1] != ' ':
+					dict_[int(each[0])] = each[1].split(',')
+		for each in dict_.items():
+			for hour in each[1]:
+				if ':' in hour:
+					hour = hour.split(':')
+				if hour != '' and hour != ' ':
+					schedTime.append(hour)
+			schedule.append(pendulum.now(tz=server_locale).add(days=each[0]))
+
+		#Needed for handling partial weeks, ie so we don't post a message with only 1 or 2 days
+		scheduleDup = schedule.copy()
+		#Show current server time vs current user time
+		banner = '{} in {}\n'.format(dt.to_day_datetime_string(), dt.timezone_name)
+		banner += '{} in {}\n'.format(now_in_server.to_day_datetime_string(), server_locale)
+		banner += divider
+
+		while(schedule[0].day_of_week != pendulum.MONDAY):
+			for day in range(len(schedule)):
+				schedule[day] = schedule[day].add(days=1)
+		
+		schedule.pop(0)
+				
+		#Previous / Current Week
+		if now_in_server.day_of_week != pendulum.MONDAY:	
+			#Get us to Monday
+			while(scheduleDup[0].day_of_week != pendulum.MONDAY):
+				for day in range(len(scheduleDup)):
+					scheduleDup[day] = scheduleDup[day].add(days=-1)
+			
+			scheduleDup.pop(0)
+			for day in range(len(scheduleDup)):
+				if isinstance(schedTime[day], list):
+					#Contains minutes
+					scheduleDup[day] = scheduleDup[day].at(
+						int(schedTime[day][0]), int(schedTime[day][1]))
+				else:
+					scheduleDup[day] = scheduleDup[day].at(int(schedTime[day]))
+				
+				#Convert timezone and add to message
+				scheduleDup[day] = scheduleDup[day].in_tz(dtLocalName)
+				if scheduleDup[day].format('DDDD') >= dt.format('DDDD'):
+					if scheduleDup[day].format('DDDD') == dt.format('DDDD'):
+						banner += '**{}**\n'.format(scheduleDup[day].to_day_datetime_string())
+					else:
+						banner += '{}\n'.format(scheduleDup[day].to_day_datetime_string())
+		
+		#Next Week	
+		for day in range(len(schedule)):
+			if isinstance(schedTime[day], list):
+				#Contains minutes
+				schedule[day] = schedule[day].at(
+					int(schedTime[day][0]), int(schedTime[day][1]))
+			else:
+				schedule[day] = schedule[day].at(int(schedTime[day]))
+			#Convert timezone and add to message
+			schedule[day] = schedule[day].in_tz(dtLocalName)
+			if schedule[day].format('DDDD') == dt.format('DDDD'):
+				banner += '**{}**\n'.format(schedule[day].to_day_datetime_string())
+			else:
+				banner += '{}\n'.format(schedule[day].to_day_datetime_string())
+				
+		banner += '{}{}\n{}'.format(divider, url, divider)
+		banner += 'Help pay for server costs: <{}>\n'.format('https://www.patreon.com/tangerinebot')
+		banner += 'Invite the bot to your server: <{}>\n'.format('https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot')
+		banner += 'Use `!schedule help` for more information.'
+
+	else:
+		banner = 'A schedule has not been setup for this server yet.\n'
+		banner += 'An admin may create one with `!config`.' 
+	return banner
+```
+
+The function starts by grabbing the server's entry in the config table along with the user's entry in the schedule table (if they exist) with:
+
+```python
+def load_config(guild):
+	with engine.connect() as conn:
+		select_st = select([Config]).where(Config.c.id == guild)
+		res = conn.execute(select_st)
+		result = res.fetchone()
+	if result:
+		return result
+	return None
+	
+
+def getUser(guild_, id_):
+	with engine.connect() as conn:
+	#We do not filter by guild here so that the user's location
+	#is preserved across any other servers using the bot
+		select_st = select([Users]).where(
+			Users.c.id == id_,)
+		res = conn.execute(select_st)
+		result = res.fetchone()
+		if result:
+			return result
+```
+
+Which will look something like:
+
+![config entry](https://i.imgur.com/YVm2fIf.png)
+![user entry](https://i.imgur.com/ix7LXB3.png)
+
+Breaking down the 'schedule' entry in the config table into a list of Pendulum datetime objects. We also create a temporary entry at the beginning of the list.
+```python
+	days = schedRawStr.split(';')
+	dict_ = {}
+	schedTime = []
+	schedule = []
+	hours = [day.split('=') for day in days]
+	#Temporary entry
+	schedule.append(pendulum.now(tz=server_locale))
+	
+	for each in hours:
+		if each[0] != '' and each[1] != '':
+			if each[0] != ' ' and each[1] != ' ':
+				dict_[int(each[0])] = each[1].split(',')
+	for each in dict_.items():
+		for hour in each[1]:
+			if ':' in hour:
+				hour = hour.split(':')
+			if hour != '' and hour != ' ':
+				schedTime.append(hour)
+		schedule.append(pendulum.now(tz=server_locale).add(days=each[0]))
+```
+
+This temporary entry at the 0th index of the list is used because what we are actually doing is creating entries spaced n-days away from today, as supplied by the "0=", "1=", etc portion of the raw schedule string (e.g. 0=10,17:15;1=10,12;2=16,10:15;3=2:44;4=10;5=16:30;). But we want "0=" to actually always be Monday, i.e. "2=" should be spaced 2 days away from Monday aka Wednesday, so we then shift each entry back one day until that temporary entry is Monday. We can then pop the temporary entry from the list.
+
+```python
+	while(schedule[0].day_of_week != pendulum.MONDAY):
+		for day in range(len(schedule)):
+			schedule[day] = schedule[day].add(days=1)
+		
+	schedule.pop(0)
+```
+
+The remainder of the function:
++ loops over the list to set the hour and minute of each day with the calls to `schedule[day].at(schedTime[day])`,
++ sets it the correct timezone with `schedule[day].in_tz(dtLocalName)`,
++ and adds a footer message to the banner before returning
