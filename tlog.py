@@ -7,17 +7,16 @@ import aiofiles
 from pathlib import Path
 
 import sqlalchemy
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String 
+from sqlalchemy import MetaData, Table, Column, Integer, String 
 
 from tutil import debug, fetchFile
+from constants import DEFAULT_DIR, ENGINE
 
-DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
 extSet = {}
 
 
 def setup():
-	global engine, meta, Corpus
-	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
+	global meta, Corpus
 	meta = MetaData()
 	Corpus = Table(
 		'corpus', meta,
@@ -37,7 +36,7 @@ def setup():
 		Column('guild', String),
 		Column('guild_name', String),
 		)
-	meta.create_all(engine)
+	meta.create_all(ENGINE)
 	for file_ in {'audio', 'docs', 'images', 'video'}:
 		f = fetchFile('ext', file_).strip('\n')
 		extSet[file_] = f.split()
@@ -51,7 +50,7 @@ def corpusInsert(message, timeStamp):
 	mChanMentions = [''.join(str(each)) for each in message.channel_mentions]
 	mRoleMentions = [''.join(str(each)) for each in message.role_mentions]
 
-	with engine.connect() as conn:
+	with ENGINE.connect() as conn:
 		ins = Corpus.insert().values(
 			content = str(message.content),
 			user_name = str(message.author),

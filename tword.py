@@ -1,87 +1,195 @@
 #!/usr/bin/python3
 #TODO Add time check to prevent web scraping if < 24 hours
 
-import os
-import time
 import asyncio
 import aiohttp
 import aiofiles
+from urllib.parse import quote_plus
 
 from bs4 import BeautifulSoup
 from wiktionaryparser import WiktionaryParser
+from googletrans import Translator, constants
 
-from tutil import fetchFile, debug
+from tutil import fetchFile, debug, incrementUsage, wrap
+from constants import DEFAULT_DIR, PATH_WOTD, URL_WOTD, WOLFRAM, URL_WOLF_IMG, URL_WOLF_TXT, URL_KEYWORDS
 
-DEFAULT_PATH = os.path.join(os.path.dirname(__file__), './docs/wordoftheday.txt')
-url = 'https://www.wordsmith.org/words/today.html'
-keywords = {'USAGE:\n', 'MEANING:\n', 'PRONUNCIATION:\n', 'ETYMOLOGY:\n', 'NOTES:\n'}
 parser = WiktionaryParser()
+translator = Translator()
 
 
-def wiki(word):
-	banner = str()
+def translate(message):
+	"""Query Google Translate for a string, optionally including a target and source language"""
+	incrementUsage(message.guild, 'trans')
+	args = message.content.split()
+
+	if args[1].lower() == 'help':
+		return fetchFile('help', 'translate')
+
+	elif args[1].lower() in {'lang', 'langs', 'languages', 'langcodes'}:
+		return fetchFile('help', 'langcodes')
+
+	else:
+		text = ' '.join(args[1:])
+		target = args[1][1:] if len(args) > 2 and args[1][0] == '-' else None
+		source = args[2][1:] if len(args) > 3 and args[2][0] == '-' else None
+
+		if target:
+			if target not in constants.LANGUAGES:
+				return 'Unknown target language `{}`. See `!tr langs` for full list.'.format(target)
+			
+			if source:
+				if source not in constants.LANGUAGES:
+					return 'Unknown source language `{}`. See `!tr langs` for full list.'.format(source)
+				text = text.split(source, maxsplit=1)[1]
+				result = translator.translate(text, src=source, dest=target)
+			else:
+				text = text.split(target, maxsplit=1)[1]
+				result = translator.translate(text, dest=target)
+		else:
+			#Attempt to auto-detect source language and translate to English
+			result = translator.translate(text)
+
+		return '{}\nPronunciation: {}\nSource: {}\nTarget: {}'.format(
+			result.text, 
+			result.pronunciation, 
+			constants.LANGUAGES[result.src], 
+			constants.LANGUAGES[result.dest]
+			)	
+
+
+def wiki(message):
+	"""Get the www.wiktionary.org entry for a word or phrase"""
+	incrementUsage(message.guild, 'dict')
+
+	word = message.content.split(' ', maxsplit=1)[1]
 	res = parser.fetch(word.strip())[0]
+
 	etymology = res['etymology']
 	definitions = res['definitions'][0]
 	pronunciations = res['pronunciations']
+
+	banner = '**{}**\n'.format(word)
 	
-	banner += '**{}** \n'.format(definitions['partOfSpeech'])
-	banner += '*Etymology*\n{}\n'.format(etymology)
-	banner += '*Definitions*\n'
-	for each in definitions['text']:
-		banner += '{} \n'.format(each)
-	banner += '*Related Words*\n'
-	for each in definitions['relatedWords']:
-		for sub in each['words']:
-			banner += '{}, '.format(sub)
-		banner += '\n'
-	banner += '*Examples*\n'
-	for each in definitions['examples']:
-		banner += '{} \n'.format(each)
-	banner += '*Pronunciation*\n'
-	for each in pronunciations['text']:
-		banner += '{} \n'.format(each)
-	for each in pronunciations['audio']:
-		banner += 'https:{} \n'.format(each)
-		
+	if definitions['partOfSpeech']:
+		banner += '*Parts of Speech*\n{}\n'.format(definitions['partOfSpeech'])
+	
+	if etymology:
+		banner += '*Etymology*\n{}\n'.format(etymology)
+	
+	if definitions['text']:
+		banner += '*Definitions*\n'
+		for each in definitions['text']:
+			banner += '{} \n'.format(each)
+
+	if definitions['relatedWords']:
+		banner += '*Related Words*\n'
+		for each in definitions['relatedWords']:
+			for sub in each['words']:
+				banner += '{}, '.format(sub)
+			banner += '\n'
+
+	if definitions['examples']:
+		banner += '*Examples*\n'
+		for each in definitions['examples']:
+			banner += '{} \n'.format(each)
+
+	if pronunciations['text'] or pronunciations['audio']:
+		banner += '*Pronunciation*\n'
+		for each in pronunciations['text']:
+			banner += '{} \n'.format(each)
+
+		for each in pronunciations['audio']:
+			banner += 'https:{} \n'.format(each)
+
+	#Discord has a character limit of 2000 per message
+	#Wiktionary entries often exceed this limit
+	#So we break it into a list and send each individually if it exceeds that limit
 	return wrap(banner, 1990)
 
-def wrap(s, w):
-    return [s[i:i + w] for i in range(0, len(s), w)]
 
-		
-async def getTodaysWord():
-	lastMod = os.path.getmtime('./docs/output.txt')
-	if time.strftime('%b %d', time.localtime(lastMod)) != time.strftime('%b %d'):
-		print('[+] Updating word of the day')
+async def wolfram(message):
+	"""Return an image based response from the Wolfram Alpha API"""
+	incrementUsage(message.guild, 'wolf')
+
+	args = message.content.split()
+	if args[1].lower() in {'simple', 'txt', 'text', 'textual'}:
+		query_st = quote_plus(' '.join(args[2:]))
+		query = URL_WOLF_TXT.format(WOLFRAM, query_st)
+
 		async with aiohttp.ClientSession() as session:
-			async with session.get(url) as resp:
+			async with session.get(query) as resp:
 				if resp.status == 200:
 					text = await resp.read()
+				elif resp.status == 501:
+					return 'Wolfram cannot interpret your request.'
 				else:
-					print("[!] Status {}".format(resp.status))
+					return ['[!] Wolfram Server Status {}'.format(resp.status), None]
+
+		text = text.decode('UTF-8')
+		if len(text) > 1990:
+			text = wrap(text, 1990)
+		return [text, None]
+
+	elif args[1].lower() in {'complex', 'graphic', 'graphical', 'image', 'img' 'gif'}:
+		query_st = quote_plus(' '.join(args[2:]))
+		query = URL_WOLF_IMG.format(WOLFRAM, query_st)
+		filePath = '{}/log/wolf/{}.gif'.format(DEFAULT_DIR, message.id)
 		
-		soup = BeautifulSoup(text, "html.parser")
-		text = soup.get_text()
-		text = text.split('with Anu Garg')
-		text = text[1].split('A THOUGHT FOR TODAY')
-		text = text[0].strip()
-		
-		with open(DEFAULT_PATH, 'w') as f:
-			f.write(text)
-		stripBlank()
-	return fetchFile('.', 'output')
+		async with aiohttp.ClientSession() as session:
+			async with session.get(query) as resp:
+				if resp.status == 200:
+					f = await aiofiles.open(filePath, mode='wb')
+					await f.write(await resp.read())
+					await f.close()
+					return [None, filePath]
+				elif resp.status == 501:
+					return ['Wolfram cannot interpret your request.', None]
+				else:
+					return ['[!] Wolfram Server Status {}'.format(resp.status), None]
+
+	else:
+		return [fetchFile('help', 'wolfram'), None]
 
 
-def stripBlank():
-	with open(DEFAULT_PATH) as f, open('./docs/output.txt', 'w') as outfile:
-		for line in f:
-			if line in keywords:
-				line = '**{}**'.format(line)
-			if not line.strip(): continue
-			outfile.write(line)
+async def getTodaysWord(message):
+	"""Pull the word of the day from www.wordsmith.org"""
+	incrementUsage(message.guild, 'wotd')
+
+	async with aiohttp.ClientSession() as session:
+		async with session.get(URL_WOTD) as resp:
+			if resp.status == 200:
+				text = await resp.read()
+			else:
+				print("[!] Status {}".format(resp.status))
 	
+	soup = BeautifulSoup(text, "html.parser")
+	text = soup.get_text()
+	text = text.split('with Anu Garg')
+	text = text[1].split('A THOUGHT FOR TODAY')
+	text = text[0].strip()
+	text = text.split('\n')
 	
-	
-def getHelp():
+	banner = []
+	for line in text:
+		if line in URL_KEYWORDS.keys():
+			banner.append(URL_KEYWORDS[line])
+		else:
+			banner.append(line)
+
+	return '\n'.join([str(line) for line in banner if line])
+
+
+def google(message, iie=False):
+	"""Return a link to a google search"""
+	incrementUsage(message.guild, 'google')
+	query_st = quote_plus(message.content.split(' ', maxsplit=1)[1])
+	if iie:
+		banner = '<https://lmgtfy.com/?q={}&iie=1>'.format(query_st)
+	else:
+		banner = '<https://google.com/search?q={}>'.format(query_st)
+	return banner
+
+
+def getHelp(message):
+	incrementUsage(message.guild, 'help')
 	return fetchFile('help', 'dict')

@@ -1,50 +1,19 @@
 #!/usr/bin/python3
-#TODO Set config file {} to order independent 
 
-import os
 import json
 import functools
 import asyncio
 import aiohttp
 import aiofiles
 
-from sqlalchemy import delete, create_engine, select, MetaData, Table, Column, Integer, String
+from sqlalchemy import delete, select, MetaData, Table, Column, Integer, String
 
+from constants import DEFAULT_DIR, jsonFormatter, ENGINE
 
-DEFAULT_DIR = os.path.dirname(os.path.abspath(__file__))
-adminRoles = [
-	'admin', 
-	'mod', 
-	'discord mod'
-	]
 modRoles = dict()
-jsonFormatter = [[
-		['0=', 'Monday = '],
-		['1=', 'Tuesday = '],
-		['2=', 'Wednesday = '],
-		['3=', 'Thursday = '],
-		['4=', 'Friday = '],
-		['5=', 'Saturday = '],
-		['6=', 'Sunday = '],
-		[',', ', '],
-		[';', '; '],
-	],[
-		['id', 'Server ID'],
-		['guild_name', 'Server Name'],
-		['locale', 'Server Locale'],
-		['schedule', 'Schedule'],
-		['url', 'URL Footer'],
-		['quote_format', 'Quote Format'],
-		['qAdd_format', 'Quote Added Format'],
-		['lore_format', 'Lore Format'],
-		['filtered', 'Blacklisted Words'],
-		['mod_roles', 'Moderator Roles'],
-	]]
-
 
 def setup():
-	global engine, meta, Config
-	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
+	global meta, Config, Stats
 	meta = MetaData()
 	Config = Table(
 		'config', meta,
@@ -59,14 +28,35 @@ def setup():
 		Column('filtered', String),
 		Column('mod_roles', String),
 		)
-	meta.create_all(engine)
+	Stats = Table(
+		'usageCounts', meta,
+		Column('id', Integer, primary_key=True),
+		Column('guild_name', String),
+		Column('raw_messages', Integer),
+		Column('quote', Integer),
+		Column('lore', Integer),
+		Column('wolf', Integer),
+		Column('wotd', Integer),
+		Column('dict', Integer),
+		Column('trans', Integer),
+		Column('google', Integer),
+		Column('config', Integer),
+		Column('sched', Integer),
+		Column('filter', Integer),
+		Column('doip', Integer),
+		Column('gif', Integer),
+		Column('stats', Integer),
+		Column('eight', Integer),
+		Column('help', Integer),
+	)
+	meta.create_all(ENGINE)
 	
-	for guild in guildList():
-		modRoles[guild] = fetch_value(guild, 9, ';')		
-	
+	updateModRoles()
 	print('[+] End Util Setup')
 
-
+#############################
+# General Utility Functions #
+#############################
 def debug(func):
     """Print the function signature and return value"""
     @functools.wraps(func)
@@ -74,39 +64,125 @@ def debug(func):
         args_repr = [repr(a) for a in args]
         kwargs_repr = [f"{k}={v!r}" for k, v in kwargs.items()]
         signature = ", ".join(args_repr + kwargs_repr)
+
         print(f"Calling {func.__name__}({signature})\n")
         value = func(*args, **kwargs)
         print(f"{func.__name__!r} returned {value!r}\n")
+
         return value
     return wrapper_debug
 
 
 def fetchFile(directory, filename):
+	"""Safely read in a dynamically designated local file"""
 	with open('{}/docs/{}/{}.txt'.format(DEFAULT_DIR, directory, filename), 'r') as f:
 		return f.read()
 
-@debug
+
 def is_admin(author):
-	print(modRoles[author.guild.id])
+	"""Check if a discord user has been given bot admin permissions"""
 	if author.guild.owner.id == author.id:
 		return True
+
 	for role in author.roles:
 		if str(role).lower() in modRoles[author.guild.id]:
 			return True
 	return False
 
-@debug
-def is_bot(author):
-	if author.bot:
-		return True
-	return False
 
-@debug
+def wrap(s, w):
+	"""Break a long string s into a list of strings of length w"""
+	return [s[i:i + w] for i in range(0, len(s), w)]
+
+
+def incrementUsage(guild, command):
+	"""Keeps track of how many times various commands have been used"""
+	with ENGINE.connect() as conn:
+		select_st = select([Stats]).where(Stats.c.id == guild.id)
+		result = conn.execute(select_st).fetchone()
+		
+		if result:
+			columns = []
+			for each in Stats.c:
+				columns.append(each.name)
+			dict_ = dict(zip(columns, result))
+			dict_[command] = int(dict_[command]) + 1
+
+			ins = Stats.update().where(Stats.c.id == guild.id).values(
+				raw_messages = dict_['raw_messages'],
+				quote = dict_['quote'],
+				lore = dict_['lore'],
+				wolf = dict_['wolf'],
+				wotd = dict_['wotd'],
+				dict = dict_['dict'],
+				trans = dict_['trans'],
+				google = dict_['google'],
+				config = dict_['config'],
+				sched = dict_['sched'],
+				filter = dict_['filter'],
+				doip = dict_['doip'],
+				gif = dict_['gif'],
+				stats = dict_['stats'],
+				eight = dict_['eight'],
+				help = dict_['help'],
+			)
+			conn.execute(ins)
+
+		else:
+			print('[+] Creating usage counter for {}'.format(guild.name))
+			ins = Stats.insert().values(
+				id = guild.id,
+				guild_name = guild.name,
+				raw_messages = 0,
+				quote = 0,
+				lore = 0,
+				wolf = 0,
+				wotd = 0,
+				dict = 0,
+				trans = 0,
+				google = 0,
+				config = 0,
+				sched = 0,
+				filter = 0,
+				doip = 0,
+				gif = 0,
+				stats = 0,
+				eight = 0,
+				help = 0,
+			)
+			conn.execute(ins)
+			return incrementUsage(guild, command)
+
+############################
+# Config Utility Functions #
+############################
+def config_helper(message):
+	incrementUsage(message.guild, 'config')
+	if is_admin(message.author):	
+		args = message.content.split()
+		if len(args) > 1 and args[1] == 'reset':
+			return config_reset(message.guild)
+		else:
+			return config_create(message.guild)
+
+
+def updateModRoles():
+	"""Sync in-memory mod roles with database values for all guilds"""
+	for guild in guildList():
+		roles = fetch_value(guild, 9, ';')
+		if roles:
+			modRoles[guild] = [str(role).lower() for role in roles]
+
+
 def config_create(guild):
-	with engine.connect() as conn:
+	"""Get the config file for the server and give to the user"""
+	with ENGINE.connect() as conn:
 		select_st = select([Config]).where(Config.c.id == guild.id)
 		result = conn.execute(select_st).fetchone()
+		
 		if result:
+			print('[+] Found guild config for {}'.format(guild.name))
+			#Create an in-memory version of the config
 			columns = []
 			for each in Config.c:
 				columns.append(each.name)
@@ -118,29 +194,40 @@ def config_create(guild):
 			for each in jsonFormatter[1]:
 				dict_[each[1]] = dict_.pop(each[0])
 				
-				
 			with open('{}/docs/config/{}.json'.format(DEFAULT_DIR, guild.id), 'w') as f:
 				json.dump(dict_, f, indent=4)
 				f.write('\n\n{}'.format(fetchFile('help', 'config')))	
 			return '{}/docs/config/{}.json'.format(DEFAULT_DIR, guild.id)		
+		
 		else:
-			ins = Config.insert().values(
-				id = guild.id,
-				guild_name = guild.name,
-				locale = 'Asia/Tokyo',
-				schedule = '0=10,17:15;1=10,12;2=16,10:15;3=2:44;4=10;5=16:30;',
-				quote_format = '{0}\n ---{1} on {2}',
-				lore_format = '{0}\n ---Scribed by the Lore Master {1}, on the blessed day of {2}',
-				url = 'Come hang with us at: <https://www.twitch.tv/>',
-				qAdd_format = 'Added:\n "{0}"\n by {1} on {2}',
-				filtered = 'none',
-				mod_roles = 'mod;admin;discord mod;',
-			)		
-			conn.execute(ins)
+			#Guild has no config entry, create one and try again
+			config_createDefault(guild)
 			return config_create(guild)
 
-@debug
+
+def config_createDefault(guild):
+	"""Create a new default entry for the given guild"""
+	print('[+] Creating new guild config for {}'.format(guild.name))
+	with ENGINE.connect() as conn:
+		ins = Config.insert().values(
+			id = guild.id,
+			guild_name = guild.name,
+			locale = 'Asia/Tokyo',
+			schedule = '0=10,17:15;1=10,12;2=16,10:15;3=2:44;4=10;5=16:30;',
+			quote_format = '{0}\n ---{1} on {2}',
+			lore_format = '{0}\n ---Scribed by the Lore Master {1}, on the blessed day of {2}',
+			url = 'Come hang with us at: <https://www.twitch.tv/>',
+			qAdd_format = 'Added:\n "{0}"\n by {1} on {2}',
+			filtered = 'none',
+			mod_roles = 'mod;admin;discord mod;',
+			)		
+		conn.execute(ins)
+
+
+
 def config_load(guild):
+	"""Load the JSON file into the database"""
+	#Undo the pretty printing
 	with open('{}/docs/config/{}.json'.format(DEFAULT_DIR, guild), 'r') as f:
 		dict_ = json.loads(f.read().split('```', maxsplit=1)[0])
 	for each in jsonFormatter[1]:		
@@ -148,7 +235,7 @@ def config_load(guild):
 	for each in jsonFormatter[0]:
 		dict_['schedule'] = dict_['schedule'].replace(each[1], each[0])
 	
-	with engine.connect() as conn:
+	with ENGINE.connect() as conn:
 		ins = Config.update().where(Config.c.id == guild).values(
 					locale = dict_['locale'],
 					schedule = dict_['schedule'],
@@ -162,11 +249,12 @@ def config_load(guild):
 		conn.execute(ins)
 	#TODO ensure to lower
 	modRoles[guild] = fetch_value(guild, 9, ';')
-	print(modRoles)
+	print('[+] Loaded new config for {}'.format(guild.name))
 		
 
 def config_reset(guild):
-	with engine.connect() as conn:
+	"""Return the config to default values"""
+	with ENGINE.connect() as conn:
 		ins = Config.delete().where(Config.c.id == guild.id)
 		conn.execute(ins)
 	print('[+] Reset config for: {}'.format(guild.name))
@@ -174,7 +262,9 @@ def config_reset(guild):
 
 
 async def config_fetchEmbed(message):
+	"""User has uploaded a new config file, grab it from the Discord servers"""
 	filePath = '{}/docs/config/{}.json'.format(DEFAULT_DIR, message.guild.id)
+
 	async with aiohttp.ClientSession() as session:
 		async with session.get(str(message.attachments[0].url)) as resp:
 			if resp.status == 200:
@@ -182,28 +272,30 @@ async def config_fetchEmbed(message):
 				await f.write(await resp.read())
 				await f.close()
 				print('[+] Saved: {}'.format(filePath))	
+
 	config_load(message.guild.id)	
 	
 
-@debug
 def fetch_value(guild, val, delim=None):
-	with engine.connect() as conn:
+	"""Get a specific cell from the guilds config table"""
+	with ENGINE.connect() as conn:
 		select_st = select([Config]).where(Config.c.id == guild)
 		res = conn.execute(select_st)
 		result = res.fetchone()
+
 	if result and result[val]:
 		result = result[val].split(delim)
-		result[:] = (val for val in result if val not in {'', ' ', None})
+		result[:] = (val for val in result if val not in {'', ' ', '\n', None})
 		return result
-	return None
-	
 
+	
 def guildList():
-	with engine.connect() as conn:
+	"""Get a list of all guilds ids"""
+	with ENGINE.connect() as conn:
 		select_st = select([Config])
 		res = conn.execute(select_st)
 		result = res.fetchall()
-	idList = [each[0] for each in result]
-	return idList
+
+	return [each[0] for each in result]
 	
 setup()

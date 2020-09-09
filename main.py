@@ -1,14 +1,14 @@
 #!/usr/bin/python3
-#TODO dictionary.com / thesaurus lookup
+#TODO standardize help 
+#TODO create a git commit for server join count
+#TODO server invite link
 
-from os import getenv
 import logging
 from random import choice
 
 import pendulum
 import discord
 from discord.ext import commands
-from dotenv import load_dotenv
 
 import tword
 import tquote
@@ -16,21 +16,18 @@ import tsched
 import tfilter
 import tlog
 import tstat
-from tutil import is_admin, is_bot, debug, config_create, config_reset
-from tutil import config_fetchEmbed, fetchFile
+from tutil import is_admin, debug, config_create, config_helper
+from tutil import config_fetchEmbed, fetchFile, incrementUsage
 from speller import Speller
+from constants import TOKEN, POC_TOKEN, GUILD, VERSION, EIGHTBALL
 
-load_dotenv()
-TOKEN = getenv('DISCORD_TOKEN')
-GUILD = getenv('DISCORD_GUILD')
-VERSION = '6.1.2020'
-divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
 bot = discord.Client()
 spell = Speller('cmd')
 
 
 @bot.event
 async def on_ready():
+	print(bot)
 	guildHandle = discord.utils.get(bot.guilds, name=GUILD)
 	print(
 	f'{bot.user} has connected to Discord!\n'
@@ -44,14 +41,17 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild):
+	print('[+] Joined a new guild: {}'.format(guild.name))
+	configFile = config_create(guild)
 	banner = 'Hello {}! \n{}'.format(guild.owner.mention, fetchFile('help', 'welcome'))
-	await guild.system_channel.send(banner, file=discord.File('./docs/header.png'))
+	await guild.owner.send(file=discord.File('./docs/header.png'))
+	await guild.owner.send(banner, file=discord.File(configFile))
 
 
 @bot.event
 async def on_message(message):
-	#if not is_bot(message.author):
 	if not message.author.bot:
+		incrementUsage(message.guild, 'raw_messages')
 		#Log messages
 		timestamp = pendulum.now(tz='Asia/Tokyo').to_datetime_string()
 		tlog.corpusInsert(message, timestamp)
@@ -65,82 +65,83 @@ async def on_message(message):
 		if tfilter.check(message): #and is_admin(message.author):
 			await message.channel.send('Watch your language {}!'.format(message.author.name))
 			return
+
 		else:
 			args = message.content.split()
 			if not args[0][0] == '!':
 				return
 			#correct minor typos
-			args[0] = '!{}'.format(spell(args[0][1:]))
+			operator = spell(args[0][1:])
+			banner = [None, None]
 			
-			if args[0] in {'!quote', '!lore', '!q', '!l'}:
-				banner = tquote.helper(message)
+			if operator in {'quote', 'lore', 'q', 'l'}:
+				banner = [tquote.helper(message), None]
 				
-			elif args[0] in {'!dict', '!dictionary'}:
+			elif operator in {'w', 'wolf', 'wolfram'}:
+				banner = await tword.wolfram(message)
+				#In the event there is a textual response greater than 2000 char limit
+				if type(banner[0]) is list():
+					for each in banner[0]:
+						await message.channel.send(each)
+					return
+			
+			elif operator in {'word', 'wotd'}:
+				banner = [await tword.getTodaysWord(message), None]
+
+			elif operator in {'dict', 'dictionary'}:
 				#In order to handle long entries vs Discord's 2000 char limit,
 				#wiki() will return a list and is output with for each
-				banner = tword.wiki(' '.join(args[1:]))
+				banner = tword.wiki(message)
 				for each in banner:
 					await message.channel.send(each)
 				return
+
+			elif operator in ('translate', 'tr', 'trans'):
+				banner = [tword.translate(message), None]
+
+			elif operator in {'lmgtfy', 'google', 'g'}:
+				banner = [tword.google(message), None]
 				
-			elif args[0] in {'!lmgtfy', '!google', '!g'}:
-				banner = 'https://google.com/search?q={}'.format('+'.join(args[1:]))
+			elif operator == 'config':
+				banner = [None, config_helper(message)]
 			
-			elif args[0] == '!config' and is_admin(message.author):
-				if len(args) > 1 and args[1] == 'reset':
-					banner = config_reset(message.guild)
+			elif operator in {'schedule', 'sched', 's'}:
+				banner = [tsched.helper(message), None]
+			
+			elif operator == 'filter':
+				banner = [tfilter.helper(message), None]
+			
+			elif operator == 'doip' and message.guild.id == '453859595262361611':
+				incrementUsage(message.guild, 'doip')
+				banner = [tquote.getQuote(None, message.guild.id, "LaDoIphin"), './docs/doip.jpg']
+				
+			elif operator in {'gif', 'react', 'meme'}:
+				if len(args) > 1 and args[1] == 'add':
+					await tquote.fetchReact(message)
 				else:
-					banner = config_create(message.guild)
-				await message.channel.send(file=discord.File(banner))
-				return
-			
-			elif args[0] in {'!schedule', '!sched', '!s'}:
-				banner = tsched.helper(message)
-			
-			elif args[0] == '!word':
-				banner = await tword.getTodaysWord()
-			
-			elif args[0] == '!filter':
-				if len(args) > 1 and is_admin(message.author):
-					banner = tfilter.helper(message)
-			
-			elif args[0] == '!doip':
-				banner = tquote.getQuote(None, message.guild.id, "LaDoIphin")
-				await message.channel.send(banner, file=discord.File('./docs/doip.jpg'))
-				return
-					
-			elif args[0] == '!stats':
-				banner = tstat.helper(message)
-				if banner[0]: #used because tstat.getHelp will return [None, text]
-					await message.channel.send(banner[1], file=discord.File(banner[0]))
+					nsfw = True if 'nsfw' in message.content.lower() else False
+					banner = tquote.getReact(message, nsfw)
+					await message.channel.send(None, file=discord.File(banner))
 					return
-				banner = banner[1]
+					
+			elif operator == 'stats':
+				banner = tstat.helper(message)
 			
-			elif args[0] in {'!8ball', '!8', '!eightball', '!eight'}:
-				banner = choice([
-					'It is certain.', 'It is decidedly so.', 'Without a doubt.',
-					'Yes -- definitely.', 'You may rely on it.', 'As I see it, yes.',
-					'Most likely.', 'Outlook good.', 'Yes.', 'Signs point to yes.',
-					'Reply hazy, try again.', 'Ask again later.', 
-					'Better not tell you now.', 'Cannot predict now.',
-					'Concentrate and ask again.', 'Don\'t count on it.', 
-					'My reply is no.', 'My sources say no.', 'Outlook not so good',
-					'Very doubtful.'
-					])
+			elif operator in {'8ball', '8', 'eightball', 'eight'}:
+				incrementUsage(message.guild, 'eight')
+				banner = [choice(EIGHTBALL), None]
 				
-			elif args[0] == '!help':
-				banner = '`!quote help`\n`!lore help`\n`!schedule help`\n'
-				banner += '`!stats help`\n'
-				banner += '`!word` to get the word of the day. Updates once every 24 hours.\n'
-				banner += divider
-				if is_admin(message.author):
-					banner += '**Use `!config` to change server settings.**\n'
-				banner += 'Donation link: <{}>\n'.format('https://www.patreon.com/tangerinebot')
-				banner += 'Invite link: <{}>\n'.format('https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot')
-				banner += 'This bot is open source, find the code at: <{}>'.format('https://github.com/EanNewton/FamBot')
-				
-			if banner:
-				await message.channel.send(banner)	
+			elif operator == 'help':
+				incrementUsage(message.guild, 'help')
+				banner = fetchFile('help', 'general')
+				if not is_admin(message.author):
+					banner = banner.split('For Admins:')[0]
+				banner = [banner, None]
+
+			if banner[1]:
+				await message.channel.send(banner[0], file=discord.File(banner[1]))	
+			else:
+				await message.channel.send(banner[0])
 
 
 @bot.event
@@ -149,12 +150,14 @@ async def on_raw_reaction_add(payload):
 	message = await channel.fetch_message(payload.message_id)
 	
 	#Add a quote
+	#emoji is :speech_left:
 	if str(payload.emoji) == '🗨️' and not message.author.bot:
 		if not tquote.checkExists(message.guild.id, message.id):
 			if not tfilter.check(message) or is_admin(payload.member):
-				await message.channel.send(tquote.insertQuote(None, message))
+				await message.channel.send(tquote.insertQuote(message, None))
 	
 	#Remove a quote
+	#emoji is :x:
 	if str(payload.emoji) == '❌'and is_admin(payload.member): 
 		await message.channel.send(tquote.deleteQuote(message.guild.id, message.id))
 
@@ -170,7 +173,7 @@ async def on_error(event, *args, **kwargs):
 			print('[!] Error author: {}'.format(args[0].author))
 			f.write(f'{timestamp}\nUnhandled message:\n{args[0]}\n\n')
 		else:
-			raise
+			return
 			
 			
 logger = logging.getLogger('discord')
@@ -179,4 +182,4 @@ handler = logging.FileHandler(filename='./log/discord.log', encoding='utf-8', mo
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)	
 
-bot.run(TOKEN)
+bot.run(POC_TOKEN)

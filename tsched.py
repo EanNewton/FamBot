@@ -1,17 +1,14 @@
 #!/usr/bin/python3
 
 import pendulum
-from sqlalchemy import create_engine, and_, update, select, MetaData, Table, Column, Integer, String 
+from sqlalchemy import and_, update, select, MetaData, Table, Column, Integer, String 
 
-from tutil import debug, fetchFile, is_admin
-
-tzAbbrs = {} 
-divider = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
+from tutil import debug, fetchFile, is_admin, incrementUsage
+from constants import DIVIDER, TZ_ABBRS, ENGINE
 
 				
 def setup():
-	global engine, meta, Users, Config
-	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
+	global meta, Users, Config
 	meta = MetaData()
 	Users = Table(
 		'schedule', meta,
@@ -32,33 +29,31 @@ def setup():
 		Column('url', String),
 		Column('qAdd_format', String),
 		)
-	meta.create_all(engine)
-	with open('./docs/locales/abbr.txt', 'r') as f:
-		for line in f:
-			(key, val) = line.split(',')
-			val = val.strip('\n')
-			tzAbbrs[key] = val
+	meta.create_all(ENGINE)
 	print('[+] End Schedule Setup')
 	
 
 def helper(message):
 	args = message.content.split()
 	ops = {'get', 'set', 'help', 'override', 'config'}
+
 	operator = 'get'
 	if len(args) > 1 and args[1] in ops:
 		operator = args[1]
+
 	return {
 		'get': lambda: getSchedule(message),
 		'set': lambda: setSchedule(message),
-		'help': lambda: getHelp(args, message.author),
+		'help': lambda: getHelp(message),
 		'override': lambda: override(message),
 	}.get(operator, lambda: None)()	
 
 
 def getSchedule(message):
-#yes, it is ugly, but it works
-#if you can get a cleaner version working please submit a github request
+	"""Get the server schedule for a two week period"""
+	incrementUsage(message.guild, 'sched')
 	config = load_config(message.guild.id)
+
 	if config:
 		server_locale = config[2]
 		locale = server_locale
@@ -66,9 +61,11 @@ def getSchedule(message):
 		url = config[6]
 			
 		args = message.content.split()
-		if len(args) > 1: #User requested specific location
-			locale = tzAbbrs.get(args[1].lower(), args[1])
-		else: #Checking for saved locale in DB
+		if len(args) > 1: 
+			#User requested specific location
+			locale = TZ_ABBRS.get(args[1].lower(), args[1])
+		else: 
+			#Checking for saved locale in DB
 			user = getUser(message.guild.id, message.author.id)
 			if user:
 				locale = user[2]	
@@ -83,6 +80,8 @@ def getSchedule(message):
 		schedTime = []
 		schedule = []
 		hours = [day.split('=') for day in days]
+		
+		schedule.append(pendulum.now(tz=server_locale))
 		
 		for each in hours:
 			if each[0] != '' and each[1] != '':
@@ -101,12 +100,14 @@ def getSchedule(message):
 		#Show current server time vs current user time
 		banner = '{} in {}\n'.format(dt.to_day_datetime_string(), dt.timezone_name)
 		banner += '{} in {}\n'.format(now_in_server.to_day_datetime_string(), server_locale)
-		banner += divider
+		banner += DIVIDER
 
 		while(schedule[0].day_of_week != pendulum.MONDAY):
 			for day in range(len(schedule)):
 				schedule[day] = schedule[day].add(days=1)
-					
+		
+		schedule.pop(0)
+				
 		#Previous / Current Week
 		if now_in_server.day_of_week != pendulum.MONDAY:	
 			#Get us to Monday
@@ -114,6 +115,7 @@ def getSchedule(message):
 				for day in range(len(scheduleDup)):
 					scheduleDup[day] = scheduleDup[day].add(days=-1)
 			
+			scheduleDup.pop(0)
 			for day in range(len(scheduleDup)):
 				if isinstance(schedTime[day], list):
 					#Contains minutes
@@ -121,6 +123,7 @@ def getSchedule(message):
 						int(schedTime[day][0]), int(schedTime[day][1]))
 				else:
 					scheduleDup[day] = scheduleDup[day].at(int(schedTime[day]))
+				
 				#Convert timezone and add to message
 				scheduleDup[day] = scheduleDup[day].in_tz(dtLocalName)
 				if scheduleDup[day].format('DDDD') >= dt.format('DDDD'):
@@ -144,9 +147,9 @@ def getSchedule(message):
 			else:
 				banner += '{}\n'.format(schedule[day].to_day_datetime_string())
 				
-		banner += '{}{}\n{}'.format(divider, url, divider)
-		banner += 'Donation link: <{}>\n'.format('https://www.patreon.com/tangerinebot')
-		banner += 'Invite link: <{}>\n'.format('https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot')
+		banner += '{}{}\n{}'.format(DIVIDER, url, DIVIDER)
+		banner += 'Help pay for server costs: <{}>\n'.format('https://www.patreon.com/tangerinebot')
+		banner += 'Invite the bot to your server: <{}>\n'.format('https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot')
 		banner += 'Use `!schedule help` for more information.'
 
 	else:
@@ -156,52 +159,64 @@ def getSchedule(message):
 
 
 def override(message):
-#Admin command to manually change a user's saved location
-#Args should translate as: 1 id, 2 name, 3 locale
+	"""Admin command to manually change a user's saved location"""
+	incrementUsage(message.guild, 'sched')
+
 	if is_admin(message.author):
 		args = message.content.split()
-		if len(args) != 5:
-			return 'Formatting is: `!schedule override [USER.ID] [USER.NAME] [TIMEZONE]`'
+		#Args should translate as: 1 id, 2 name, 3 locale
+		
+		if len(args) < 4:
+			return 'Formatting is: `!schedule override [TIMEZONE] @USER` you may mention any number of users.'
+		
 		else:
-			args = args[2:]
-			locale = tzAbbrs.get(args[2].lower(), args[2])
-			user = getUser(message.guild.id, int(args[0]))
-			if user:
-				with engine.connect() as conn:
-					query = Users.update().where(and_(
-						Users.c.id==args[0],
-						Users.c.guild==message.guild.id,
-						)).values(locale=locale)
-					conn.execute(query)
-				print('[+] {} UPDATED LOCALE TO {} FOR USER {}'.format(
-					message.author, locale, args[1]))
-				return 'Updated schedule location for {} to: {}'.format(args[1], locale)
-			else:
-				insertUser(args[0], message.guild, args[1], locale)
-				print('[+] {} SETTING {}\'s SCHEDULE TO: {}'.format(
-					message.author, args[1], locale))
-				return 'Set schedule location for {} to: {}'.format(args[1], locale)
+			locale = TZ_ABBRS.get(args[2].lower(), args[2])
+			success = list()
+
+			for each in message.mentions:
+				user_id = each.id
+				user_name = each.name
+				user = getUser(message.guild.id, int(user_id))
+				
+				if user:
+					with ENGINE.connect() as conn:
+						query = Users.update().where(Users.c.id==user_id).values(locale=locale)
+						conn.execute(query)
+					
+					print('[+] {} UPDATED LOCALE TO {} FOR USER {}'.format(
+						message.author, locale, user_name))
+					success.append('Updated schedule location for {} to: {}'.format(user_name, locale))
+				
+				else:
+					insertUser(user_id, message.guild, user_name, locale)
+					print('[+] {} SETTING {}\'s SCHEDULE TO: {}'.format(
+						message.author, user_name, locale))
+					success.append('Set schedule location for {} to: {}'.format(user_name, locale))
+			return '\n'.join(success)
+			
 
 
 def setSchedule(message):
-#User command to set their locale
+	"""User command to set their locale"""
+	incrementUsage(message.guild, 'sched')
 	args = message.content.split()
 	config = load_config(message.guild.id)
+
 	if config:
 		server_locale = config[2]
 	else:
 		server_locale = 'Asia/Tokyo'
+
 	#if no location provided default to server locale
 	#if server has no locale default to Tokyo
 	#if there is no server locale the schedule will not be displayed
 	#however this allows users to still get their locations set
-	locale = server_locale if len(args) < 3 else tzAbbrs.get(args[2].lower(), args[2])
+	locale = server_locale if len(args) < 3 else TZ_ABBRS.get(args[2].lower(), args[2])
 	user = getUser(message.guild.id, message.author.id)
 	if user:
-		with engine.connect() as conn:
-			query = Users.update().where(and_(
+		with ENGINE.connect() as conn:
+			query = Users.update().where(
 				Users.c.id == message.author.id,
-				Users.c.guild == message.guild.id)
 				).values(locale = locale)
 			conn.execute(query)
 		return 'Updated your schedule location to: {}'.format(locale)
@@ -211,7 +226,7 @@ def setSchedule(message):
 
 
 def insertUser(id_, guild_, name, locale):
-	with engine.connect() as conn:
+	with ENGINE.connect() as conn:
 		ins = Users.insert().values(
 			id = id_,
 			name = name,
@@ -223,8 +238,10 @@ def insertUser(id_, guild_, name, locale):
 
 
 def getUser(guild_, id_):
-	with engine.connect() as conn:
-		select_st = select([Users]).where(Users.c.id == id_)
+	with ENGINE.connect() as conn:
+		select_st = select([Users]).where(
+			Users.c.id == id_,)
+			#Users.c.guild == guild_))
 		res = conn.execute(select_st)
 		result = res.fetchone()
 		if result:
@@ -232,7 +249,7 @@ def getUser(guild_, id_):
 	
 	
 def load_config(guild):
-	with engine.connect() as conn:
+	with ENGINE.connect() as conn:
 		select_st = select([Config]).where(Config.c.id == guild)
 		res = conn.execute(select_st)
 		result = res.fetchone()
@@ -241,13 +258,19 @@ def load_config(guild):
 	return None
 		
 
-def getHelp(args, author):
+def getHelp(message):
+	incrementUsage(message.guild, 'help')
+	args = message.content.split()
+
 	if len(args) < 3:
 		banner = fetchFile('help', 'schedule')
-		if not is_admin(author):
+		if not is_admin(message.author):
 			banner = banner.split('For Admins:')[0]
-	else: #Get list of cities or continents
+
+	else: 
+		#Get list of cities or continents
 		banner = fetchFile('locales', args[2].lower())
+
 	return banner
 	
 		
