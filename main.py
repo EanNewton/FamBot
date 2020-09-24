@@ -2,6 +2,10 @@
 #TODO standardize help 
 #TODO create a git commit for server join count
 #TODO server invite link
+#TODO update help files
+#TODO move 'which command' to a function?
+#TODO redo the logging to actually be useful
+#TODO consolidate imports?
 
 import logging
 from random import choice
@@ -16,6 +20,7 @@ import tsched
 import tfilter
 import tlog
 import tstat
+import tcustom
 from tutil import is_admin, debug, config_create, config_helper
 from tutil import config_fetchEmbed, fetchFile, incrementUsage
 from speller import Speller
@@ -23,7 +28,6 @@ from constants import TOKEN, POC_TOKEN, GUILD, VERSION, EIGHTBALL
 
 bot = discord.Client()
 spell = Speller('cmd')
-
 
 @bot.event
 async def on_ready():
@@ -52,15 +56,7 @@ async def on_guild_join(guild):
 async def on_message(message):
 	if not message.author.bot:
 		incrementUsage(message.guild, 'raw_messages')
-		#Log messages
-		timestamp = pendulum.now(tz='Asia/Tokyo').to_datetime_string()
-		tlog.corpusInsert(message, timestamp)
-		if message.attachments:
-			await tlog.fetchEmbed(message, timestamp)
-			#Loading in server config file
-			if is_admin(message.author) and message.attachments[0].filename == '{}.json'.format(message.guild.id):
-					await config_fetchEmbed(message)
-					tfilter.importCustom(message.guild.id)
+		await tlog.logMessage(message)
 			
 		if tfilter.check(message): #and is_admin(message.author):
 			await message.channel.send('Watch your language {}!'.format(message.author.name))
@@ -68,6 +64,11 @@ async def on_message(message):
 
 		else:
 			args = message.content.split()
+			banner = tcustom.get_command(message)
+			if banner:
+				await message.channel.send(banner)
+				return
+
 			if not args[0][0] == '!':
 				return
 			#correct minor typos
@@ -76,7 +77,10 @@ async def on_message(message):
 			
 			if operator in {'quote', 'lore', 'q', 'l'}:
 				banner = [tquote.helper(message), None]
-				
+
+			elif operator in {'delete', 'remove'}:
+				banner = [tcustom.delete_command(message), None]
+
 			elif operator in {'w', 'wolf', 'wolfram'}:
 				banner = await tword.wolfram(message)
 				#In the event there is a textual response greater than 2000 char limit
@@ -98,9 +102,12 @@ async def on_message(message):
 
 			elif operator in ('translate', 'tr', 'trans'):
 				banner = [tword.translate(message), None]
+				for each in banner:
+					await message.channel.send(each)
+				return
 
 			elif operator in {'lmgtfy', 'google', 'g'}:
-				banner = [tword.google(message), None]
+				banner = [tword.google(message, True), None]
 				
 			elif operator == 'config':
 				banner = [None, config_helper(message)]
@@ -119,15 +126,12 @@ async def on_message(message):
 				if len(args) > 1 and args[1] == 'add':
 					await tquote.fetchReact(message)
 				else:
-					nsfw = True if 'nsfw' in message.content.lower() else False
-					banner = tquote.getReact(message, nsfw)
-					await message.channel.send(None, file=discord.File(banner))
-					return
+					banner = tquote.getReact(message)
 					
 			elif operator == 'stats':
 				banner = tstat.helper(message)
 			
-			elif operator in {'8ball', '8', 'eightball', 'eight'}:
+			elif operator in {'8ball', '88ball', 'ball', '8', 'eightball', 'eight'}:
 				incrementUsage(message.guild, 'eight')
 				banner = [choice(EIGHTBALL), None]
 				
@@ -158,24 +162,37 @@ async def on_raw_reaction_add(payload):
 	
 	#Remove a quote
 	#emoji is :x:
-	if str(payload.emoji) == '❌'and is_admin(payload.member): 
+	if str(payload.emoji) == '❌' and is_admin(payload.member): 
 		await message.channel.send(tquote.deleteQuote(message.guild.id, message.id))
+
+	#Add a custom guild command
+	#emoji is :gear:
+	if str(payload.emoji) == '⚙️' and is_admin(payload.member): 
+		await message.channel.send(tcustom.insert_command(message))
+
 
 
 @bot.event 
 async def on_error(event, *args, **kwargs):
+	#For errors with the bot itself
 	with open('./log/err.log', 'a') as f:
 		if event == 'on_message':
 			timestamp = pendulum.now(tz='America/Phoenix').to_datetime_string()
-			print(timestamp)
-			print('[!] Error in: {}; {}'.format(args[0].channel.name, args[0].guild.name))
-			print('[!] Error content: {}'.format(args[0].content))
-			print('[!] Error author: {}'.format(args[0].author))
-			f.write(f'{timestamp}\nUnhandled message:\n{args[0]}\n\n')
+			location = '[!] Error in: {}; {}'.format(args[0].channel.name, args[0].guild.name)
+			content = '[!] Error content: {}'.format(args[0].content)
+			author = '[!] Error author: {}'.format(args[0].author)
+
+			f.write('{}\nUnhandled message:{}\n{}\n{}\n{}\n\n'.format(
+				timestamp,
+				args[0],
+				location,
+				author,
+				content,
+				))
 		else:
 			return
 			
-			
+#For errors with the discord client or API			
 logger = logging.getLogger('discord')
 logger.setLevel(logging.WARNING)
 handler = logging.FileHandler(filename='./log/discord.log', encoding='utf-8', mode='a')
