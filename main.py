@@ -45,6 +45,7 @@ async def on_ready():
 
 @bot.event
 async def on_guild_join(guild):
+	#TODO rerun setup, bot has to be restarted on new guild for some reason
 	print('[+] Joined a new guild: {}'.format(guild.name))
 	configFile = config_create(guild)
 	banner = 'Hello {}! \n{}'.format(guild.owner.mention, fetchFile('help', 'welcome'))
@@ -91,6 +92,9 @@ async def on_message(message):
 			
 			elif operator in {'word', 'wotd'}:
 				banner = [await tword.getTodaysWord(message), None]
+			
+			elif operator in {'poem', 'potd'}:
+				banner = [await tword.getTodaysPoem(message), None]
 
 			elif operator in {'dict', 'dictionary'}:
 				#In order to handle long entries vs Discord's 2000 char limit,
@@ -191,7 +195,8 @@ async def on_error(event, *args, **kwargs):
 				))
 		else:
 			return
-			
+
+
 #For errors with the discord client or API			
 logger = logging.getLogger('discord')
 logger.setLevel(logging.WARNING)

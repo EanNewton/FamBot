@@ -11,7 +11,7 @@ from speller.typos import Word
 
 PATH = os.path.abspath(os.path.dirname(__file__))
 
-
+'''
 def load_from_tar(lang, file_name='word_count.json'):
     archive_name = os.path.join(PATH, 'data/{}.tar.gz'.format(lang))
 
@@ -28,12 +28,17 @@ def load_from_tar(lang, file_name='word_count.json'):
     with closing(tarfile.open(archive_name, 'r:gz')) as tarf:
         with closing(tarf.extractfile(file_name)) as file:
             return json.load(file)
-
+'''            
+def load_from_json(lang, file_name='data/word_count.json'):
+    archive_name = os.path.join(PATH, 'data/{}.json'.format(lang))
+    with open(archive_name, 'r') as f:
+        return json.load(f)
+	
 
 class Speller:
     def __init__(self, lang='en', threshold=0, nlp_data=None):
         self.threshold = threshold
-        self.nlp_data = load_from_tar(lang) if nlp_data is None else nlp_data
+        self.nlp_data = load_from_json(lang) if nlp_data is None else nlp_data
         self.lang = lang
 
         if threshold > 0:
