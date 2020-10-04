@@ -25,7 +25,6 @@ WOLFRAM = getenv('WOLFRAM_TOKEN')
 VERSION = '9.15.2020'
 
 
-
 #################################
 # Internal Function Static Data #
 #################################

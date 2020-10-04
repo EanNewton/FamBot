@@ -80,13 +80,14 @@ def debug(func):
         return value
     return wrapper_debug
 
-
+@debug
 def fetchFile(directory, filename):
 	"""Safely read in a dynamically designated local file"""
 	with open('{}/docs/{}/{}.txt'.format(DEFAULT_DIR, directory, filename), 'r') as f:
 		return f.read()
 
 
+@debug
 def is_admin(author):
 	"""
 	Check if a discord user has been given bot admin permissions
@@ -111,6 +112,7 @@ def wrap(s, w):
 ############################
 # Config Utility Functions #
 ############################
+@debug
 def incrementUsage(guild, command):
 	"""Keeps track of how many times various commands have been used"""
 	with ENGINE.connect() as conn:
@@ -144,6 +146,7 @@ def incrementUsage(guild, command):
 				custom = dict_['custom'],
 			)
 			conn.execute(ins)
+			return 1
 
 		else:
 			print('[+] Creating usage counter for {}'.format(guild.name))

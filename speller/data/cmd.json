@@ -10,8 +10,11 @@
     "wotd": 5,
     "poem": 5,
     "potd": 5,
+    "rank": 5,
     "dict": 5,
     "dictionary": 5,
+    "wiki": 5,
+    "wiktionary": 5,
     "tr": 5,
     "trans": 5,
     "translate": 5,
@@ -32,5 +35,9 @@
     "eight": 5,
     "eightball": 5,
     "8": 5,
-    "help": 5
+    "help": 5,
+    "yandex": 5,
+    "image": 5,
+    "reverse": 5,
+    "tineye": 5
 }

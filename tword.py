@@ -11,8 +11,10 @@ from wiktionaryparser import WiktionaryParser
 from googletrans import Translator, constants
 import inflect
 
+import timeout
 from tutil import fetchFile, debug, incrementUsage, wrap
 from constants import DEFAULT_DIR, PATH_WOTD, URL_WOTD, URL_POTD, WOLFRAM, URL_WOLF_IMG, URL_WOLF_TXT, URL_KEYWORDS
+
 
 parser = WiktionaryParser()
 translator = Translator()
@@ -85,7 +87,17 @@ def translate(message):
 			constants.LANGUAGES[result.dest]
 			)	
 
+@debug
+def yandex(message):
+	args = message.content.split()
+	if len(args) < 2:
+		return 'Please supply a URL to an image.'
+	yandex = '<https://yandex.com/images/search?url={}&rpt=imageview>'.format(quote_plus(args[1]))
+	tineye = 'https://tineye.com'
+	return '{}\n{}'.format(yandex, tineye)
 
+
+@debug
 def wiki(message):
 	"""
 	Get the www.wiktionary.org entry for a word or phrase
@@ -93,51 +105,57 @@ def wiki(message):
 	:return: <str> Banner or None
 	"""
 	incrementUsage(message.guild, 'dict')
+	args = message.content.split()
+	if len(args) == 1 or args[1] == 'help':
+		return getHelp(message)
+	try:
+		word = message.content.split(' ', maxsplit=1)[1]
+		print(word)
+		result = parser.fetch(word.strip())[0]
+		print(result)
+		etymology = result['etymology']
+		definitions = result['definitions'][0]
+		pronunciations = result['pronunciations']
 
-	word = message.content.split(' ', maxsplit=1)[1]
-	res = parser.fetch(word.strip())[0]
+		banner = '**{}**\n'.format(word)
+		
+		if definitions['partOfSpeech']:
+			banner += '*Parts of Speech*\n{}\n'.format(definitions['partOfSpeech'])
+		
+		if etymology:
+			banner += '*Etymology*\n{}\n'.format(etymology)
+		
+		if definitions['text']:
+			banner += '*Definitions*\n'
+			for each in definitions['text']:
+				banner += '{} \n'.format(each)
 
-	etymology = res['etymology']
-	definitions = res['definitions'][0]
-	pronunciations = res['pronunciations']
+		if definitions['relatedWords']:
+			banner += '*Related Words*\n'
+			for each in definitions['relatedWords']:
+				for sub in each['words']:
+					banner += '{}, '.format(sub)
+				banner += '\n'
 
-	banner = '**{}**\n'.format(word)
-	
-	if definitions['partOfSpeech']:
-		banner += '*Parts of Speech*\n{}\n'.format(definitions['partOfSpeech'])
-	
-	if etymology:
-		banner += '*Etymology*\n{}\n'.format(etymology)
-	
-	if definitions['text']:
-		banner += '*Definitions*\n'
-		for each in definitions['text']:
-			banner += '{} \n'.format(each)
+		if definitions['examples']:
+			banner += '*Examples*\n'
+			for each in definitions['examples']:
+				banner += '{} \n'.format(each)
 
-	if definitions['relatedWords']:
-		banner += '*Related Words*\n'
-		for each in definitions['relatedWords']:
-			for sub in each['words']:
-				banner += '{}, '.format(sub)
-			banner += '\n'
+		if pronunciations['text'] or pronunciations['audio']:
+			banner += '*Pronunciation*\n'
+			for each in pronunciations['text']:
+				banner += '{} \n'.format(each)
 
-	if definitions['examples']:
-		banner += '*Examples*\n'
-		for each in definitions['examples']:
-			banner += '{} \n'.format(each)
+			for each in pronunciations['audio']:
+				banner += 'https:{} \n'.format(each)
 
-	if pronunciations['text'] or pronunciations['audio']:
-		banner += '*Pronunciation*\n'
-		for each in pronunciations['text']:
-			banner += '{} \n'.format(each)
-
-		for each in pronunciations['audio']:
-			banner += 'https:{} \n'.format(each)
-
-	#Discord has a character limit of 2000 per message
-	#Wiktionary entries often exceed this limit
-	#So we break it into a list and send each individually if it exceeds that limit
-	return wrap(banner, 1990)
+		#Discord has a character limit of 2000 per message
+		#Wiktionary entries often exceed this limit
+		#So we break it into a list and send each individually if it exceeds that limit
+		return wrap(banner, 1990)
+	except:
+		return None
 
 
 async def wolfram(message):

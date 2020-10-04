@@ -260,5 +260,5 @@ def get_ngrams(args, guild):
 
 def getHelp(message):
 	incrementUsage(message.guild, 'help')
-	return [None, fetchFile('help', 'stats')]
+	return [fetchFile('help', 'stats'), None]
 

@@ -21,8 +21,9 @@ import tfilter
 import tlog
 import tstat
 import tcustom
-from tutil import is_admin, debug, config_create, config_helper
+from tutil import is_admin, debug, config_create, config_helper, guildList
 from tutil import config_fetchEmbed, fetchFile, incrementUsage
+from tutil import setup as utilSetup
 from speller import Speller
 from constants import TOKEN, POC_TOKEN, GUILD, VERSION, EIGHTBALL
 
@@ -32,32 +33,39 @@ spell = Speller('cmd')
 @bot.event
 async def on_ready():
 	print(bot)
-	guildHandle = discord.utils.get(bot.guilds, name=GUILD)
-	print(
-	f'{bot.user} has connected to Discord!\n'
-	f'{guildHandle.name}(id: {guildHandle.id})\n'
-	f'Revision date: {VERSION}\n'
-	)
-	print('Member count: {}'.format(len(guildHandle.members)))
+	'''
+	count = 0
+	for each in guildList():
+		guildHandle = discord.utils.get(bot.guilds, guild__id=each)
+		print(
+		f'{bot.user} has connected to Discord!\n'
+		f'{guildHandle.name}(id: {guildHandle.id})\n'
+		f'Revision date: {VERSION}\n'
+		)
+		print('Member count: {}'.format(len(guildHandle.members)))
+		count += len(guildHandle.members)
+	print('Total guilds: {}'.format(len(guildList())))
+	print('Total members: {}'.format(count))
+	#For printing full member list
 	#members = '\n - '.join([member.name for member in guildHandle.members])
 	#print(f'Guild Members:\n - {members}')
-
+	'''
 
 @bot.event
 async def on_guild_join(guild):
-	#TODO rerun setup, bot has to be restarted on new guild for some reason
 	print('[+] Joined a new guild: {}'.format(guild.name))
 	configFile = config_create(guild)
 	banner = 'Hello {}! \n{}'.format(guild.owner.mention, fetchFile('help', 'welcome'))
 	await guild.owner.send(file=discord.File('./docs/header.png'))
 	await guild.owner.send(banner, file=discord.File(configFile))
 	tquote.setup()
-	tutil.setup()
+	utilSetup()
 	
 
 
 @bot.event
 async def on_message(message):
+	#print(message.content)
 	if not message.author.bot:
 		incrementUsage(message.guild, 'raw_messages')
 		await tlog.logMessage(message)
@@ -70,6 +78,7 @@ async def on_message(message):
 			args = message.content.split()
 			banner = tcustom.get_command(message)
 			if banner:
+				print(banner)
 				await message.channel.send(banner)
 				return
 
@@ -77,6 +86,7 @@ async def on_message(message):
 				return
 			#correct minor typos
 			operator = spell(args[0][1:])
+			print(operator)
 			banner = [None, None]
 			
 			if operator in {'quote', 'lore', 'q', 'l'}:
@@ -100,8 +110,11 @@ async def on_message(message):
 				#In order to handle long entries vs Discord's 2000 char limit,
 				#wiki() will return a list and is output with for each
 				banner = tword.wiki(message)
-				for each in banner:
-					await message.channel.send(each)
+				if type(banner) is list():
+					for each in banner:
+						await message.channel.send(each)
+				else:
+					await message.channel.send(banner)
 				return
 
 			elif operator in ('translate', 'tr', 'trans'):
@@ -118,11 +131,14 @@ async def on_message(message):
 			
 			elif operator in {'schedule', 'sched', 's'}:
 				banner = [tsched.helper(message), None]
+
+			elif operator in {'yandex', 'image', 'tineye', 'reverse'}:
+				banner = [tword.yandex(message), None]
 			
 			elif operator == 'filter':
 				banner = [tfilter.helper(message), None]
 			
-			elif operator == 'doip' and message.guild.id == '453859595262361611':
+			elif operator == 'doip' and int(message.guild.id) == 453859595262361611:
 				incrementUsage(message.guild, 'doip')
 				banner = [tquote.getQuote(None, message.guild.id, "LaDoIphin"), './docs/doip.jpg']
 				

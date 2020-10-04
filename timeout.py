@@ -10,6 +10,8 @@ import multiprocessing
 import signal
 from functools import wraps
 
+from tutil import debug
+
 ############################################################
 # Timeout
 ############################################################
@@ -40,7 +42,7 @@ def _raise_exception(exception, exception_message):
     else:
         raise exception(exception_message)
 
-
+@debug
 def timeout(seconds=None, use_signals=True, timeout_exception=TimeoutError, exception_message=None):
     """Add a timeout parameter to a function and return it.
 
@@ -57,7 +59,7 @@ def timeout(seconds=None, use_signals=True, timeout_exception=TimeoutError, exce
     parameter. The function is wrapped and returned to the caller.
     """
     def decorate(function):
-
+        print('in timeout')
         if not seconds:
             return function
 
