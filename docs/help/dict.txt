@@ -1,0 +1,21 @@
+**Web Scraping Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+Following each command is alternate names that operate the same.
+`!tr LANGUAGE WORD` use Google to translate a word into another language. Language is the two letter Google code, e.g. en for English, jp for Japanese, etc.
+-- `!trans`
+-- `!translate`
+`!wiki PHRASE` get the wiktionary.org entry for a PHRASE
+-- `!dict`
+-- `!dictionary`
+-- `!wiktionary`
+`!wolfram txt PHRASE` run PHRASE through the Wolfram Alpha engine and get a textual response
+`!wolfram img PHRASE` run PHRASE trhough the Wolfram Alpha engine and get an image based response
+-- `!w`
+-- `!wolf`
+`!word` Get the Word of the Day from wordsmith.org
+-- `!wotd`
+`!poem` Get the Poem of the Day from poems.com 
+-- `!potd`
+`!google PHRASE` Return a link to Let Me Google That For You for the search PHRASE
+-- `!lmgtfy`
+-- `!g`

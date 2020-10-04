@@ -1,11 +1,10 @@
 **Stats Help**
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>
-Please be patient when using these commands. 
-They require a considerable amount of processing and may take a moment.
-`!stats` get a word cloud for the server.
-`!stats count LOW HIGH` get count of messages of word specified number of words, LOW and HIGH are optional.
-`!stats phrases LOW HIGH LIMIT` get the most common phrases of specified length, LOW HIGH and LIMIT are optional.
-`!stats user USERNAME` get a word cloud for the specified user.
-`!stats channel CHANNEL` get a word cloud for the specified channel.
-`!stats common LIMIT` get a text list of the most common single words and their counts.
-<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+Please be patient when using these commands, they may take a moment.
+`!stats` Display a word cloud for the server.
+`!stats user USERNAME` Display a word cloud for the specified user.
+`!stats channel CHANNEL` Display a word cloud for the specified channel.
+`!stats count LOW HIGH` Display count of messages of word specified number of words, LOW and HIGH are optional.
+`!stats phrases LOW HIGH LIMIT` Display the most common phrases of specified length, LOW HIGH and LIMIT are optional.
+`!stats common LIMIT` Display a text list of the most common single words and their counts.
+

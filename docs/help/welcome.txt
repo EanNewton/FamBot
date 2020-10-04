@@ -1,3 +1,12 @@
-To get started use `!config` and `!help`. 
-Anyone with a role named 'mod' or 'admin' can use the admin commands, including editing the server config.
+To get started use: 
+`!config` to create and edit default settings and, 
+`!help` to display a list of commands.
+ 
+By default, anyone with a role named 'mod', 'discord mod', or 'admin' can use the admin commands, including editing the server config. You, the server owner, always has admin permissions.
+
+After using !config from within your Discord simply download the .json file, edit it as you see fit and as described within the file, and then drag and drop it back into any channel that the bot has Read Message History permissions in without changing the  filename.
+You can always return to a default configuration by using `!config reset`.
+
+For full documentation or to report problems visit: 
+<https://www.github.com/EanNewton/FamBot>
 

@@ -1,0 +1,30 @@
+Commands are:
+```
+!quote !q
+!lore !l
+!schedule !sched !s
+!stats !stat
+!word !wotd
+!poem !potd
+!dictionary !dict !wiki !wiktionary
+!translate !trans !tr
+!wolfram !wolf
+!google !g !lmgtfy
+!gif !react !meme
+!eightball !eight !8ball !8
+!custom
+!help
+```
+To get help with any specific command use the command followed by help.
+For example, `!sched help` or `!custom help`.
+
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+Help support the bot: <https://www.patreon.com/tangerinebot>
+Invite the bot to your server: <https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot>
+This bot is open source, find it at: <https://github.com/EanNewton/FamBot>
+
+For Admins:
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+```
+!config
+```

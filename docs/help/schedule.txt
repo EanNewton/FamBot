@@ -11,4 +11,4 @@ Africa, America, Antarctica, Asia, Atlantic, Australia, Europe, Indian, Pacific,
 and abbr
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>
 For Admins:
-`!schedule override USER.ID USER.NAME LOCATION` to change a user's set location.
+`!schedule override LOCATION @USER @USER @USER...` to change any number of users to location.

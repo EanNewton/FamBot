@@ -1,0 +1,6 @@
+**Translator Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+`!translate TEXT` Translate the TEXT into English.
+`!translate -TARGET TEXT` Translate the TEXT into TARGET language.
+`!translate -TARGET -SOURCE TEXT` Translate the TEXT from SOURCE into TARGET.
+`!tanslate langs` Get a full list of supported languages and their codes.

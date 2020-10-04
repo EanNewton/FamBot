@@ -1,0 +1,23 @@
+**Custom Command Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+Add custom text commands to your server!
+Admins can react to any message with :gear: to add a new command.
+The first word of the message will be the command name, the remainder will be what is displayed.
+This is taken literally so if you want a ! or . or any other prefix make sure to include it.
+Admins can react to any message with :X: to remove a command where the first word matches a command name to remove it.
+Custom commands can override built-in commands, so if you want something like `!quote` to be disabled in the server you can set it up as a custom command.
+
+Custom commands can be nested and can also contain specific additional parameters.
+For example, if you add the command `!custom1 Foo` and then add `!custom2 <!custom1> Bar`, calling `!custom2` will display `Foo Bar`. Make sure that the nested commands are enclosed in `<>`.
+
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+Additional Parameters include:
+<URL> The server URL from your !config
+<NOW> or <TIME> The current time for the server location from your !config
+<LOCALE> or <LOCATION> The server locale from your !config
+<AUTHOR> The username of whoever used the command
+<GUILD> The Discord guild name
+<SCHED> Calls !sched
+<QUOTE> Calls !quote
+<LORE> Calls !lore
+

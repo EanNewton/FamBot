@@ -1,0 +1,4 @@
+**Wolfram Alpha Query Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+`!wolf txt SEARCH` Query Wolfram Alpha for SEARCH and format response as text.
+`!wolf img SEARCH` Query Wolfram Alpha for SEARCH and format response as an image.

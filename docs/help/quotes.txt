@@ -1,9 +1,16 @@
 **Quote Help**
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>
-`!quote` pull up a random quote.
-`!quote USER` pull up a quote from a specific user.
+`!quote` Display a random quote.
+`!quote USER` Display a quote from a specific USER.
 This is the user\'s full username, not their server nickname.
 It is case sensitive.
 React to a message with 🗨 to add it to the database.
 For Admins:
-React to a message with ❌ to remove it.
+React to the message that was added with ❌ to remove it.
+@LORE
+**Lore Help**
+<<>><<>><<>><<>><<>><<>><<>><<>><<>>
+`!lore` Display a random piece of lore.
+`!lore USER` Display a piece of lore from a specific USER.
+`!lore add USER TEXT` Add "text" with the author set as USER.
+React to the `!lore add` message with ❌ to remove it.
