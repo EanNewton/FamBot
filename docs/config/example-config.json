@@ -1,1 +1,43 @@
-{"id": 00000, "guild_name": "my guild", "locale": "Asia/Tokyo", "schedule": "Monday = 10, 17:15; Tuesday = 10, 12; Wednesday = 16, 10:15; Thursday = 2:44; Friday = 10; Saturday = 16:30; ", "quote_format": "{}\n ---{} on {}", "lore_format": "{}\n ---Scribed by the Lore Master {}, on the blessed day of {}", "url": "Come hang with us at: <https://www.twitch.tv/>", "qAdd_format": "Added:\n \"{}\"\n by {} on {}"}
+{
+    "Server ID": 012340123401234,
+    "Server Name": "my discord",
+    "Server Locale": "Asia/Tokyo",
+    "Schedule": "Monday = 12, 13:15; Wednesday = 16, 10:15; Thursday = 2:44; Friday = 10; Saturday = 16:30; ",
+    "URL Footer": "Come hang with us at: <https://www.twitch.tv/>",
+    "Quote Format": "{0}\n ---{1} on {2}",
+    "Quote Added Format": "Added:\n \"{0}\"\n by {1} on {2}",
+    "Lore Format": "{0}\n ---Scribed by the Lore Master {1}, on the blessed day of {2}",
+    "Blacklisted Words": "none",
+    "Moderator Roles": "mod;admin;discord mod;"
+}
+
+```
+To edit your server configuration simply change the appropiate values, and drag and drop it back into Discord to upload. 
+
+You can always use `!config reset` to return to default values.
+```
+Server Locale: This is your default timezone location. 
+    See "!schedule help" for more locations.
+    
+Schedule: This is your stream schedule, times are in 24 hour format. 
+    The format to add a stream is:
+        [DAY] = [TIME 1], [TIME 2];
+        Monday = 10:30, 14; Wednesday = 18; Friday = 12:15, 14:30
+    This would add scheduled times for Monday at 10:30AM and 2:00PM, Wednesday at 6PM, etc.
+
+URL Footer: A brief message to be displayed beneath the schedule.
+        
+Quote Format: How quotes should be displayed when a user enters "!quote". 
+    To create a line break use \n.
+    {0} will be the quote text.
+    {1} will be the quote's author.
+    {2} will be the date.
+    
+Lore Format: How lore should be displayed when a user enters "!lore". 
+    Lore works the same as quotes but only admins and mods may add to it. 
+    This is useful for stream point redeems. 
+    See "!lore help" for more information.
+    
+Quote Added Format: What is displayed when a user reacts with :speech_left: to add a new quote. 
+    It also follows the {} order of text, author, date.
+```
