@@ -34,13 +34,18 @@ def setup():
 	
 
 def helper(message):
+	"""
+	Main entry point from main.py
+	:param message: <Discord.message object>
+	:return: <lambda function> Internal function dispatch
+	"""
 	args = message.content.split()
-	ops = {'get', 'set', 'help', 'override', 'config'}
+	ops = {'get', 'set', 'help', 'override'}
 
 	operator = 'get'
 	if len(args) > 1 and args[1] in ops:
 		operator = args[1]
-
+	print(operator)
 	return {
 		'get': lambda: getSchedule(message),
 		'set': lambda: setSchedule(message),
@@ -50,7 +55,11 @@ def helper(message):
 
 
 def getSchedule(message):
-	"""Get the server schedule for a two week period"""
+	"""
+	Generate the server schedule for a two week period.
+	:param message: <Discord.message> The raw message object
+	:return: <str> A formatted banner with up to 14 days of schedule + comments and links.
+	"""
 	incrementUsage(message.guild, 'sched')
 	config = load_config(message.guild.id)
 
@@ -59,16 +68,18 @@ def getSchedule(message):
 		locale = server_locale
 		schedRawStr = config[3]
 		url = config[6]
-			
-		args = message.content.split()
-		if len(args) > 1: 
-			#User requested specific location
-			locale = TZ_ABBRS.get(args[1].lower(), args[1])
-		else: 
-			#Checking for saved locale in DB
-			user = getUser(message.guild.id, message.author.id)
-			if user:
-				locale = user[2]	
+
+		#This function can be called by the bot itself from tcustom.get_command
+		if not message.author.bot:
+			args = message.content.split()
+			if len(args) > 1: 
+				#User requested specific location
+				locale = TZ_ABBRS.get(args[1].lower(), args[1])
+			else: 
+				#Checking for saved locale in DB
+				user = getUser(message.guild.id, message.author.id)
+				if user:
+					locale = user[2]	
 
 		dt = pendulum.now(tz=locale)
 		dtLocalName = dt.timezone.name
@@ -159,7 +170,11 @@ def getSchedule(message):
 
 
 def override(message):
-	"""Admin command to manually change a user's saved location"""
+	"""
+	Admin command to manually change a user's saved location
+	:param message: <Discord.message object> Describing which users to change to which locations
+	:return: <String> Describing if the users' location was set or updated successfully
+	"""
 	incrementUsage(message.guild, 'sched')
 
 	if is_admin(message.author):
@@ -195,9 +210,12 @@ def override(message):
 			return '\n'.join(success)
 			
 
-
 def setSchedule(message):
-	"""User command to set their locale"""
+	"""
+	User command to set their locale
+	:param message: <Discord.message object> Describing where to set location to
+	:return: <String> Describing new location for user
+	"""
 	incrementUsage(message.guild, 'sched')
 	args = message.content.split()
 	config = load_config(message.guild.id)
@@ -226,6 +244,14 @@ def setSchedule(message):
 
 
 def insertUser(id_, guild_, name, locale):
+	"""
+	Internal function to set values in database for a single user
+	:param id_: <Int> User ID
+	:param guild_: <Discord.guild object>
+	:param name: <String> Username
+	:param locale: <String> New location for the user
+	:return: <None>
+	"""
 	with ENGINE.connect() as conn:
 		ins = Users.insert().values(
 			id = id_,
@@ -238,10 +264,15 @@ def insertUser(id_, guild_, name, locale):
 
 
 def getUser(guild_, id_):
+	"""
+	Internal function to get values from database for a single user
+	:param guild_: <Int> Discord guild ID, currently unused but left in so results can be limited if user is in multiple guilds
+	:param id_: <Int> User ID
+	:return: <List> SQLAlchemy row result from database
+	"""
 	with ENGINE.connect() as conn:
 		select_st = select([Users]).where(
 			Users.c.id == id_,)
-			#Users.c.guild == guild_))
 		res = conn.execute(select_st)
 		result = res.fetchone()
 		if result:
@@ -249,6 +280,11 @@ def getUser(guild_, id_):
 	
 	
 def load_config(guild):
+	"""
+	Internal function to get Guild configuration data for schedule formatting and default locale
+	:param guild: <Int> Discord guild ID
+	:return: <List> SQLAlchemy row result from database
+	"""
 	with ENGINE.connect() as conn:
 		select_st = select([Config]).where(Config.c.id == guild)
 		res = conn.execute(select_st)
@@ -259,14 +295,19 @@ def load_config(guild):
 		
 
 def getHelp(message):
+	"""
+	Get the command help file from ./docs/help
+	:param message: <Discord.message object>
+	:return: <String> Containing help for the user's available options or list of locations
+	"""
 	incrementUsage(message.guild, 'help')
 	args = message.content.split()
 
 	if len(args) < 3:
+		#Get general help
 		banner = fetchFile('help', 'schedule')
 		if not is_admin(message.author):
 			banner = banner.split('For Admins:')[0]
-
 	else: 
 		#Get list of cities or continents
 		banner = fetchFile('locales', args[2].lower())

@@ -24,8 +24,8 @@ def setup():
 	meta.create_all(ENGINE)
 	importBlacklists()
 	print('[+] End filters Setup')
-	
-#TODO add custom
+
+
 def helper(message):
 	incrementUsage(message.guild, 'filter')
 	if is_admin(message.author):
@@ -40,6 +40,7 @@ def helper(message):
 
 
 def check(message):
+	"""Check if message violates filter for current channel"""
 	text = message.content.split()
 	fLevel = getFilter(message)
 	custom = blacklistCustom[str(message.guild.id)]
@@ -53,6 +54,7 @@ def check(message):
 
 
 def importBlacklists():
+	"""Scan local docs folder for banned words"""
 	listOfFiles_low = list()
 	listOfFiles_high = list()
 	
@@ -78,7 +80,9 @@ def importBlacklists():
 	print("[+] Imported Filter Blacklists")
 
 
+#TODO ensure is splitting values from result instead of single long str
 def importCustom(guild):
+	"""Get any banned words from uploaded config file"""
 	result = fetch_value(guild, 8)
 	if result:
 		blacklistCustom[str(guild)] = set(result)
@@ -87,6 +91,7 @@ def importCustom(guild):
 
 
 def insertFilter(message, level):
+	"""Set filter for current channel in database"""
 	with ENGINE.connect() as conn:
 		if getFilter(message):
 			ins = Filters.update().where(and_(
@@ -106,6 +111,7 @@ def insertFilter(message, level):
 
 
 def getFilter(message):
+	"""Retrieve filter level from database"""
 	with ENGINE.connect() as conn:
 		select_st = select([Filters]).where(and_(
 			Filters.c.id == message.channel.id,

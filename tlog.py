@@ -1,15 +1,19 @@
 #!/usr/bin/python3
 
+#TODO Add method for admins to get a log of a user, channel, or guild
+
 import os
 import asyncio
 import aiohttp
 import aiofiles
 from pathlib import Path
 
+import pendulum
 import sqlalchemy
 from sqlalchemy import MetaData, Table, Column, Integer, String 
 
-from tutil import debug, fetchFile
+from tutil import debug, fetchFile, is_admin, config_fetchEmbed
+from tfilter import importCustom
 from constants import DEFAULT_DIR, ENGINE
 
 extSet = {}
@@ -43,7 +47,29 @@ def setup():
 	print('[+] End Logger Setup')
 
 
+async def logMessage(message):
+	"""
+	Grab new config file if present and add each raw message to the database. 
+	:param message: <Discord.message object>
+	:return: <None>
+	"""
+	timestamp = pendulum.now(tz='Asia/Tokyo').to_datetime_string()
+	corpusInsert(message, timestamp)
+	
+	if message.attachments:
+		await fetchEmbed(message, timestamp)
+		if is_admin(message.author) and message.attachments[0].filename == '{}.json'.format(message.guild.id):
+			await config_fetchEmbed(message)
+			importCustom(message.guild.id)
+
+
 def corpusInsert(message, timeStamp):
+	"""
+	For bulk logging of all messages sent in all servers. Used for stats and admin logs.
+	:param message: <Discord.message object>
+	:param timeStamp> <String> The current server time
+	:return: <None>
+	"""
 	mMentions = [''.join(str(each)) for each in message.mentions]
 	mEmbeds = [''.join(str(each.to_dict())) for each in message.embeds]
 	mAttach = [''.join(str(each.filename)) for each in message.attachments]
@@ -71,6 +97,14 @@ def corpusInsert(message, timeStamp):
 
 
 async def fetcher(filetype, url, time, message):
+	"""
+	Internal function to download any message attachments from Discord servers
+	:param filetype: <String> The file extension
+	:param url: <String> The file location URL
+	:param time: <String> Current server time
+	:param message: <Discord.message object>
+	:return: <None>
+	"""
 	fileName = '{}_{}_{}'.format(message.author.name, time, url.split('/')[-1])	
 	Path('{}/log/{}/{}/{}'.format(
 		DEFAULT_DIR, filetype, message.guild.name, message.channel.name)).mkdir(
@@ -88,9 +122,35 @@ async def fetcher(filetype, url, time, message):
 
 
 async def fetchEmbed(message, time):
+	"""
+	Call fetcher() for each message.attachment
+	:param message: <Discord.message object>
+	:param time: <String> Current server time
+	:return: <None>
+	"""
 	url = str(message.attachments[0].url)
 	ext = str(url.split('.')[-1].lower())
 	[await fetcher(each, url, time, message) for each in extSet if ext in extSet[each]]
 
-	
+
+#Placeholder function
+def getLog(message):
+	"""
+	Get an excel file log of a user, channel, or guild
+	:param message: <Discord.message object>
+	:return: <String> Describing file location
+	"""
+	pass
+
+
+#Placeholder function
+def getHelp(message):
+	"""
+	Get the help file in ./docs/help for admin command to get a log file
+	:param message: <Discord.message object>
+	:return: <String> The local help file
+	"""
+	pass
+
+
 setup()

@@ -51,6 +51,9 @@ async def on_guild_join(guild):
 	banner = 'Hello {}! \n{}'.format(guild.owner.mention, fetchFile('help', 'welcome'))
 	await guild.owner.send(file=discord.File('./docs/header.png'))
 	await guild.owner.send(banner, file=discord.File(configFile))
+	tquote.setup()
+	tutil.setup()
+	
 
 
 @bot.event
@@ -79,9 +82,6 @@ async def on_message(message):
 			if operator in {'quote', 'lore', 'q', 'l'}:
 				banner = [tquote.helper(message), None]
 
-			elif operator in {'delete', 'remove'}:
-				banner = [tcustom.delete_command(message), None]
-
 			elif operator in {'w', 'wolf', 'wolfram'}:
 				banner = await tword.wolfram(message)
 				#In the event there is a textual response greater than 2000 char limit
@@ -96,7 +96,7 @@ async def on_message(message):
 			elif operator in {'poem', 'potd'}:
 				banner = [await tword.getTodaysPoem(message), None]
 
-			elif operator in {'dict', 'dictionary'}:
+			elif operator in {'dict', 'dictionary', 'wiki', 'wiktionary'}:
 				#In order to handle long entries vs Discord's 2000 char limit,
 				#wiki() will return a list and is output with for each
 				banner = tword.wiki(message)
@@ -168,6 +168,7 @@ async def on_raw_reaction_add(payload):
 	#emoji is :x:
 	if str(payload.emoji) == '❌' and is_admin(payload.member): 
 		await message.channel.send(tquote.deleteQuote(message.guild.id, message.id))
+		await message.channel.send(tcustom.delete_command(message))
 
 	#Add a custom guild command
 	#emoji is :gear:

@@ -18,14 +18,26 @@ parser = WiktionaryParser()
 translator = Translator()
 
 
+#Placeholder function for retry
 def detectLanguage(message):
-	"""Helper fucntion for translate()"""
+	"""
+	Internal helper function for translate()
+	:param message: <Discord.message object>
+	:return: <List> 
+	"""
 	result = translator.translate(message.content)
 	return [result.src, result.pronunciation, result.text]
 
 
+#Placeholder function for retry
 def directTranslate(text, src, target):
-	"""Helper fucntion for translate()"""
+	"""
+	Internal helper fucntion for translate()
+	:param text: <String> The message to be translate
+	:param src: <String> Language code for source language
+	:param target: <String> Language code for destination language
+	:return: <String> Translated message
+	"""
 	result = translator.translate(text, src=src, dest=target)
 	return result.text
 
@@ -40,8 +52,8 @@ def translate(message):
 	incrementUsage(message.guild, 'trans')
 	args = message.content.split()
 	
-	if len(args) == 1 or args[1].lower() == 'help':
-		if len(args) > 2 and args[2] in  {'codes', 'langs', 'langcodes', 'languages'}:
+	if len(args) < 3:
+		if len(args) > 1 and args[1] in  {'codes', 'langs', 'langcodes', 'languages'} and args[1] != 'help':
 			return fetchFile('help', 'langcodes')
 		return fetchFile('help', 'translate')
 
@@ -263,5 +275,10 @@ def google(message, iie=False):
 
 
 def getHelp(message):
+	"""
+	Return the help file located in ./docs/help
+	:param message: <Discord.message object>
+	:return: <String> The local help file
+	"""
 	incrementUsage(message.guild, 'help')
 	return fetchFile('help', 'dict')

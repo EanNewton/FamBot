@@ -22,7 +22,9 @@ TOKEN = getenv('DISCORD_TOKEN')
 POC_TOKEN = getenv('POC_TOKEN')
 GUILD = getenv('DISCORD_GUILD')
 WOLFRAM = getenv('WOLFRAM_TOKEN')
-VERSION = '9.8.2020'
+VERSION = '9.15.2020'
+
+
 
 #################################
 # Internal Function Static Data #
@@ -31,6 +33,8 @@ VERSION = '9.8.2020'
 LANGCODES = [each for tuple_ in LANGCODES.items() for each in tuple_]
 DIVIDER = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
 URL_WOTD = 'https://www.wordsmith.org/words/today.html'
+#URL_POTD = 'https://www.poetryfoundation.org/poems/poem-of-the-day.html'
+URL_POTD = 'https://poems.com/todays-poem/'
 URL_WOLF_IMG = 'http://api.wolframalpha.com/v1/simple?appid={}&i={}'
 URL_WOLF_TXT = 'http://api.wolframalpha.com/v1/result?appid={}&i={}'
 
@@ -157,3 +161,37 @@ STOPWORDS = set(stopwords.words("english")).union([
     "discordapp",
     "discord",
     ])
+
+PUNCTUATION = [
+    ',',
+    '.',
+    '!',
+    '?',
+    '-',
+    '_',
+    '+',
+    '=',
+    '@',
+    '#',
+    '$',
+    '%',
+    '^',
+    '&',
+    '*',
+    '`',
+    '(',
+    ')',
+    '[',
+    ']',
+    '{',
+    '}',
+    '/',
+    '\\',
+    '\'',
+    '<',
+    '>',
+    ';',
+    ':',
+    '~',
+    '|',
+]

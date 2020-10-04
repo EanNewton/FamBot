@@ -10,13 +10,15 @@ from sqlalchemy import and_, update, insert, delete, select, MetaData, Table, Co
 import tquote
 import tword
 import tsched
-from tutil import is_admin, debug, guildList, fetch_value
-from constants import ENGINE, TZ_ABBRS
+from tutil import is_admin, debug, guildList, fetch_value, incrementUsage
+from constants import ENGINE, TZ_ABBRS, DIVIDER
 
+
+#Nested dictionary
+#{key = guild.id, value = dictionary{
+#   key = command name,  value = command return String}
+#}
 customCommands = dict()
-
-def get_userByID(user_id):
-	return main.bot.get_user(user_id)
 
 def setup():
     global meta, Commands
@@ -37,7 +39,11 @@ def setup():
 
 
 def importCustomCommands(guild):
-    """Grab any custom commands from the database"""
+    """
+    Internal function to grab any custom commands from the database
+    :param guild: <Int> Discord guild ID
+    :return: <None>
+    """
     name = ' '.join(fetch_value(guild, 1))
 
     with ENGINE.connect() as conn:
@@ -60,14 +66,13 @@ def get_command(message):
     :param message: <Discord.message> Raw message object
     :return: <str> Banner
     """
+	incrementUsage(message.guild, 'custom')
     banner = None
     args = message.content.split()
     config = tsched.load_config(message.guild.id)
 
-    if args[0] in {'!custom',}:
-        if args[1] == 'help':
-            return getHelp(message)
-        return customCommands[message.guild.id]
+    if args[0] in {'!custom',} or 'help' in args:
+        return getHelp(message)
 	
     if config:
         server_locale = config[2]
@@ -80,7 +85,7 @@ def get_command(message):
     try:
         guildCommands = customCommands[message.guild.id]
         banner = guildCommands[args[0]]
-        #for nested commands
+        #for nested commands, not the most efficient solution but it works
         prev = deepcopy(banner)
         count = 0
         while True:
@@ -117,7 +122,6 @@ def insert_command(message):
     :param message: <Discord.message> Raw message object
     :return: <str> Banner notifying if new command has been created or exisisting has been updated.
     """
-
     if is_admin(message.author):
         args = message.content.split()
 
@@ -151,9 +155,13 @@ def insert_command(message):
 
 
 def delete_command(message):
-    """Permanently remove a custom command if it exists"""
+    """
+    Permanently remove a custom command if it exists
+    :param message: <Discord.message object>
+    :return: <String> Notifying command has been removed 
+    """
     if is_admin(message.author):
-        args = message.content.split()[1:]
+        args = message.content.split()
         with ENGINE.connect() as conn:
             select_st = select([Commands]).where(and_(
                 Commands.c.guild_id == message.guild.id,
@@ -168,11 +176,24 @@ def delete_command(message):
                 conn.execute(del_st)
                 importCustomCommands(message.guild.id)
                 return 'Deleted {}'.format(args[0])
+            else:
+                return 'Command `{}` does not exist.'.format(args[0])
 
 
 def getHelp(message):
-    pass
+	"""
+	Get the command help file from ./docs/help
+	:param message: <Discord.message object>
+	:return: <String> Containing help for the user's available options or list of locations
+	"""
+	incrementUsage(message.guild, 'help')
+    guildCommands = customCommands[message.guild.id]
+	banner = fetchFile('help', 'custom')
+    banner = '{}\n{}Custom commands available in this server are:\n'.format(banner, DIVIDER)
+    for name, value in guildCommands.items():
+        banner = '{}`{}`: {}\n'.format(banner, name, value)
 
+	return banner
 
 
 setup()

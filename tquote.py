@@ -52,6 +52,11 @@ def setup():
 
 
 def helper(message):
+	"""
+	Main entry point from main.py, handles majority of argument parsing
+	:param message: <Discord.message object>
+	:return: <lambda function> Internal function dispatch
+	"""
 	text = message.content
 	for each in message.mentions:
 		text = text.replace('<@!{}>'.format(each.id), each.name)
@@ -86,7 +91,12 @@ def helper(message):
 	
 
 def insertQuote(message, Table):
-	"""Insert a quote to the database"""
+	"""
+	Insert a quote to the database
+	:param message: <Discord.message object>
+	:param Table: <SQLAlchemy.Table object>
+	:return: <String> Notifying of message being added
+	"""
 	if Table is None:
 		Table = Quotes
 	config = load_config(message.guild.id)
@@ -128,14 +138,19 @@ def insertQuote(message, Table):
 				text = ' '.join(args[3:]),
 				date = date,
 				guild = str(message.guild.id),
-				#guild_name = message.guild.name,
 			)
 			conn.execute(ins)
 			return stm.format(' '.join(args[3:]), args[2], date)
 
 
 def getQuote(guild, Table, username=None):
-	"""Retrive a quote from the database"""
+	"""
+	Retrieve a quote from the database.
+	:param guild: <int> message.guild.id
+	:param Table: (Optional) <SQLAlchemy.Table> Quotes or Lore, defaults to Quotes
+	:param username: (Optional) <str> Case sensitive Discord username, without discriminator
+	"""
+
 	if username:
 		select_st = select([Table]).where(and_(
 			Table.c.name == username,
@@ -167,7 +182,12 @@ def getQuote(guild, Table, username=None):
 
 
 def deleteQuote(guild, msg_id):
-	"""Remove a quote from the database"""
+	"""
+	Remove a quote from the database
+	:param guild: <Int> Discord guild ID
+	:param msg_id: <Int> Discord message ID
+	:return: <String> Notify if quote has been removed
+	"""
 	with ENGINE.connect() as conn:
 		for Table in {Quotes, Lore}:
 			select_st = select([Table]).where(and_(
@@ -184,25 +204,36 @@ def deleteQuote(guild, msg_id):
 					))
 				conn.execute(ins)
 
-				#Sanity check
-				if not checkExists(guild, msg_id):
-					return 'Deleted quote:\n`{}`'.format(quote)
+				return 'Deleted quote:\n`{}`'.format(quote)
+			else:
+				return 'Quote does not exist.'
 
 
 def checkExists(guild, msg_id):
-	"""Ensure that we do not add the same message to the database multiple times"""
+	"""
+	Internal function toeEnsure that we do not add the same message to the database multiple times
+	:param guild: <Int> Discord guild ID
+	:param msg_id: <Int> Discord message ID
+	:return: <Bool>
+	"""
 	with ENGINE.connect() as conn:
 		select_st = select([Quotes]).where(and_(
 			Quotes.c.id == msg_id,
 			Quotes.c.guild == guild))
-		if conn.execute(select_st).fetchall(): return True
+		if conn.execute(select_st).fetchall(): 
+			return True
 	return False	
 
 
-def getReact(message, nsfw):
-	"""Get a random gif file from ./emotes or the servers folder"""
+def getReact(message):
+	"""
+	Get a random gif file from ./emotes or the servers folder
+	:param message: <Discord.message object>
+	:return: <String> Describing file location
+	"""
 	incrementUsage(message.guild, 'gif')
 
+	nsfw = True if 'nsfw' in message.content.lower() else False
 	guild = message.guild.id
 	reacts = ['{}/emotes/{}'.format(DEFAULT_DIR, each) for each in listdir('./emotes')]
 	
@@ -212,16 +243,20 @@ def getReact(message, nsfw):
 	if nsfw and isdir('{}/emotes/{}/nsfw'.format(DEFAULT_DIR, guild)):
 		reacts.extend(['{}/emotes/{}/nsfw/{}'.format(DEFAULT_DIR, guild, each) for each in listdir('./emotes/{}/nsfw'.format(guild))])
 
-	return random.choice(reacts)
+	return [None, random.choice(reacts)]
 
 
 async def fetchReact(message):
-	"""Save a gif a user added with !gif add"""
+	"""
+	Save a gif a user added with !gif add
+	:param message: <Discord.message object>
+	:return: <String> Notify of gif being added or not
+	"""
 	incrementUsage(message.guild, 'gif')
 	url = str(message.attachments[0].url)
-	ext = str(url.split('.')[-1].lower())
+	extension = str(url.split('.')[-1].lower())
     
-	if ext != 'gif':
+	if extension != 'gif':
 		return 'File must be a gif'
         
 	fileName = str(url.split('/')[-1])    
@@ -241,18 +276,28 @@ async def fetchReact(message):
 				await f.write(await resp.read())
 				await f.close()
 				print("[+] Saved: {}".format(filePath))  
+				return 'Added a new gif to !gif'
 	
-	
+
 def load_config(guild):
+	"""
+	Retrieve any formatting options from database
+	:param guild: <Int> Discord guild ID
+	:return: <List> SQLAlchemy row entry from Config Table
+	"""
+	result = None
 	with ENGINE.connect() as conn:
 		select_st = select([Config]).where(Config.c.id == guild)
 		result = conn.execute(select_st).fetchone()
-	if result:
-		return result
-	return None
+	return result
 
 
 def getHelp(author):
+	"""
+	Get the help file in ./docs/help 
+	:param message: <Discord.message.author object>
+	:return: <String> The local help file
+	"""
 	banner = fetchFile('help', 'quotes')
 	if not is_admin(author):
 		banner = banner.split('For Admins:')[0]

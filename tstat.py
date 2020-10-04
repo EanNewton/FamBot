@@ -9,8 +9,6 @@ import pandas as pd
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
 import nltk
-from nltk.tokenize import RegexpTokenizer
-from nltk.stem.snowball import SnowballStemmer
 from nltk.stem.wordnet import WordNetLemmatizer
 from sklearn.feature_extraction.text import CountVectorizer
 import seaborn as sns
@@ -24,7 +22,6 @@ def setup(guild, user=None, channel=None):
 	clean_desc = []
 	stem_desc = []
 	
-	#Find the raw data we need
 	with sqlite3.connect(PATH_DB) as conn:
 		if user:
 			sql_st = 'Select content from corpus where user_name like {} and guild={}'.format(
@@ -37,8 +34,8 @@ def setup(guild, user=None, channel=None):
 		else:
 			sql_st = 'Select content from corpus where guild={}'.format(guild)
 			log_df = pd.read_sql(sql_st, conn)
+
 	log_df['word_count'] = log_df['content'].apply(lambda x: len(str(x).split(" ")))
-	
 	getNorm(log_df.content)
 	getLem(log_df['clean_desc'])
 		
@@ -46,7 +43,11 @@ def setup(guild, user=None, channel=None):
 
 
 def getNorm(dataframe):
-	"""Remove special characters and normalize words"""
+	"""
+	Remove special characters and normalize words
+	:param dataframe: <Pandas dataframe>
+	:return: <Pandas dataframe>
+	"""
 	for w in range(len(dataframe)):
 		desc = log_df['content'][w].lower()
 		desc = re.sub('[^a-zA-Z]', ' ', desc)
@@ -57,21 +58,17 @@ def getNorm(dataframe):
 
 
 def getLem(dataframe):
-	"""Lemmatize words, such as running --> run"""
+	"""
+	Lemmatize words, such as running --> run
+	:param dataframe: <Pandas dataframe>
+	:return: <Pandas dataframe>
+	"""
 	for w in range(len(dataframe)):
 		split_text = dataframe[w].split()
 		lem = WordNetLemmatizer()
 		split_text = [lem.lemmatize(word) for word in split_text if not word in STOPWORDS]
 		split_text = " ".join(split_text)
 		stem_desc.append(split_text)
-
-def getFreq(args, guild):
-	limit = 10
-	if len(args) >= 3:
-		limit = int(args[2])
-	freq = pd.Series(' '.join(stem_desc).split()).value_counts()[:limit]
-	freq = str(freq).split('dtype')[0]
-	return [freq, None]
 
 
 def helper(message):
@@ -101,16 +98,37 @@ def helper(message):
 		setup(message.guild.id)
 	
 	return {
-		'common': lambda: getFreq(args, message.guild.name),
+		'common': lambda: getFreq(args),
 		'cloud': lambda: wordCloud('the server', message.guild.name),
 		'count': lambda: wordCount(args, message.guild.name),
 		'phrases': lambda: get_ngrams(args, message.guild.name),
 		'help': lambda: getHelp(message),
 	}.get(operator, lambda: None)()
 
+
+def getFreq(args):
+	"""
+	Generate a pandas Series of word frequency pairs
+	:param args: <List> user supplied input describing upper limit
+	:return: <List> Contains Pandas series of word frequency pairs
+	"""
+	limit = 10
+	if len(args) >= 3:
+		limit = int(args[2])
+		if limit < 1:
+			limit = 1
+	freq = pd.Series(' '.join(stem_desc).split()).value_counts()[:limit]
+	freq = str(freq).split('dtype')[0]
+	return [freq, None]
+
 	
 def wordCount(args, guild):
-	"""Create a bar plot of message lengths"""
+	"""
+	Create a bar plot of message lengths
+	:param args: <List> user supplied input describing minimum and maximum lengths
+	:param guild: <String> Discord guild name
+	:return: <List> Strings describing args and filename of graph
+	"""
 	if len(args) == 4:
 		low = int(args[2])
 		high = int(args[3])
@@ -126,22 +144,26 @@ def wordCount(args, guild):
 	if high < low: 
 		high = low + 1
 	
-	x = log_df['word_count']
 	plt.xlabel("Message word length")
 	plt.ylabel("# of Messages")
-	plt.hist(x, bins='auto', range=(low,high))
+	plt.hist(log_df['word_count'], bins='auto', range=(low, high))
 
 	plt.savefig("{}_wordcount.png".format(guild))
 	plt.clf()
 
 	return [
-		"Number of messages between length {} and {}.".format(str(low), str(high)),
+		"Number of messages between length {} and {}.".format(low, high),
 		"{}_wordcount.png".format(guild),
 		 ]
 
 
 def wordCloud(type_, guild):
-	"""Create a word cloude"""
+	"""
+	Create a word cloude
+	:param type_: <String> Either the user, channel, or guild name
+	:param guild: <String> Discord guild name
+	:return: <List> Strings describing the type_ and filename
+	"""
 	wordcloud = WordCloud(
 		width=800, 
 		height=800, 
@@ -165,7 +187,12 @@ def wordCloud(type_, guild):
 
 
 def make_ngrams(low, high, n=None):
-	"""Convert corpus into a set of ngrams"""
+	"""
+	Internal function to convert corpus into a set of ngrams
+	:param low: <Int> Lower ngram length
+	:param high: <Int> Upper ngram length
+	:return: <List> Sorted ngram frequency list
+	"""
 	vec = CountVectorizer(
 		strip_accents='unicode', 
 		ngram_range=(low, high), 
@@ -182,7 +209,12 @@ def make_ngrams(low, high, n=None):
 
 
 def get_ngrams(args, guild):
-	"""Create a bar plot of common short phrases within messages"""
+	"""
+	Create a bar plot of common short phrases within messages
+	:param args: <String> User supplied input describing low, high, and limit
+	:param guild: <String> Discord guild name
+	:return: <List> Strings describing args and filename
+	"""
 	#Validate input arguments
 	if len(args) >= 4:
 		low = int(args[2])
@@ -201,15 +233,16 @@ def get_ngrams(args, guild):
 		limit = 30
 	if len(args) == 3:
 		limit = int(args[2])
-	if limit < 1: limit = 1
-	
+	if limit < 1: 
+		limit = 1
+
 	ngrams = make_ngrams(int(low), int(high), n=int(limit))
 
 	#Plotting
 	trigram_df = pd.DataFrame(ngrams)
 	trigram_df.columns=["n-gram", "Freq"]
 	sns.set(rc={'figure.figsize':(12,8)}, font_scale=1)
-	bp = sns.barplot(x="Trigram", y="Freq", data=trigram_df)
+	bp = sns.barplot(x="n-gram", y="Freq", data=trigram_df)
 	bp.set_xticklabels(bp.get_xticklabels(), rotation=75)
 	plt.tight_layout()
 	plt.axis('on')

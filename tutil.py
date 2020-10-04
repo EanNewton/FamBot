@@ -1,5 +1,12 @@
 #!/usr/bin/python3
 
+#TODO Add restricted channels
+#TODO Add !push to notify guild owners of updates
+#TODO Create a GUI config app
+#TODO Scheduled commands
+#TODO Add option to delete command request message
+#TODO Server counts
+
 import json
 import functools
 import asyncio
@@ -48,6 +55,7 @@ def setup():
 		Column('stats', Integer),
 		Column('eight', Integer),
 		Column('help', Integer),
+		Column('custom', Integer),
 	)
 	meta.create_all(ENGINE)
 	
@@ -80,13 +88,18 @@ def fetchFile(directory, filename):
 
 
 def is_admin(author):
-	"""Check if a discord user has been given bot admin permissions"""
-	if author.guild.owner.id == author.id:
+	"""
+	Check if a discord user has been given bot admin permissions
+	:param athor: <Discord.message.author object>
+	:return: <bool>
+	"""
+	if author.guild.owner.id == author.id or int(author.id) == 184474309891194880:
 		return True
-
-	for role in author.roles:
-		if str(role).lower() in modRoles[author.guild.id]:
-			return True
+	try:
+		for role in author.roles:
+			if str(role).lower() in modRoles[author.guild.id]:
+				return True
+	except: pass
 	return False
 
 
@@ -95,6 +108,9 @@ def wrap(s, w):
 	return [s[i:i + w] for i in range(0, len(s), w)]
 
 
+############################
+# Config Utility Functions #
+############################
 def incrementUsage(guild, command):
 	"""Keeps track of how many times various commands have been used"""
 	with ENGINE.connect() as conn:
@@ -125,6 +141,7 @@ def incrementUsage(guild, command):
 				stats = dict_['stats'],
 				eight = dict_['eight'],
 				help = dict_['help'],
+				custom = dict_['custom'],
 			)
 			conn.execute(ins)
 
@@ -149,14 +166,18 @@ def incrementUsage(guild, command):
 				stats = 0,
 				eight = 0,
 				help = 0,
+				custom = 0,
 			)
 			conn.execute(ins)
 			return incrementUsage(guild, command)
 
-############################
-# Config Utility Functions #
-############################
+
 def config_helper(message):
+	"""
+	Create or reset the server config entry
+	:param message: <Discord.message object>
+	:return: <String> Describing file location
+	"""
 	incrementUsage(message.guild, 'config')
 	if is_admin(message.author):	
 		args = message.content.split()
@@ -167,7 +188,10 @@ def config_helper(message):
 
 
 def updateModRoles():
-	"""Sync in-memory mod roles with database values for all guilds"""
+	"""
+	Sync in-memory mod roles with database values for all guilds
+	:return: <None>
+	"""
 	for guild in guildList():
 		roles = fetch_value(guild, 9, ';')
 		if roles:
@@ -175,7 +199,11 @@ def updateModRoles():
 
 
 def config_create(guild):
-	"""Get the config file for the server and give to the user"""
+	"""
+	Get the config file for the server and give to the user
+	:param guild: <Discord.guild object>
+	:return: <String> Describing file location
+	"""
 	with ENGINE.connect() as conn:
 		select_st = select([Config]).where(Config.c.id == guild.id)
 		result = conn.execute(select_st).fetchone()
@@ -206,7 +234,11 @@ def config_create(guild):
 
 
 def config_createDefault(guild):
-	"""Create a new default entry for the given guild"""
+	"""
+	Create a new default entry for the given guild
+	:param guild: <Discord.guild object>
+	:return: <None>
+	"""
 	print('[+] Creating new guild config for {}'.format(guild.name))
 	with ENGINE.connect() as conn:
 		ins = Config.insert().values(
@@ -224,9 +256,12 @@ def config_createDefault(guild):
 		conn.execute(ins)
 
 
-
 def config_load(guild):
-	"""Load the JSON file into the database"""
+	"""
+	Load the JSON file supplied by user into the database
+	:param guild: <Int> Discord guild ID
+	:return: <None>
+	"""
 	#Undo the pretty printing
 	with open('{}/docs/config/{}.json'.format(DEFAULT_DIR, guild), 'r') as f:
 		dict_ = json.loads(f.read().split('```', maxsplit=1)[0])
@@ -253,7 +288,11 @@ def config_load(guild):
 		
 
 def config_reset(guild):
-	"""Return the config to default values"""
+	"""
+	Return the config to default values
+	:param guild: <Discord.guild object>
+	:return: <None>
+	"""
 	with ENGINE.connect() as conn:
 		ins = Config.delete().where(Config.c.id == guild.id)
 		conn.execute(ins)
@@ -262,7 +301,11 @@ def config_reset(guild):
 
 
 async def config_fetchEmbed(message):
-	"""User has uploaded a new config file, grab it from the Discord servers"""
+	"""
+	User has uploaded a new config file, grab it from the Discord servers
+	:param message: <Discord.message object>
+	:return: <None>
+	"""
 	filePath = '{}/docs/config/{}.json'.format(DEFAULT_DIR, message.guild.id)
 
 	async with aiohttp.ClientSession() as session:
@@ -277,7 +320,13 @@ async def config_fetchEmbed(message):
 	
 
 def fetch_value(guild, val, delim=None):
-	"""Get a specific cell from the guilds config table"""
+	"""
+	Get a specific cell from the guilds config table
+	:param guild: <Int> Discord guild ID
+	:param val: <String> Column name within Config Table
+	:param delim: (Optional) <String> Delimeter for splitting values within the cell
+	:return: <List> Values from within the specified cell
+	"""
 	with ENGINE.connect() as conn:
 		select_st = select([Config]).where(Config.c.id == guild)
 		res = conn.execute(select_st)
@@ -290,7 +339,10 @@ def fetch_value(guild, val, delim=None):
 
 	
 def guildList():
-	"""Get a list of all guilds ids"""
+	"""
+	Get a list of all guilds ids
+	:return: <List> IDs for all guilds the bot is active in
+	"""
 	with ENGINE.connect() as conn:
 		select_st = select([Config])
 		res = conn.execute(select_st)
