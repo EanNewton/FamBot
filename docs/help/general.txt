@@ -12,6 +12,7 @@ Commands are:
 !google !g !lmgtfy
 !gif !react !meme
 !eightball !eight !8ball !8
+!yandex !tineye !image !reverse
 !custom
 !help
 ```

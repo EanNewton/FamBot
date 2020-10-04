@@ -1,7 +1,10 @@
 **Web Scraping Help**
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>
 Following each command is alternate names that operate the same.
-`!tr LANGUAGE WORD` use Google to translate a word into another language. Language is the two letter Google code, e.g. en for English, jp for Japanese, etc.
+`!tr -DESTINATION -SOURCE PHRASE` Use Google to translate a PHRASE into another language. Language is the two letter Google code, e.g. en for English, jp for Japanese, etc.
+-SOURCE is optional, if not provided the bot will attempt to autodetect it.
+-DESTINATION is optional, if not provided the bot will attempt to translate into English.
+Use `!tr langs` for a full list of language codes.
 -- `!trans`
 -- `!translate`
 `!wiki PHRASE` get the wiktionary.org entry for a PHRASE
@@ -19,3 +22,7 @@ Following each command is alternate names that operate the same.
 `!google PHRASE` Return a link to Let Me Google That For You for the search PHRASE
 -- `!lmgtfy`
 -- `!g`
+`!yandex URL` Perform a reverse image search on the URL
+-- `!tineye`
+-- `!image`
+-- `!reverse`
