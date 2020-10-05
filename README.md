@@ -23,7 +23,9 @@
 
 # About <a name = "about"></a>
 
-I initially created this bot to address a problem I saw occurring frequently: Twitch was helping to connect people from all over the globe, which is a wonderful thing, but it brought the problem of communicating across all those disparate places. A streamer would say something like, "Hey friends! I'll be streaming every Tuesday at 6:00PM!" but when exactly that 6:00PM on Tuesday actually is would be different for people located in London vs New York vs Melbourne. I wanted a simple and intuitive way for anyone to find out when it would occur for them with a single command. The project has been growing and adding features as requested since then.
+I initially created this bot to address a problem I saw occurring frequently: Twitch was helping to connect people from all over the globe, which is a wonderful thing, but it brought the problem of communicating across all those disparate places. A streamer would say something like, "Hey friends! I'll be streaming every Tuesday at 6:00PM!" but when exactly that 6:00PM on Tuesday actually is would be different for people located in London vs New York vs Melbourne. I wanted a simple and intuitive way for anyone to find out when it would occur for them with a single command. 
+
+The project has been growing and adding features as requested since then. If there's a change you'd like to see feel free to issue a Pull Request or contact me.
 
 Invite the bot to your server: https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot
 
@@ -42,6 +44,10 @@ You will need a bot token from the Discord Developer portal as well as one from 
 + [!8ball](#!8ball)
 + [!wolfram](#!wolfram)
 + [!google](#!google)
++ [!word](#!word)
++ [!poem](#!poem)
++ [!yandex](#!yandex)
++ [!custom](#!custom)
 
 
 ## !help <a name = "!help"></a>
@@ -62,7 +68,7 @@ Optional parameters are:
     "Schedule": "Monday = 10; Tuesday = 10; Wednesday = 16; Friday = 10; Saturday = 16; ",
     "URL Footer": "Come hang with us at: <https://www.twitch.tv/>",
     "Quote Format": "{0}\n ---{1} on {2}",
-    "Quote Added Format": "Added:\n \"{0}\"\n by {1} on {2}",
+    "Quote Added Format": "\"{0}\"\n by {1} on {2}",
     "Lore Format": "{0}\n ---Scribed by the Lore Master {1}, on the blessed day of {2}",
     "Blacklisted Words": "none, one, two foo bar; three",
     "Moderator Roles": "mod;admin;discord mod;\n"
@@ -113,7 +119,7 @@ Optional parameters are:
 + !sched help [CONTINENT] --- display a list of cities in that continent that users can set their location to. Continents include: Africa, America, Antarctica, Asia, Atlantic, Australia, Europe, Indian, Pacific, and abbr. Note: "abbr" is a short list of common locations that have been aliased, e.g. pst, est, jst, gmt
 + !sched set [CONTINENT]/[CITY] --- sets the user's timezone to the correct one for that location
 + !sched [CONTINENT]/[CITY] --- see the schedule for that location without changing the user's location
-+ !sched override [USER ID] [USER NAME] [CONTINENT]/[CITY] --- an administrator only command to change any user's location
++ !sched override [CONTINENT]/[CITY] @User1 @User2 @User3... --- an administrator only command to change any user's location
 
 **Example Output**
 ```
@@ -166,45 +172,22 @@ Returns the English Wiktionary entry for a word or phrase. This does not necessa
 Aliased names for the command are:
 + !dict
 + !dictionary
++ !wiki
++ !wiktionary
 
 Optional parameters are:
 + !dict [TEXT] --- Display an explanation of any single word or phrase.
++ !dict help --- Show all available web interfaced commands.
 
 **Example**
 > !dict computer
-```
-noun 
-Etymology
-From compute +‎ -er.
+![dict example](https://github.com/EanNewton/FamBot/blob/master/Samples/dict.png)
 
-Definitions
-computer (plural computers) 
-(now rare, chiefly historical) A person employed to perform computations; one who computes. [from 17th c.] 
-(by restriction, chiefly historical) A male computer, where the female computer is called a computress. 
-A programmable electronic device that performs mathematical calculations and logical operations, especially one that can process, store and retrieve large amounts of data very quickly; now especially, a small one for personal or home use employed for manipulating text or graphics, accessing the Internet, or playing games or media. [from 20th c.] 
-Related Words
-See also Thesaurus:computer, 
-computation, compute, computing, 
-Examples
-By which manner of ſpeaking, this Propheteſs, who is ſo exact a Computer, would have us, I ſuppoſe, to conclude, that it would be a great miſtake to think that the number of Angels was either 9, or 11 for one of Men. 
-Only a few years ago Mr. Powers, an American computer, disproved a hypothesis about prime numbers which had held the field for more than 250 years. 
-One Harvard computer, Annie Jump Cannon, used her repetitive acquaintance with the stars to devise a system of stellar classifications so practical that it is still in use today. 
-Hyponym: computress 
-Synonyms: processor, 'puter , box , machine, calculator 
-Hyponyms: desktop, laptop, portable computer, stored-program computer 
-Pronunciation
-(UK) IPA: /kəmˈpjuːtə/, /kəmˈpjuːʔə/ 
-(US) IPA: /kəmˈpjutɚ/, [kəmˈpʰjuɾɚ] 
-Hyphenation: com‧put‧er 
-Rhymes: -uːtə(r) 
-https://upload.wikimedia.org/wikipedia/commons/5/5c/En-uk-computer.ogg 
-https://upload.wikimedia.org/wikipedia/commons/a/a1/En-us-computer.ogg
-
-```
 ## !stats <a name = "!stats"></a>
 Display some fun info about the messages being sent. The default command will generate a word cloud of the most common words for the server.
 
 Optional parameters are:
++ !stats help --- Show the help interface.
 + !stats user [USERNAME] --- Create a word cloud for the specified user. Like !quote this is the case sensitive version of the username without the discriminator.
 + !stats channel [CHANNEL] --- Create a word cloud for the specified channel. This is provided as the #channel-name tag.
 + !stats count [LOW] [HIGH] --- Create a bar graph showing the number of messages of length between LOW and HIGH.
@@ -277,23 +260,30 @@ Possible responses are:
 ## !wolfram <a name = "!8ball"></a>
 Query the Wolfram computational intelligence engine.
 
+Optional parameters are:
++ !wolf txt [QUERY] --- Query the Wolfram Alpha engine for QUERY and return a text based response.
++ !wolf img [QUERY] --- Query the Wolfram Alpha engine for QUERY and return an image based response.
+
 Aliased names for the command are:
 + !w
 + !wolf
 + !wolfram
 
 **Examples**
->!wolf Evaluate ∫4x6−2x3+7x−4dx
+>!wolf img Evaluate ∫4x6−2x3+7x−4dx
 ---
-![wolf example 1](https://i.imgur.com/aDZOwK4.png)
+![wolf example 1](https://github.com/EanNewton/FamBot/blob/master/Samples/wolfimg.png)
+
+![wolf example 1 result](https://github.com/EanNewton/FamBot/blob/master/Samples/762496307855491113.gif)
+
 ---
->!wolf Canada healthcare expenditures
+>!wolf txt what is the weather in Tokyo
 ---
-![wolf  example 2](https://i.imgur.com/RIgUbvR.png)
+![wolf  example 2](https://github.com/EanNewton/FamBot/blob/master/Samples/wolftxt.png)
 ---
 
 ## !google <a name = "!google"></a>
-Did someone ask a question that could have been Googled? Send a link to the Google search for a phrase.
+Did someone ask a question that could have been Googled? Send a link to Let Me Google That For You for them.
 
 Aliased names for the command are:
 + !g
@@ -301,9 +291,9 @@ Aliased names for the command are:
 + !lmgtfy
 
 **Examples**
-> !google Evaluate ∫4x6−2x3+7x−4dx
+> !google what is a banana
 ---
-`https://google.com/search?q=Evaluate+%E2%88%AB4x6%E2%88%922x3+7x%E2%88%924dx`
+`https://lmgtfy.com/?q=what+is+a+banana&iie=1`
 
 ## !gif <a name = "!gif"></a>
 Display a random gif or add a new one.
@@ -326,31 +316,59 @@ Aliased names for the command are:
 + !wotd
 
 **Examples**
-```
-origami
-PRONUNCIATION:
-(or-i-GAH-mee)
-MEANING:
-noun:
-1. The art of folding paper into various shapes.
-2. An object made by folding paper.
-ETYMOLOGY:
- From Japanese origami, from ori (fold) + kami (paper). Earliest
-documented use: 1948.
-NOTES:
-Origami is not just folding paper cranes. Aliaksei Zholner has built a
-working V8 engine with just paper and gray matter: video (3 min.). I bow in his general direction. Origami has practical
-applications too. For example, in a folding airbag in a car to a solar-panel
-array on a satellite.
-USAGE:
-“But tasting exposes origami folds of scents and flavors.”
-Andrew Ross; At The Garrison, ‘Thoughtful’ Food You Won’t Soon Forget;
-Portland Press Herald (Maine); Nov 10, 2019.
-“A toothy man in dungarees grinned back at me. Slim sort, with a face
-creased in a thousand places, like an unfolded bit of origami.”
-Dot Gumbi; The Pirates of Maryland Point; 2016.
-See more usage examples of origami in Vocabulary.com’s dictionary.
-```
+![word example](https://github.com/EanNewton/FamBot/blob/master/Samples/word.png)
+
+## !poem <a name = "!poem"></a>
+Get the Poem of the Day from https://poems.com/todays-poem/
+
+Aliased names for the command are:
++ !poem
++ !potd
+
+**Examples**
+![poem example](https://github.com/EanNewton/FamBot/blob/master/Samples/poem.png)
+
+## !yandex <a name = "!yandex"></a>
+Return a link to a reverse image search.
+
+Aliased names for the command are:
++ !yandex
++ !tineye
++ !image
++ !reverse
+
+Optional parameters are:
++ !yandex URL --- Given a URL to an image return a link to a reverse image search for the provided image. You can right click an image within Discord and choose Copy Link.
+
+## !custom <a name = "!custom"></a>
+Add custom commands to your discord.
+Admins can react to any message with :gear: to add a new command. The first word of the message will be the command name, the remainder will be what is displayed. The command name is taken literally so if you want a ! or . or any prefix make sure to include that.
+Admins can react to any message :X: to remove a command where the first word matches a command name to remove it.
+Custom commands can override built-in commands, so if you want to disable any command -- such as !sched or !quote -- simply set up a custom command with the same name.
+
+Custom commands can be nested and can also contain specific additional parameters.
+For example, if you add the command `!custom1 Foo` and then add `!custom2 <custom1> Bar <GUILD>`, calling !custom2 will then display `Foo Bar my server`. Make sure that nested command calls are enclosed in `<>`. Custom commands do not suppress user, channel, or role mentions and will ping people if you include a mention in them.
+
+Use `!custom` to display the help text as well as any custom commands you have setup for your server.
+
+Additional Parameters include:
++ <URL> --- The URL from your from your !config file
++ <NOW> or <TIME> ---  The current time for the server location from your !config file
++ <LOCALE> or <LOCATION> --- The server locale from your !config file
++ <AUTHOR> --- The username of whoever used the command
++ <GUILD> --- Your Discord guild name
++ <SCHED> --- Calls !sched
++ <QUOTE> --- Calls !quote
++ <LORE> --- Calls !lore
+	
+**Examples**
+
+![custom example](https://github.com/EanNewton/FamBot/blob/master/Samples/custom.png)
+
+---
+
+![custom help](https://github.com/EanNewton/FamBot/blob/master/Samples/custom-help.png)
+
 # Info for Geeks <a name = "geeky"></a>
 
 This project is written entirely in Python 3 as a passion project, as well as my first project in Python. You are encouraged to use, modify, fork, contribute, hack, or do whatever your heart desires with it within the confines of the GNU General Public License Version 3. Pull requests are warmly welcomed.
