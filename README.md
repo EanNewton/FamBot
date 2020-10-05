@@ -373,6 +373,7 @@ The core design philosophies for the project are that it should be: easy to use,
 + [Packages](#packages)
 + [A Note on Users](#users)
 + [How Stuff Works](#workings)
++ [Project Map](#map)
 
 ## Packages <a name = "packages"></a>
 The backend makes heavy use of SQLite 3 via the SQLAlchemy project to keep with the Reliable philosophy.
@@ -930,7 +931,7 @@ The remainder of the function:
 + sets it the correct timezone with `schedule[day].in_tz(dtLocalName)`,
 + and adds a footer message to the banner before returning
 
-### Project Map
+### Project Map <a name = "map"></a>
 
 Future plans include:
 
