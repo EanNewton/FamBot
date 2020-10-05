@@ -53,6 +53,9 @@ You will need a bot token from the Discord Developer portal as well as one from 
 ## !help <a name = "!help"></a>
 Displays a list of available commands and a brief description of what they do.
 
+**Examples**
+![help example](https://github.com/EanNewton/FamBot/blob/master/Samples/help.png)
+
 ## !config <a name = "!config"></a>
 Generates a config file in JSON format. Only usable by the server owner and roles designated as server administrators. Simply edit the file as you desire and then drag and drop it back into any channel in your discord to apply the changes. 
 
