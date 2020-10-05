@@ -38,7 +38,7 @@ def helper(message):
 			'help': lambda: getHelp(),
 		}.get(operator, lambda: None)()
 
-@debug
+
 def check(message):
 	"""Check if message violates filter for current channel"""
 	text = message.content.split()

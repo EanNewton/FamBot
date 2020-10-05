@@ -10,7 +10,7 @@ from sqlalchemy import and_, update, insert, delete, select, MetaData, Table, Co
 import tquote
 import tword
 import tsched
-from tutil import is_admin, debug, guildList, fetch_value, incrementUsage, fetchFile
+from tutil import is_admin, debug, guildList, fetch_value, incrementUsage, fetchFile, wrap
 from constants import ENGINE, TZ_ABBRS, DIVIDER
 
 
@@ -59,7 +59,7 @@ def importCustomCommands(guild):
                 commands[each[3]] = each[4] 
             customCommands[guild] = commands
 
-@debug
+
 def get_command(message):
     """
     Return a custom command to be sent to Discord.
@@ -70,7 +70,6 @@ def get_command(message):
     args = message.content.split()
     config = tsched.load_config(message.guild.id)
 
-    print(args)
     if args[0] in {'!custom'}:
         return getHelp(message)
 	
@@ -89,7 +88,6 @@ def get_command(message):
         prev = deepcopy(banner)
         count = 0
         while True:
-            #print(banner)
             if len(banner) + len(prev) > 1990 or count > 50:
                 return banner
             else:
@@ -107,7 +105,7 @@ def get_command(message):
                 banner = banner.replace('<QUOTE>', tquote.getQuote(message.guild.id, tquote.Quotes))
                 banner = banner.replace('<LORE>', tquote.getQuote(message.guild.id, tquote.Lore))
                 if banner == prev:
-                    return banner
+                    return wrap(banner, 1990)
                 else:
                     count += 1
                     prev = deepcopy(banner)
@@ -116,7 +114,8 @@ def get_command(message):
     except:
         pass
     finally:
-        return banner
+        if banner: 
+            return wrap(banner, 1990)
 
 
 def insert_command(message):
@@ -190,13 +189,17 @@ def getHelp(message):
     :return: <String> Containing help for the user's available options or list of locations
     """
     incrementUsage(message.guild, 'help')
-    guildCommands = customCommands[message.guild.id]
-    banner = fetchFile('help', 'custom')
-    banner = '{}\n{}Custom commands available in this server are:\n'.format(banner, DIVIDER)
-    for name, value in guildCommands.items():
-        banner = '{}`{}`: {}\n'.format(banner, name, value)
-
-    return banner
+    banner = None
+    try:
+        guildCommands = customCommands[message.guild.id]
+        banner = fetchFile('help', 'custom')
+        banner = '{}\n{}Custom commands available in this server are:\n'.format(banner, DIVIDER)
+        for name, value in guildCommands.items():
+            banner = '{}`{}`: {}\n'.format(banner, name, value)
+    except:
+        pass
+    finally:
+        return wrap(banner, 1990)
 
 
 setup()

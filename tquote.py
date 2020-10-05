@@ -105,7 +105,7 @@ def insertQuote(message, Table):
 		stm = config[7].replace('\\n', '\n')
 	else:
 		server_locale = 'Asia/Tokyo'
-		stm = 'Added: "{}" by {} on {}'
+		stm = '"{}" by {} on {}'
 	
 	#Supress any user or role mentions
 	text = message.content

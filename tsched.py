@@ -45,13 +45,13 @@ def helper(message):
 	operator = 'get'
 	if len(args) > 1 and args[1] in ops:
 		operator = args[1]
-	print(operator)
 	return {
 		'get': lambda: getSchedule(message),
 		'set': lambda: setSchedule(message),
 		'help': lambda: getHelp(message),
 		'override': lambda: override(message),
 	}.get(operator, lambda: None)()	
+
 
 
 def getSchedule(message):

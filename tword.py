@@ -87,7 +87,7 @@ def translate(message):
 			constants.LANGUAGES[result.dest]
 			)	
 
-@debug
+
 def yandex(message):
 	args = message.content.split()
 	if len(args) < 2:
@@ -97,7 +97,7 @@ def yandex(message):
 	return '{}\n{}'.format(yandex, tineye)
 
 
-@debug
+
 def wiki(message):
 	"""
 	Get the www.wiktionary.org entry for a word or phrase
@@ -252,7 +252,6 @@ async def getTodaysPoem(message):
 
 	async with aiohttp.ClientSession() as session:
 		async with session.get(URL_POTD) as resp:
-			print(resp.status)
 			if resp.status == 200:
 				text = await resp.read()
 			else:
@@ -299,4 +298,4 @@ def getHelp(message):
 	:return: <String> The local help file
 	"""
 	incrementUsage(message.guild, 'help')
-	return fetchFile('help', 'dict')
+	return wrap(fetchFile('help', 'dict'), 1990)

@@ -25,7 +25,7 @@ from tutil import is_admin, debug, config_create, config_helper, guildList
 from tutil import config_fetchEmbed, fetchFile, incrementUsage
 from tutil import setup as utilSetup
 from speller import Speller
-from constants import TOKEN, POC_TOKEN, GUILD, VERSION, EIGHTBALL
+from constants import TOKEN, POC_TOKEN, GUILD, VERSION, EIGHTBALL, DEFAULT_DIR
 
 bot = discord.Client()
 spell = Speller('cmd')
@@ -33,7 +33,6 @@ spell = Speller('cmd')
 @bot.event
 async def on_ready():
 	print(bot)
-	'''
 	count = 0
 	for each in guildList():
 		guildHandle = discord.utils.get(bot.guilds, guild__id=each)
@@ -49,7 +48,6 @@ async def on_ready():
 	#For printing full member list
 	#members = '\n - '.join([member.name for member in guildHandle.members])
 	#print(f'Guild Members:\n - {members}')
-	'''
 
 @bot.event
 async def on_guild_join(guild):
@@ -78,16 +76,19 @@ async def on_message(message):
 			args = message.content.split()
 			banner = tcustom.get_command(message)
 			if banner:
-				print(banner)
-				await message.channel.send(banner)
+				if type(banner) is list() and len(banner) > 1:
+					for each in banner:
+						await message.channel.send(each)
+				else:
+					await message.channel.send(banner[0])
 				return
 
 			if not args[0][0] == '!':
 				return
 			#correct minor typos
 			operator = spell(args[0][1:])
-			print(operator)
 			banner = [None, None]
+			print('{} by {} in {} - {}'.format(operator, message.author.name, message.channel.name, message.guild.name))
 			
 			if operator in {'quote', 'lore', 'q', 'l'}:
 				banner = [tquote.helper(message), None]
@@ -110,11 +111,8 @@ async def on_message(message):
 				#In order to handle long entries vs Discord's 2000 char limit,
 				#wiki() will return a list and is output with for each
 				banner = tword.wiki(message)
-				if type(banner) is list():
-					for each in banner:
-						await message.channel.send(each)
-				else:
-					await message.channel.send(banner)
+				for each in banner:
+					await message.channel.send(each)
 				return
 
 			elif operator in ('translate', 'tr', 'trans'):
@@ -140,7 +138,7 @@ async def on_message(message):
 			
 			elif operator == 'doip' and int(message.guild.id) == 453859595262361611:
 				incrementUsage(message.guild, 'doip')
-				banner = [tquote.getQuote(None, message.guild.id, "LaDoIphin"), './docs/doip.jpg']
+				banner = [tquote.getQuote(message.guild.id, tquote.Quotes, "LaDoIphin"), '{}/docs/doip.jpg'.format(DEFAULT_DIR)]
 				
 			elif operator in {'gif', 'react', 'meme'}:
 				if len(args) > 1 and args[1] == 'add':
@@ -178,7 +176,7 @@ async def on_raw_reaction_add(payload):
 	if str(payload.emoji) == '🗨️' and not message.author.bot:
 		if not tquote.checkExists(message.guild.id, message.id):
 			if not tfilter.check(message) or is_admin(payload.member):
-				await message.channel.send(tquote.insertQuote(message, None))
+				await message.channel.send('{} added:\n{}'.format(payload.member.name, tquote.insertQuote(message, None)))
 	
 	#Remove a quote
 	#emoji is :x:
@@ -221,4 +219,4 @@ handler = logging.FileHandler(filename='./log/discord.log', encoding='utf-8', mo
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)	
 
-bot.run(POC_TOKEN)
+bot.run(TOKEN)
