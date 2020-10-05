@@ -54,6 +54,7 @@ You will need a bot token from the Discord Developer portal as well as one from 
 Displays a list of available commands and a brief description of what they do.
 
 **Examples**
+
 ![help example](https://github.com/EanNewton/FamBot/blob/master/Samples/help.png)
 
 ## !config <a name = "!config"></a>
@@ -125,6 +126,7 @@ Optional parameters are:
 + !sched override [CONTINENT]/[CITY] @User1 @User2 @User3... --- an administrator only command to change any user's location
 
 **Examples**
+
 ![sched exmaple](https://github.com/EanNewton/FamBot/blob/master/Samples/sched.png)
 
 ## !quote <a name = "!quote"></a>
@@ -142,6 +144,7 @@ Optional parameters are:
 + !quote help --- Display a brief explanation of the command usage available to the user.
 
 **Examples**
+
 ![quote example](https://github.com/EanNewton/FamBot/blob/master/Samples/quote.png)
 
 ## !lore <a name = "!lore"></a>
