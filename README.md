@@ -30,7 +30,7 @@ The project has been growing and adding features as requested since then. If the
 Invite the bot to your server: https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot
 
 Or, clone the the project to a local directory and launch it with:
-`pipenv run python3 main.py`
+`python3 main.py`
 You will need a bot token from the Discord Developer portal as well as one from Wolfram, placed into ./.env
 
 # List of Commands <a name = "commandlist"></a>
@@ -409,8 +409,8 @@ I feel it is important to remember that software is made to be used. Often there
 
 One of the first things I noticed when having people test out the bot was that they had trouble remembering exactly *what* the commands are, or how to spell them. In addition to the usual help commands I have implemented two ways of combating these problems. 
 
-The first and simplest is to alias the commands. For example, if a user wants to get the definition for a word they should be able to enter `!dictionary`, `!dict`, `!definition`, or `!def` with the same end result. Python makes this simple with the use of hash tables and is done as:
-`elif args[0] in {'!8ball', '!8', '!eightball', '!eight'}:`
+The first and simplest is to alias the commands. For example, if a user wants to get the definition for a word they should be able to enter `!eightball`, `!8ball`, `!eight`, or `!8` with the same end result. Python makes this simple with the use of hash tables and is done as:
+`elif operator in {'!8ball', '!8', '!eightball', '!eight'}:`
 
 The second part took a little more doing, that is, how to handle what to do when a user forgets how exactly to spell "dictionary". This was a problem I was seeing frequently (but not only) from users whose first language wasn't my own, and whose language's spelling conventions didn't mesh with the often times odd rules of English. Those users would be trying something like `!dikt`, `!deph`, or `!dektionary`. The solution was to implement a basic form of auto-correct, like you might find on your phone. The actual code for this is located in the ./speller/ directory and is a stripped down and modified version of Filip Sondej's project [autocorrect](https://github.com/fsondej/autocorrect). Filip's code is a work of art and I encourage you to peruse it. It works by making clever use of Python's concept of arrays, iterables, permutations, and generators, alongside regular expressions. It takes textual input, splits it into individual words, generates many variations of those words with array slices, and then compares them to a custom built dictionary of word frequency pairs to find the most likely candidate for what the word should be before then reforming and returning the corrected text.
 
@@ -525,10 +525,16 @@ There are several events that occur frequently with slight variations, e.g. read
 Here we will encounter the call to fetchFile() in tutil.py for the first time of many. This function looks into our ./docs/ directory for a given file in a given directory and simply returns it to be used in our banner. Any time the bot will be displaying content to the end users I refer to it as a banner. I implemented it this way as part of the second core philosophy, Easy to Modify, so that these common messages can be changed on the fly without needing to interrupt service to users by stopping and reloading the entire bot to change internal code. 
 
 ```python
+
 @bot.event
 async def on_guild_join(guild):
+	print('[+] Joined a new guild: {}'.format(guild.name))
+	configFile = config_create(guild)
 	banner = 'Hello {}! \n{}'.format(guild.owner.mention, fetchFile('help', 'welcome'))
-	await guild.system_channel.send(banner, file=discord.File('./docs/header.png'))
+	await guild.owner.send(file=discord.File('./docs/header.png'))
+	await guild.owner.send(banner, file=discord.File(configFile))
+	tquote.setup()
+	utilSetup()
 ```
 --->
 ```python
@@ -552,14 +558,22 @@ async def on_raw_reaction_add(payload):
 	message = await channel.fetch_message(payload.message_id)
 	
 	#Add a quote
+	#emoji is :speech_left:
 	if str(payload.emoji) == '🗨️' and not message.author.bot:
 		if not tquote.checkExists(message.guild.id, message.id):
 			if not tfilter.check(message) or is_admin(payload.member):
-				await message.channel.send(tquote.insertQuote(None, message))
+				await message.channel.send('{} added:\n{}'.format(payload.member.name, tquote.insertQuote(message, None)))
 	
-	#Remove a quote
-	if str(payload.emoji) == '❌'and is_admin(payload.member): 
+	#Remove a quote or custom command
+	#emoji is :x:
+	if str(payload.emoji) == '❌' and is_admin(payload.member): 
 		await message.channel.send(tquote.deleteQuote(message.guild.id, message.id))
+		await message.channel.send(tcustom.delete_command(message))
+
+	#Add a custom guild command
+	#emoji is :gear:
+	if str(payload.emoji) == '⚙️' and is_admin(payload.member): 
+		await message.channel.send(tcustom.insert_command(message))
 ```
 
 Another lesson that was quickly learned from this was the need to suppress @user and @role mentions, but to do so without stripping the context of the original message. This is done via a standard string match and replace operation before sending it off to the database. From tquote.py:
@@ -582,23 +596,31 @@ This aspect is handled entirely by Python's built in `import logging` and PyDisc
 ```python
 @bot.event 
 async def on_error(event, *args, **kwargs):
+	#For errors with the bot itself
 	with open('./log/err.log', 'a') as f:
 		if event == 'on_message':
 			timestamp = pendulum.now(tz='America/Phoenix').to_datetime_string()
-			print(timestamp)
-			print('[!] Error in: {}; {}'.format(args[0].channel.name, args[0].guild.name))
-			print('[!] Error content: {}'.format(args[0].content))
-			print('[!] Error author: {}'.format(args[0].author))
-			f.write(f'{timestamp}\nUnhandled message:\n{args[0]}\n\n')
+			location = '[!] Error in: {}; {}'.format(args[0].channel.name, args[0].guild.name)
+			content = '[!] Error content: {}'.format(args[0].content)
+			author = '[!] Error author: {}'.format(args[0].author)
+
+			f.write('{}\nUnhandled message:{}\n{}\n{}\n{}\n\n'.format(
+				timestamp,
+				args[0],
+				location,
+				author,
+				content,
+				))
 		else:
-			raise
-			
-			
+			return
+
+
+#For errors with the discord client or API			
 logger = logging.getLogger('discord')
 logger.setLevel(logging.WARNING)
 handler = logging.FileHandler(filename='./log/discord.log', encoding='utf-8', mode='a')
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)	
+logger.addHandler(handler)		
 ```
 
 However, during development simple logging was not enough to fully diagnose most issues. For this I turned to Python's decorator functions and dropped a wrapper into tutil.py. Placing `@debug` above any function definition prints out to the terminal what function is being called and its arguments before actually entering into the function, and what that function is returning before breaking back into its parent. A sort of refined stack trace if you will. This looks like:
@@ -628,34 +650,39 @@ Upon recognizing a command it forwards the message to a helper function within t
 
 ```python
 def helper(message):
+	"""
+	Main entry point from main.py
+	:param message: <Discord.message object>
+	:return: <lambda function> Internal function dispatch
+	"""
 	args = message.content.split()
-	ops = {'get', 'set', 'help', 'override', 'config'}
-	operator = 'get' #Set a default operator
+	ops = {'get', 'set', 'help', 'override'}
+
+	operator = 'get'
 	if len(args) > 1 and args[1] in ops:
 		operator = args[1]
 	return {
 		'get': lambda: getSchedule(message),
 		'set': lambda: setSchedule(message),
-		'help': lambda: getHelp(args, message.author),
+		'help': lambda: getHelp(message),
 		'override': lambda: override(message),
 	}.get(operator, lambda: None)()	
 ```
 
-Such that calls to modules from main.py are a sort of OOP / Functional hybrid and as Easy to Use as:
+Such that calls to modules from main.py are as Easy to Use as:
 
 ```python
 ...			
-elif args[0] in {'!schedule', '!sched', '!s'}:
-	banner = tsched.helper(message)
+elif operator in {'schedule', 'sched', 's'}:
+	banner = [tsched.helper(message), None]
 ...
 ```
 
-When the bot is first initialized from the command line with `pipenv run python3 main.py` it imports all the local modules, and those that need to access the database call their setup() functions at this point. They all look more or less the same, setting up any default values, as well as creating an engine and MetaData objects for SQLAlchemy linked to appropiate tables. As an example the one for tsched.py is:
+When the bot is first initialized from the command line with `python3 main.py` it imports all the local modules, and those that need to access the database call their setup() functions at this point. They all look more or less the same, setting up any default values, as well as creating an engine and MetaData objects for SQLAlchemy linked to appropiate tables. As an example the one for tsched.py is:
 
 ```python
 def setup():
-	global engine, meta, Users, Config
-	engine = create_engine('sqlite:///./log/quotes.db', echo = False)
+	global meta, Users, Config
 	meta = MetaData()
 	Users = Table(
 		'schedule', meta,
@@ -676,12 +703,7 @@ def setup():
 		Column('url', String),
 		Column('qAdd_format', String),
 		)
-	meta.create_all(engine)
-	with open('./docs/locales/abbr.txt', 'r') as f:
-		for line in f:
-			(key, val) = line.split(',')
-			val = val.strip('\n')
-			tzAbbrs[key] = val
+	meta.create_all(ENGINE)
 	print('[+] End Schedule Setup')
 ```
 
@@ -689,13 +711,24 @@ def setup():
 Most modules also include a standard getHelp(args, author) that checks the context of what kind of help the user is requesting and if the response should include administrative commands or not, and loads them from the relevant ./docs/help file. For Ease of Maintenance and Modifying the full help message is located in a single file and split at the appropiate location within the file, instead of accessing and combining multiple txt files.
 
 ```python
-def getHelp(args, author):
-	if len(args) < 3: #Get general help
+def getHelp(message):
+	"""
+	Get the command help file from ./docs/help
+	:param message: <Discord.message object>
+	:return: <String> Containing help for the user's available options or list of locations
+	"""
+	incrementUsage(message.guild, 'help')
+	args = message.content.split()
+
+	if len(args) < 3:
+		#Get general help
 		banner = fetchFile('help', 'schedule')
-		if not is_admin(author):
+		if not is_admin(message.author):
 			banner = banner.split('For Admins:')[0]
-	else: #Get list of cities or continents
+	else: 
+		#Get list of cities or continents
 		banner = fetchFile('locales', args[2].lower())
+
 	return banner
 ```
 
@@ -703,20 +736,31 @@ Let's dive into the heart of the schedule code. This is possibly the ugliest sec
 
 ```python
 def getSchedule(message):
+	"""
+	Generate the server schedule for a two week period.
+	:param message: <Discord.message> The raw message object
+	:return: <str> A formatted banner with up to 14 days of schedule + comments and links.
+	"""
+	incrementUsage(message.guild, 'sched')
 	config = load_config(message.guild.id)
+
 	if config:
 		server_locale = config[2]
 		locale = server_locale
 		schedRawStr = config[3]
 		url = config[6]
-			
-		args = message.content.split()
-		if len(args) > 1: #User requested specific location
-			locale = tzAbbrs.get(args[1].lower(), args[1])
-		else: #Checking for saved locale in DB
-			user = getUser(message.guild.id, message.author.id)
-			if user:
-				locale = user[2]	
+
+		#This function can be called by the bot itself from tcustom.get_command
+		if not message.author.bot:
+			args = message.content.split()
+			if len(args) > 1: 
+				#User requested specific location
+				locale = TZ_ABBRS.get(args[1].lower(), args[1])
+			else: 
+				#Checking for saved locale in DB
+				user = getUser(message.guild.id, message.author.id)
+				if user:
+					locale = user[2]	
 
 		dt = pendulum.now(tz=locale)
 		dtLocalName = dt.timezone.name
@@ -748,7 +792,7 @@ def getSchedule(message):
 		#Show current server time vs current user time
 		banner = '{} in {}\n'.format(dt.to_day_datetime_string(), dt.timezone_name)
 		banner += '{} in {}\n'.format(now_in_server.to_day_datetime_string(), server_locale)
-		banner += divider
+		banner += DIVIDER
 
 		while(schedule[0].day_of_week != pendulum.MONDAY):
 			for day in range(len(schedule)):
@@ -795,7 +839,7 @@ def getSchedule(message):
 			else:
 				banner += '{}\n'.format(schedule[day].to_day_datetime_string())
 				
-		banner += '{}{}\n{}'.format(divider, url, divider)
+		banner += '{}{}\n{}'.format(DIVIDER, url, DIVIDER)
 		banner += 'Help pay for server costs: <{}>\n'.format('https://www.patreon.com/tangerinebot')
 		banner += 'Invite the bot to your server: <{}>\n'.format('https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot')
 		banner += 'Use `!schedule help` for more information.'
@@ -809,26 +853,35 @@ def getSchedule(message):
 The function starts by grabbing the server's entry in the config table along with the user's entry in the schedule table (if they exist) with:
 
 ```python
-def load_config(guild):
-	with engine.connect() as conn:
-		select_st = select([Config]).where(Config.c.id == guild)
-		res = conn.execute(select_st)
-		result = res.fetchone()
-	if result:
-		return result
-	return None
-	
-
 def getUser(guild_, id_):
-	with engine.connect() as conn:
-	#We do not filter by guild here so that the user's location
-	#is preserved across any other servers using the bot
+	"""
+	Internal function to get values from database for a single user
+	:param guild_: <Int> Discord guild ID, currently unused but left in so results can be limited if user is in multiple guilds
+	:param id_: <Int> User ID
+	:return: <List> SQLAlchemy row result from database
+	"""
+	with ENGINE.connect() as conn:
 		select_st = select([Users]).where(
 			Users.c.id == id_,)
 		res = conn.execute(select_st)
 		result = res.fetchone()
 		if result:
 			return result
+	
+	
+def load_config(guild):
+	"""
+	Internal function to get Guild configuration data for schedule formatting and default locale
+	:param guild: <Int> Discord guild ID
+	:return: <List> SQLAlchemy row result from database
+	"""
+	with ENGINE.connect() as conn:
+		select_st = select([Config]).where(Config.c.id == guild)
+		res = conn.execute(select_st)
+		result = res.fetchone()
+	if result:
+		return result
+	return None
 ```
 
 Which will look something like this for the config table:
@@ -877,5 +930,23 @@ The remainder of the function:
 + sets it the correct timezone with `schedule[day].in_tz(dtLocalName)`,
 + and adds a footer message to the banner before returning
 
-### On Logging
 ### Project Map
+
+Future plans include:
+
++ Change the !lore add to work on an emote reaction similar to !quote
++ Add an !update command to notify guild owners in DM of changes to the bot
++ Add a !chat command that connects two random users in an anonymous chat mediated by the bot
++ Create a web app to change config files 
++ Allow for an option within the config file for restricted channels to limit or disable commands
++ Add a way to schedule commands to automatically display at certain times of day
++ Add a config option to delete the user's message containing the command request
++ Add a !report command to DM me about issues with the bot
++ Create a bot status / uptime web page
++ Add a !log command that allows admins to get an Excel log for a specified user, channel, or whole guild
++ Add an !invite command to generate a guild invite link
++ Have the bot automatically git commit an updated user count
++ Format responses as Embeds rather than Messages
++ Optimize tstat.py
++ !translate will silently fail if it does 
++ Either add helper function or split tword.py into multiple files
