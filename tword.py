@@ -110,9 +110,7 @@ def wiki(message):
 		return getHelp(message)
 	try:
 		word = message.content.split(' ', maxsplit=1)[1]
-		print(word)
 		result = parser.fetch(word.strip())[0]
-		print(result)
 		etymology = result['etymology']
 		definitions = result['definitions'][0]
 		pronunciations = result['pronunciations']
