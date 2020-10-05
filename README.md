@@ -306,6 +306,7 @@ Aliased names for the command are:
 + !wotd
 
 **Examples**
+
 ![word example](https://github.com/EanNewton/FamBot/blob/master/Samples/word.png)
 
 ## !poem <a name = "!poem"></a>
@@ -316,6 +317,7 @@ Aliased names for the command are:
 + !potd
 
 **Examples**
+
 ![poem example](https://github.com/EanNewton/FamBot/blob/master/Samples/poem.png)
 
 ## !yandex <a name = "!yandex"></a>
@@ -328,7 +330,7 @@ Aliased names for the command are:
 + !reverse
 
 Optional parameters are:
-+ !yandex URL --- Given a URL to an image return a link to a reverse image search for the provided image. You can right click an image within Discord and choose Copy Link.
++ !yandex [URL] --- Given a URL to an image return a link to a reverse image search for the provided image. You can right click an image within Discord and choose Copy Link.
 
 ## !custom <a name = "!custom"></a>
 Add custom commands to your discord.
@@ -342,14 +344,14 @@ For example, if you add the command `!custom1 Foo` and then add `!custom2 <custo
 Use `!custom` to display the help text as well as any custom commands you have setup for your server.
 
 Additional Parameters include:
-+ <URL> --- The URL from your from your !config file
-+ <NOW> or <TIME> ---  The current time for the server location from your !config file
-+ <LOCALE> or <LOCATION> --- The server locale from your !config file
-+ <AUTHOR> --- The username of whoever used the command
-+ <GUILD> --- Your Discord guild name
-+ <SCHED> --- Calls !sched
-+ <QUOTE> --- Calls !quote
-+ <LORE> --- Calls !lore
++ `<URL>` --- The URL from your from your !config file
++ `<NOW>` or `<TIME>` ---  The current time for the server location from your !config file
++ `<LOCALE>` or `<LOCATION>` --- The server locale from your !config file
++ `<AUTHOR>` --- The username of whoever used the command
++ `<GUILD>` --- Your Discord guild name
++ `<SCHED>` --- Calls !sched
++ `<QUOTE>` --- Calls !quote
++ `<LORE>` --- Calls !lore
 	
 **Examples**
 
