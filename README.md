@@ -124,24 +124,9 @@ Optional parameters are:
 + !sched [CONTINENT]/[CITY] --- see the schedule for that location without changing the user's location
 + !sched override [CONTINENT]/[CITY] @User1 @User2 @User3... --- an administrator only command to change any user's location
 
-**Example Output**
-```
-Sat, Sep 5, 2020 11:41 AM in America/Phoenix
-Sun, Sep 6, 2020 3:41 AM in Asia/Tokyo
-<<>><<>><<>><<>><<>><<>><<>><<>><<>>
-**Sat, Sep 5, 2020 12:00 AM**
-Sun, Sep 6, 2020 6:00 PM
-Mon, Sep 7, 2020 6:00 PM
-Wed, Sep 9, 2020 12:00 AM
-Thu, Sep 10, 2020 6:00 PM
-Sat, Sep 12, 2020 12:00 AM
-<<>><<>><<>><<>><<>><<>><<>><<>><<>>
-Come hang with us at: https://www.twitch.tv/
-<<>><<>><<>><<>><<>><<>><<>><<>><<>>
-Help pay for server costs: https://www.patreon.com/tangerinebot
-Invite the bot to your server: https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot
-Use !schedule help for more information.
-```
+**Examples**
+![sched exmaple](https://github.com/EanNewton/FamBot/blob/master/Samples/sched.png)
+
 ## !quote <a name = "!quote"></a>
 Users can react to any message in the discord with the :speech_left: reaction to add it to a list of quotes. 
 Quotes may be any message that is not from a bot, including text, images, videos, embeds, or files.
@@ -156,6 +141,8 @@ Optional parameters are:
 + !quote [USER] --- Display a quote that was said by that specific user. Note that this is their actual username (case sensitive) and not their display nickname so as to prevent confusion as users change nicknames often. If you are unsure click on the user in either the right panel users list or on their profile picture next to any message they've sent to see their actual username. This does not include the discriminator, which is a # sign folowed by four numbers.
 + !quote help --- Display a brief explanation of the command usage available to the user.
 
+**Examples**
+![quote example](https://github.com/EanNewton/FamBot/blob/master/Samples/quote.png)
 
 ## !lore <a name = "!lore"></a>
   Works almost exactly the same as !quote but new entries can only be added by administrators, a sort of VIP version of !quote or a randomized version of a pinned message.
