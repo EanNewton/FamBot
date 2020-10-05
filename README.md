@@ -949,5 +949,4 @@ Future plans include:
 + Have the bot automatically git commit an updated user count
 + Format responses as Embeds rather than Messages
 + Optimize tstat.py
-+ !translate will silently fail if it does 
 + Either add helper function or split tword.py into multiple files
