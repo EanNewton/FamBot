@@ -1,6 +1,11 @@
 #!/usr/bin/python3
+#TODO standardize help 
 #TODO create a git commit for server join count
 #TODO server invite link
+#TODO update help files
+#TODO move 'which command' to a function?
+#TODO redo the logging to actually be useful
+#TODO consolidate imports?
 
 import logging
 from random import choice

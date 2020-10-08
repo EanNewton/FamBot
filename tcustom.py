@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 #TODO add embeds
+#TODO add rich support such as dates
 
 from copy import deepcopy
 
