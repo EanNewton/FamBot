@@ -5,6 +5,7 @@
 from copy import deepcopy
 
 import pendulum
+from discord import Embed
 from sqlalchemy import and_, update, insert, delete, select, MetaData, Table, Column, Integer, String
 
 import tquote
@@ -66,11 +67,13 @@ def get_command(message):
     :param message: <Discord.message> Raw message object
     :return: <str> Banner
     """
-    banner = None
+    incrementUsage(message.guild, 'custom')
+    custom = None
     args = message.content.split()
     config = tsched.load_config(message.guild.id)
 
     if args[0] in {'!custom'}:
+        print('[-] custom - help by {} in {} - {}'.format(message.author.name, message.channel.name, message.guild.name))
         return getHelp(message)
 	
     if config:
@@ -82,41 +85,41 @@ def get_command(message):
         timestamp = pendulum.now(tz='America/New_York').to_datetime_string()
 
     try:
+        print('[-] custom - {} by {} in {} - {}'.format(args[0], message.author.name, message.channel.name, message.guild.name))
+			
         guildCommands = customCommands[message.guild.id]
-        banner = guildCommands[args[0]]
-        #for nested commands, not the most efficient solution but it works
-        prev = deepcopy(banner)
+        custom = guildCommands[args[0]]
+        prev = deepcopy(custom)
         count = 0
+
+        #for nested commands, not the most efficient solution but it works
         while True:
-            if len(banner) + len(prev) > 1990 or count > 50:
-                return banner
+            if len(custom) + len(prev) > 1990 or count > 50:
+                break
             else:
                 for key in guildCommands:
-                    banner = banner.replace('<{}>'.format(key), guildCommands[key])        
+                    custom = custom.replace('<{}>'.format(key), guildCommands[key])        
                 #TODO user mentions for <QUOTE>
-                banner = banner.replace('<URL>', url)
-                banner = banner.replace('<NOW>', '{} in {}'.format(timestamp, server_locale))
-                banner = banner.replace('<TIME>', '{} in {}'.format(timestamp, server_locale))
-                banner = banner.replace('<LOCALE>', server_locale)
-                banner = banner.replace('<LOCATION>', server_locale)
-                banner = banner.replace('<AUTHOR>', message.author.name)
-                banner = banner.replace('<GUILD>', message.guild.name)
-                banner = banner.replace('<SCHED>', tsched.getSchedule(message))
-                banner = banner.replace('<QUOTE>', tquote.getQuote(message.guild.id, tquote.Quotes))
-                banner = banner.replace('<LORE>', tquote.getQuote(message.guild.id, tquote.Lore))
-                if banner == prev:
-                    return wrap(banner, 1990)
+                custom = custom.replace('<URL>', url)
+                custom = custom.replace('<NOW>', '{} in {}'.format(timestamp, server_locale))
+                custom = custom.replace('<TIME>', '{} in {}'.format(timestamp, server_locale))
+                custom = custom.replace('<LOCALE>', server_locale)
+                custom = custom.replace('<LOCATION>', server_locale)
+                custom = custom.replace('<AUTHOR>', message.author.name)
+                custom = custom.replace('<GUILD>', message.guild.name)
+                custom = custom.replace('<SCHED>', tsched.getScheduleRaw(message))
+                custom = custom.replace('<QUOTE>', tquote.getQuoteRaw(message.guild.id, tquote.Quotes))
+                custom = custom.replace('<LORE>', tquote.getQuoteRaw(message.guild.id, tquote.Lore))
+                if custom == prev:
+                    break
                 else:
                     count += 1
-                    prev = deepcopy(banner)
-        if banner:
-            incrementUsage(message.guild, 'custom')
+                    prev = deepcopy(custom)
     except:
         pass
     finally:
-        if banner: 
-            return wrap(banner, 1990)
-
+        banner = Embed(title=args[0], description=custom)
+        return banner
 
 def insert_command(message):
     """
@@ -142,7 +145,8 @@ def insert_command(message):
                     )
                 conn.execute(ins)
                 importCustomCommands(message.guild.id)
-                return 'Updated `{}` to return: "{}".'.format(args[0], ' '.join(args[1:]))
+                banner = Embed(title='Updated `{}`'.format(args[0], description=' '.join(args[1:])))
+                return banner
             else:
                 ins = Commands.insert().values(
                     id = message.id,
@@ -153,8 +157,8 @@ def insert_command(message):
                 )
                 conn.execute(ins)
                 importCustomCommands(message.guild.id)
-                return '`{}` will now display:\n {}.'.format(args[0], ' '.join(args[1:]))
-
+                banner = Embed(title='Added custom command `{}`'.format(args[0]), description=' '.join(args[1:]))
+                return banner
 
 def delete_command(message):
     """
@@ -189,17 +193,16 @@ def getHelp(message):
     :return: <String> Containing help for the user's available options or list of locations
     """
     incrementUsage(message.guild, 'help')
-    banner = None
+    custom = ''
     try:
         guildCommands = customCommands[message.guild.id]
-        banner = fetchFile('help', 'custom')
-        banner = '{}\n{}Custom commands available in this server are:\n'.format(banner, DIVIDER)
+        banner = Embed(title='Custom Command Help', description=fetchFile('help', 'custom'))
         for name, value in guildCommands.items():
-            banner = '{}`{}`: {}\n'.format(banner, name, value)
+            custom = '{}`{}`: {}\n'.format(custom, name, value)
+        banner.add_field(name='Custom commands available in this server are:', value=custom)
+        return banner
     except:
         pass
-    finally:
-        return wrap(banner, 1990)
 
 
 setup()

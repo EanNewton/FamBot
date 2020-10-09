@@ -25,7 +25,7 @@ from tutil import is_admin, debug, config_create, config_helper, guildList
 from tutil import config_fetchEmbed, fetchFile, incrementUsage
 from tutil import setup as utilSetup
 from speller import Speller
-from constants import TOKEN, POC_TOKEN, GUILD, VERSION, EIGHTBALL, DEFAULT_DIR
+from constants import TOKEN, POC_TOKEN, GUILD, VERSION, EIGHTBALL, DEFAULT_DIR, help_general
 
 bot = discord.Client()
 spell = Speller('cmd')
@@ -76,11 +76,7 @@ async def on_message(message):
 			args = message.content.split()
 			banner = tcustom.get_command(message)
 			if banner:
-				if type(banner) is list() and len(banner) > 1:
-					for each in banner:
-						await message.channel.send(each)
-				else:
-					await message.channel.send(banner[0])
+				await message.channel.send(embed=banner)
 				return
 
 			if not args[0][0] == '!':
@@ -88,37 +84,42 @@ async def on_message(message):
 			#correct minor typos
 			operator = spell(args[0][1:])
 			banner = [None, None]
-			print('{} by {} in {} - {}'.format(operator, message.author.name, message.channel.name, message.guild.name))
+			print('[-] {} by {} in {} - {}'.format(operator, message.author.name, message.channel.name, message.guild.name))
 			
 			if operator in {'quote', 'lore', 'q', 'l'}:
-				banner = [tquote.helper(message), None]
+				banner = tquote.helper(message)
+				await message.channel.send(embed=banner)
+				return
 
 			elif operator in {'w', 'wolf', 'wolfram'}:
 				banner = await tword.wolfram(message)
 				#In the event there is a textual response greater than 2000 char limit
-				if type(banner[0]) is list():
-					for each in banner[0]:
-						await message.channel.send(each)
-					return
+				if type(banner) is list:
+					await message.channel.send(banner[0], file=discord.File(banner[1]))
+				else:
+					await message.channel.send(embed=banner)
+				return 
 			
 			elif operator in {'word', 'wotd'}:
-				banner = [await tword.getTodaysWord(message), None]
+				banner = await tword.getTodaysWord(message)
+				await message.channel.send(embed=banner)
+				return
 			
 			elif operator in {'poem', 'potd'}:
-				banner = [await tword.getTodaysPoem(message), None]
+				banner = await tword.getTodaysPoem(message)
+				await message.channel.send(embed=banner)
+				return
 
 			elif operator in {'dict', 'dictionary', 'wiki', 'wiktionary'}:
 				#In order to handle long entries vs Discord's 2000 char limit,
 				#wiki() will return a list and is output with for each
 				banner = tword.wiki(message)
-				for each in banner:
-					await message.channel.send(each)
+				await message.channel.send(embed=banner)
 				return
 
 			elif operator in ('translate', 'tr', 'trans'):
-				banner = [tword.translate(message), None]
-				for each in banner:
-					await message.channel.send(each)
+				banner = tword.translate(message)
+				await message.channel.send(embed=banner)
 				return
 
 			elif operator in {'lmgtfy', 'google', 'g'}:
@@ -128,7 +129,9 @@ async def on_message(message):
 				banner = [None, config_helper(message)]
 			
 			elif operator in {'schedule', 'sched', 's'}:
-				banner = [tsched.helper(message), None]
+				banner = tsched.helper(message)
+				await message.channel.send(embed=banner)
+				return
 
 			elif operator in {'yandex', 'image', 'tineye', 'reverse'}:
 				banner = [tword.yandex(message), None]
@@ -147,7 +150,8 @@ async def on_message(message):
 					banner = tquote.getReact(message)
 					
 			elif operator == 'stats':
-				banner = tstat.helper(message)
+				image, banner = tstat.helper(message)
+				await message.channel.send(file=image, embed=banner)
 			
 			elif operator in {'8ball', '88ball', 'ball', '8', 'eightball', 'eight'}:
 				incrementUsage(message.guild, 'eight')
@@ -155,10 +159,19 @@ async def on_message(message):
 				
 			elif operator == 'help':
 				incrementUsage(message.guild, 'help')
-				banner = fetchFile('help', 'general')
+				help_ = fetchFile('help', 'general')
 				if not is_admin(message.author):
-					banner = banner.split('For Admins:')[0]
-				banner = [banner, None]
+					help_ = help_.split('For Admins:')[0]
+
+				banner = discord.Embed(title='General Help', description=help_)
+				banner.add_field(name='Help support this bot!', value='All donations go to development and server costs.', inline=False)
+				banner.add_field(name='PayPal', value=help_general['paypal'])
+				banner.add_field(name='Patreon', value=help_general['patreon'])
+				banner.add_field(name='More Information', value='This bot is open source, find it at: {}'.format(general_help['github']))
+				banner.add_field(name='Invite the bot to your server.', value=help_general['invite'], inline=False)
+				
+				await message.channel.send(embed=banner)
+				return
 
 			if banner[1]:
 				await message.channel.send(banner[0], file=discord.File(banner[1]))	
@@ -176,7 +189,8 @@ async def on_raw_reaction_add(payload):
 	if str(payload.emoji) == '🗨️' and not message.author.bot:
 		if not tquote.checkExists(message.guild.id, message.id):
 			if not tfilter.check(message) or is_admin(payload.member):
-				await message.channel.send('{} added:\n{}'.format(payload.member.name, tquote.insertQuote(message, None)))
+				banner = tquote.insertQuote(message, None, payload.member.name)
+				await message.channel.send(embed=banner)
 	
 	#Remove a quote
 	#emoji is :x:
@@ -187,7 +201,7 @@ async def on_raw_reaction_add(payload):
 	#Add a custom guild command
 	#emoji is :gear:
 	if str(payload.emoji) == '⚙️' and is_admin(payload.member): 
-		await message.channel.send(tcustom.insert_command(message))
+		await message.channel.send(embed=tcustom.insert_command(message))
 
 
 

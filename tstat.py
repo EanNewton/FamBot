@@ -5,6 +5,7 @@ import re
 import sqlite3
 from sqlite3 import Error
 
+from discord import Embed, File
 import pandas as pd
 from wordcloud import WordCloud
 import matplotlib.pyplot as plt
@@ -117,11 +118,38 @@ def getFreq(args):
 		limit = int(args[2])
 		if limit < 1:
 			limit = 1
+		elif limit > 99:
+			limit = 99
 	freq = pd.Series(' '.join(stem_desc).split()).value_counts()[:limit]
 	freq = str(freq).split('dtype')[0]
-	return [freq, None]
 
-	
+	split_freq = [each.split('\n') for each in freq.split(' ') if each]
+	split_freq = [item for sublist in split_freq for item in sublist]
+
+	#Find the longest combination of WORD and FREQ to create appropiate padding for pretty printing
+	longest = 0
+	for idx in range(0, len(split_freq) - 1):
+		if len(split_freq[idx]) + len(split_freq[idx + 1]) > longest:
+			longest = len(split_freq[idx]) + len(split_freq[idx + 1]) + 1
+
+	count = 1
+	values = ''
+	for idx, _ in enumerate(split_freq):
+		if idx + 1 == len(split_freq):
+			break
+		padding = ' '
+		prefix = count if count >= 10 else '0{}'.format(count)
+		if idx % 2 == 0:
+			while len(padding) + len(split_freq[idx]) + len(split_freq[idx + 1]) <= longest:
+				padding += ' ' 
+			values += '`{}: {}{}{}`\n'.format(prefix, split_freq[idx], padding, split_freq[idx+1])
+			count += 1
+
+	banner = Embed(title='Word Frequencies')
+	banner.add_field(name='The {} most common words for this server are:'.format(limit), value=values)
+	return None, banner
+
+
 def wordCount(args, guild):
 	"""
 	Create a bar plot of message lengths
@@ -148,13 +176,14 @@ def wordCount(args, guild):
 	plt.ylabel("# of Messages")
 	plt.hist(log_df['word_count'], bins='auto', range=(low, high))
 
-	plt.savefig("{}_wordcount.png".format(guild))
+	filename = '{}_wordcount.png'.format(guild)
+	plt.savefig("{}/log/stats/{}".format(DEFAULT_DIR, filename))
 	plt.clf()
 
-	return [
-		"Number of messages between length {} and {}.".format(low, high),
-		"{}_wordcount.png".format(guild),
-		 ]
+	image = File('{}/log/stats/{}'.format(DEFAULT_DIR, filename), filename=filename)
+	banner = Embed(title='Wordcount', description="Number of messages between length {} and {}.".format(low, high))
+	banner.set_image(url='attachment://{}'.format(filename))
+	return image, banner
 
 
 def wordCloud(type_, guild):
@@ -177,13 +206,15 @@ def wordCloud(type_, guild):
 	plt.imshow(wordcloud)
 	plt.axis('off')
 
-	fig.savefig("{}_wordcloud.png".format(guild))
+	filename = '{}_wordcloud.png'.format(guild)
+	fig.savefig("{}/log/stats/{}".format(DEFAULT_DIR, filename))
 	plt.clf()
 
-	return [
-		"The most common single words for {}.".format(type_),
-		"{}_wordcloud.png".format(guild), 
-		]
+	image = File('{}/log/stats/{}'.format(DEFAULT_DIR, filename), filename=filename)
+	banner = Embed(title='Wordcloud', description="The most common single words for {}.".format(type_))
+	banner.set_image(url='attachment://{}'.format(filename))
+	return image, banner
+
 
 
 def make_ngrams(low, high, n=None):
@@ -248,17 +279,19 @@ def get_ngrams(args, guild):
 	plt.axis('on')
 
 	#Cleanup
+	filename = "{}_ngram.png".format(guild)
 	figure = bp.get_figure()
-	figure.savefig("{}_ngram.png".format(guild))
+	figure.savefig('{}/log/stats/{}'.format(DEFAULT_DIR, filename))
 	plt.clf()	
 
-	return [
-		"The {} most common phrases of length {} to {}.".format(limit, low, high),
-		"{}_ngram.png".format(guild),
-		]
+	image = File('{}/log/stats/{}'.format(DEFAULT_DIR, filename), filename=filename)
+	banner = Embed(title='N-Grams', description="The {} most common phrases of length {} to {}.".format(limit, low, high))
+	banner.set_image(url='attachment://{}'.format(filename))
+	return image, banner
 
 
 def getHelp(message):
 	incrementUsage(message.guild, 'help')
-	return [fetchFile('help', 'stats'), None]
+	banner = Embed(title='Stats Help', description=fetchFile('help', 'stats'))
+	return None, banner
 

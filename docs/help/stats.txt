@@ -1,5 +1,3 @@
-**Stats Help**
-<<>><<>><<>><<>><<>><<>><<>><<>><<>>
 Please be patient when using these commands, they may take a moment.
 `!stats` Display a word cloud for the server.
 `!stats user USERNAME` Display a word cloud for the specified user.

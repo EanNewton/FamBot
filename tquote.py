@@ -9,6 +9,7 @@ import aiofiles
 from pathlib import Path
 
 import pendulum
+from discord import Embed
 from sqlalchemy import and_, func, update, select, MetaData, Table, Column, Integer, String 
 
 from tutil import debug, fetchFile, is_admin, incrementUsage
@@ -46,6 +47,8 @@ def setup():
 		Column('text', String),
 		Column('date', String),
 		Column('guild', String),
+		Column('embed', String),
+		Column('guild_name', String),
 		)
 	meta.create_all(ENGINE)
 	print('[+] End Quotes Setup')
@@ -90,11 +93,12 @@ def helper(message):
 		return getQuote(guild, Quotes)
 	
 
-def insertQuote(message, Table):
+def insertQuote(message, Table, adder=None):
 	"""
 	Insert a quote to the database
 	:param message: <Discord.message object>
 	:param Table: <SQLAlchemy.Table object>
+	:param adder: <String> Username of the member who added the :speech_left:
 	:return: <String> Notifying of message being added
 	"""
 	if Table is None:
@@ -105,8 +109,7 @@ def insertQuote(message, Table):
 		stm = config[7].replace('\\n', '\n')
 	else:
 		server_locale = 'Asia/Tokyo'
-		stm = '"{}" by {} on {}'
-	
+		stm = '--{} on {}'
 	#Supress any user or role mentions
 	text = message.content
 	for each in message.mentions:
@@ -130,7 +133,14 @@ def insertQuote(message, Table):
 				embed = embed,
 			)
 			conn.execute(ins)
-			return stm.format(text, message.author.name, date)
+
+
+			banner = Embed(title="{} Added Quote: {}".format(adder, message.id), description=text)
+			if embed:
+				banner.set_image(url=embed)
+			print(stm)
+			banner.set_footer(text=stm.format(message.author.name, date))
+
 		elif Table.name == 'famLore':
 			ins = Table.insert().values(
 				id = message.id,
@@ -138,12 +148,75 @@ def insertQuote(message, Table):
 				text = ' '.join(args[3:]),
 				date = date,
 				guild = str(message.guild.id),
+				embed = embed,
+				guild_name = message.guild.name,
 			)
 			conn.execute(ins)
-			return stm.format(' '.join(args[3:]), args[2], date)
+
+			banner = Embed(title="Added Lore: {}".format(message.id), description=' '.join(args[3:]))
+			if embed:
+				banner.set_image(url=embed)
+			print(stm)
+			banner.set_footer(text=stm.format(args[2], date))
+
+	return banner
 
 
 def getQuote(guild, Table, username=None):
+	"""
+	Retrieve a quote from the database.
+	:param guild: <int> message.guild.id
+	:param Table: (Optional) <SQLAlchemy.Table> Quotes or Lore, defaults to Quotes
+	:param username: (Optional) <str> Case sensitive Discord username, without discriminator
+	"""
+
+	if username:
+		select_user = select([Table]).where(and_(
+			Table.c.name == username,
+			Table.c.guild == guild)).order_by(func.random())
+		select_id = select([Table]).where(and_(
+			Table.c.id == username,
+			Table.c.guild == guild))
+	else:
+		select_rand = select([Table]).where(
+			Table.c.guild == guild).order_by(func.random())
+			
+	with ENGINE.connect() as conn:
+		if username:
+			result = conn.execute(select_id).fetchone()
+			if not result:
+				result = conn.execute(select_user).fetchone()
+		else:
+			result = conn.execute(select_rand).fetchone()
+		#Result fields translate as
+		#[0]: message id, [1]: author, [2]: quote, [3]: date, [6]: embed url
+		if result:
+			config = load_config(guild)
+			if config:			
+				if(Table.name == 'famQuotes'):
+					stm = config[4].replace('\\n', '\n')
+					title = "Quote {}".format(result[0])
+				elif(Table.name == 'famLore'):
+					stm = config[5].replace('\\n', '\n')
+					title = "Lore {}".format(result[0])
+			else:	
+				if(Table.name == 'famQuotes'):
+					stm = '---{} on {}'
+					title = "Quote {}".format(result[0])
+				elif(Table.name == 'famLore'):
+					stm = '---Scribed by the Lore Master {}, on the blessed day of {}'
+					title = "Lore {}".format(result[0])
+
+			stm = stm.format(result[1], result[3])
+			banner = Embed(title=title, description=result[2])
+			if len(result) > 6 and result[6]:
+				banner.set_image(url=result[6])
+			banner.set_footer(text=stm)
+
+			return banner
+
+
+def getQuoteRaw(guild, Table, username=None):
 	"""
 	Retrieve a quote from the database.
 	:param guild: <int> message.guild.id

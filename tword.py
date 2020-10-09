@@ -7,6 +7,7 @@ import aiofiles
 from urllib.parse import quote_plus
 
 from bs4 import BeautifulSoup
+from discord import Embed
 from wiktionaryparser import WiktionaryParser
 from googletrans import Translator, constants
 import inflect
@@ -14,7 +15,7 @@ import inflect
 import timeout
 from tutil import fetchFile, debug, incrementUsage, wrap
 from constants import DEFAULT_DIR, PATH_WOTD, URL_WOTD, URL_POTD, WOLFRAM, URL_WOLF_IMG, URL_WOLF_TXT, URL_KEYWORDS
-
+from constants import help_dict
 
 parser = WiktionaryParser()
 translator = Translator()
@@ -56,8 +57,13 @@ def translate(message):
 	
 	if len(args) < 3:
 		if len(args) > 1 and args[1] in  {'codes', 'langs', 'langcodes', 'languages'} and args[1] != 'help':
-			return fetchFile('help', 'langcodes')
-		return fetchFile('help', 'translate')
+			help_ = fetchFile('help', 'langcodes')
+			banner = Embed(title="Translator Help", description="Language Codes")
+			banner.set_footer(text=help_)
+		else:
+			help_ = fetchFile('help', 'translate')
+			banner = Embed(title="Translator Help")
+			banner.add_field(name="Commands", value=help_)
 
 	else:
 		text = ' '.join(args[1:])
@@ -80,12 +86,13 @@ def translate(message):
 			#Attempt to auto-detect source language and translate to English
 			result = translator.translate(text)
 
-		return '{}\nPronunciation: {}\nSource: {}\nTarget: {}'.format(
-			result.text, 
-			result.pronunciation, 
-			constants.LANGUAGES[result.src], 
-			constants.LANGUAGES[result.dest]
-			)	
+		banner = Embed(title="Google Translate")
+		banner.add_field(name="Original Text", value=text, inline=False)
+		banner.add_field(name="Translated Text", value=result.text, inline=False)
+		banner.add_field(name="Source Language", value=constants.LANGUAGES[result.src], inline=True)
+		banner.add_field(name="Target Language", value=constants.LANGUAGES[result.dest], inline=True)
+		
+	return banner
 
 
 def yandex(message):
@@ -97,7 +104,6 @@ def yandex(message):
 	return '{}\n{}'.format(yandex, tineye)
 
 
-
 def wiki(message):
 	"""
 	Get the www.wiktionary.org entry for a word or phrase
@@ -107,55 +113,63 @@ def wiki(message):
 	incrementUsage(message.guild, 'dict')
 	args = message.content.split()
 	if len(args) == 1 or args[1] == 'help':
-		return getHelp(message)
-	try:
-		word = message.content.split(' ', maxsplit=1)[1]
-		result = parser.fetch(word.strip())[0]
-		etymology = result['etymology']
-		definitions = result['definitions'][0]
-		pronunciations = result['pronunciations']
+		banner = Embed(title="Wiktionary Help")
+		banner.add_field(name='About', value=help_dict['main'])
+		banner.add_field(name='Aliased Command Names', value=help_dict['alternative'])
+		return banner
+	else:
+		try:
+			word = message.content.split(' ', maxsplit=1)[1]
+			result = parser.fetch(word.strip())[0]
+			etymology = result['etymology']
+			definitions = result['definitions'][0]
+			pronunciations = result['pronunciations']
 
-		banner = '**{}**\n'.format(word)
-		
-		if definitions['partOfSpeech']:
-			banner += '*Parts of Speech*\n{}\n'.format(definitions['partOfSpeech'])
-		
-		if etymology:
-			banner += '*Etymology*\n{}\n'.format(etymology)
-		
-		if definitions['text']:
-			banner += '*Definitions*\n'
-			for each in definitions['text']:
-				banner += '{} \n'.format(each)
+			banner = Embed(title="Wiktionary", description=word)
+			
+			if definitions['partOfSpeech']:
+				banner.add_field(name="Parts of Speech", value=definitions['partOfSpeech'], inline=False)
 
-		if definitions['relatedWords']:
-			banner += '*Related Words*\n'
-			for each in definitions['relatedWords']:
-				for sub in each['words']:
-					banner += '{}, '.format(sub)
-				banner += '\n'
+			if etymology:
+				banner.add_field(name="Etymology", value=etymology, inline=False)
+			
+			if definitions['text']:
+				defs = ''
+				for each in definitions['text']:
+					defs += '{} \n'.format(each)
+				banner.add_field(name="Definitions", value=defs, inline=False)
 
-		if definitions['examples']:
-			banner += '*Examples*\n'
-			for each in definitions['examples']:
-				banner += '{} \n'.format(each)
+			if definitions['relatedWords']:
+				defs = ''
+				for each in definitions['relatedWords']:
+					for sub in each['words']:
+						defs += '{}, '.format(sub)
+					defs += '\n'
+				banner.add_field(name="Related Words", value=defs, inline=False)
 
-		if pronunciations['text'] or pronunciations['audio']:
-			banner += '*Pronunciation*\n'
-			for each in pronunciations['text']:
-				banner += '{} \n'.format(each)
+			if definitions['examples']:
+				defs = ''
+				for each in definitions['examples']:
+					defs += '{} \n'.format(each)
+				banner.add_field(name="Examples", value=defs, inline=False)
 
-			for each in pronunciations['audio']:
-				banner += 'https:{} \n'.format(each)
+			if pronunciations['text'] or pronunciations['audio']:
+				defs_text = ''
+				defs_audio = ''
+				for each in pronunciations['text']:
+					defs_text += '{} \n'.format(each)
 
-		#Discord has a character limit of 2000 per message
-		#Wiktionary entries often exceed this limit
-		#So we break it into a list and send each individually if it exceeds that limit
-		return wrap(banner, 1990)
-	except:
-		return None
+				for each in pronunciations['audio']:
+					defs_audio += 'https:{} \n'.format(each)
+				banner.add_field(name="Pronunciation, IPA", value=defs_text, inline=False)
+				banner.add_field(name="Pronunciation, Audio Sample", value=defs_audio, inline=False)
+
+			return banner
+		except:
+			return None
 
 
+#TODO update help to embed
 async def wolfram(message):
 	"""
 	Return an image based response from the Wolfram Alpha API
@@ -165,6 +179,7 @@ async def wolfram(message):
 	incrementUsage(message.guild, 'wolf')
 
 	args = message.content.split()
+	banner = Embed(title="Wolfram Alpha")
 	try:
 		if args[1].lower() in {'simple', 'txt', 'text', 'textual'}:
 			query_st = quote_plus(' '.join(args[2:]))
@@ -180,9 +195,8 @@ async def wolfram(message):
 						return ['[!] Wolfram Server Status {}'.format(resp.status), None]
 
 			text = text.decode('UTF-8')
-			if len(text) > 1990:
-				text = wrap(text, 1990)
-			return [text, None]
+			banner.add_field(name=' '.join(args[2:]), value=text)
+			return banner
 
 		elif args[1].lower() in {'complex', 'graphic', 'graphical', 'image', 'img', 'gif'}:
 			query_st = quote_plus(' '.join(args[2:]))
@@ -204,7 +218,7 @@ async def wolfram(message):
 			return [fetchFile('help', 'wolfram'), None]
 	except:
 		print('[!] Wolfram failed to process command on: {}'.format(message.content))
-		return [fetchFile('help', 'wolfram'), None]
+		return None
 
 
 async def getTodaysWord(message):
@@ -229,14 +243,24 @@ async def getTodaysWord(message):
 	text = text[0].strip()
 	text = text.split('\n')
 	
-	banner = []
-	for line in text:
-		if line in URL_KEYWORDS.keys():
-			banner.append(URL_KEYWORDS[line])
-		else:
-			banner.append(line)
+	fields = {'header': '',}
+	for idx, line in enumerate(text):
+		if line:
+			if line in URL_KEYWORDS.keys():
+				fields[line] = ''
+				key = line
+			elif idx == 0:
+				fields['header'] = '{}\n{}'.format(fields['header'], line)
+			else:
+				fields[key] = '{}\n{}'.format(fields[key], line)
 
-	return '\n'.join([str(line) for line in banner if line])
+	banner = Embed(title="Word of the Day", description=fields['header'])
+	fields.pop('header')
+	for key, val in fields.items():
+		banner.add_field(name=key, value=val)
+	banner.set_footer(text=URL_WOTD)
+
+	return banner
 
 
 async def getTodaysPoem(message):
@@ -263,15 +287,14 @@ async def getTodaysPoem(message):
 	text = soup.find_all("span", class_="excerpt_line")
 	text = [str(line).replace('</span>', '') for line in text]
 	text = [line.replace('<span class=\"excerpt_line\">', '') for line in text]
+	text = [line.replace('<em>', '*') for line in text]
+	text = [line.replace('</em>', '*') for line in text]
+	text = '\n'.join(text)
 	
-	banner = [title]
-	for line in text:
-		if line in URL_KEYWORDS.keys():
-			banner.append(URL_KEYWORDS[line])
-		else:
-			banner.append(line)
-
-	return '\n'.join([str(line) for line in banner if line])
+	banner = Embed(title='Poem of the Day')
+	banner.add_field(name=title, value=text)
+	banner.set_footer(text=URL_POTD)
+	return banner
 
 
 def google(message, iie=False):
@@ -282,6 +305,7 @@ def google(message, iie=False):
 	"""
 	incrementUsage(message.guild, 'google')
 	query_st = quote_plus(message.content.split(' ', maxsplit=1)[1])
+
 	if iie:
 		banner = '<https://lmgtfy.com/?q={}&iie=1>'.format(query_st)
 	else:

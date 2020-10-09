@@ -1,4 +1,3 @@
-**Translator Help**
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>
 `!translate TEXT` Translate the TEXT into English.
 `!translate -TARGET TEXT` Translate the TEXT into TARGET language.

@@ -100,7 +100,7 @@ with open('./docs/locales/abbr.txt', 'r') as f:
 		val = val.strip('\n')
 		tzAbbrs[key] = val
 '''
-EIGHTBALL = [
+EIGHTBALL = {
     #Yes
 	'It is certain.', 
     'It is decidedly so.', 
@@ -124,7 +124,7 @@ EIGHTBALL = [
     'My sources say no.', 
     'Outlook not so good',
 	'Very doubtful.'
-	]
+}
 
 STOPWORDS = set(stopwords.words("english")).union([
 	"channel cannot", 
@@ -194,3 +194,21 @@ PUNCTUATION = [
     '~',
     '|',
 ]
+
+
+#############
+# Help Info #
+#############
+help_general = {
+    'commands': '',
+    'paypal': 'https://www.paypal.com/biz/fund?id=UHBZFEDYWW7LS',
+    'patreon': 'https://www.patreon.com/tangerinebot',
+    'invite': 'https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot',
+    'github': 'https://github.com/EanNewton/FamBot'
+    
+}
+
+help_dict = {
+    'main': '`!wiki PHRASE` get the wiktionary.org entry for a PHRASE',
+    'alternative': '`!dict`\n`!dictionary`\n`!wiktionary`',
+}
