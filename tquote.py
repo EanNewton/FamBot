@@ -116,9 +116,16 @@ def insertQuote(message, Table, adder=None):
 		text = text.replace('<@!{}>'.format(each.id), each.name)
 	for each in message.role_mentions:
 		text = text.replace('<@&{}>'.format(each.id), each.name)
-	
+	text = text.replace('@everyone', '@ everyone')
+	text = text.replace('@here', '@ here')
+
 	args = text.split()	
+
 	embed = str(message.attachments[0].url) if message.attachments else None
+	if not embed:
+		for each in args:
+			if each.find('http') != -1:
+				embed = each
 	date = pendulum.now(tz=server_locale).to_day_datetime_string()
 	
 	with ENGINE.connect() as conn:
@@ -138,7 +145,6 @@ def insertQuote(message, Table, adder=None):
 			banner = Embed(title="{} Added Quote: {}".format(adder, message.id), description=text)
 			if embed:
 				banner.set_image(url=embed)
-			print(stm)
 			banner.set_footer(text=stm.format(message.author.name, date))
 
 		elif Table.name == 'famLore':
@@ -156,7 +162,6 @@ def insertQuote(message, Table, adder=None):
 			banner = Embed(title="Added Lore: {}".format(message.id), description=' '.join(args[3:]))
 			if embed:
 				banner.set_image(url=embed)
-			print(stm)
 			banner.set_footer(text=stm.format(args[2], date))
 
 	return banner
