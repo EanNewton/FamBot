@@ -34,6 +34,7 @@ def setup():
 		Column('qAdd_format', String),
 		Column('filtered', String),
 		Column('mod_roles', String),
+		Column('anonymous', Integer),
 		)
 	Stats = Table(
 		'usageCounts', meta,
@@ -86,15 +87,16 @@ def fetchFile(directory, filename):
 		return f.read()
 
 
-
 def is_admin(author):
 	"""
 	Check if a discord user has been given bot admin permissions
 	:param athor: <Discord.message.author object>
 	:return: <bool>
 	"""
-	if author.guild.owner.id == author.id or int(author.id) == 184474309891194880:
-		return True
+	try:
+		if author.guild.owner_id == author.id or int(author.id) == 184474309891194880:
+			return True
+	except: pass
 	try:
 		for role in author.roles:
 			if str(role).lower() in modRoles[author.guild.id]:
@@ -253,6 +255,7 @@ def config_createDefault(guild):
 			qAdd_format = 'Added:\n "{0}"\n by {1} on {2}',
 			filtered = 'none',
 			mod_roles = 'mod;admin;discord mod;',
+			anonymous = 1,
 			)		
 		conn.execute(ins)
 
@@ -281,6 +284,7 @@ def config_load(guild):
 					qAdd_format = dict_['qAdd_format'],
 					filtered = dict_['filtered'],
 					mod_roles = dict_['mod_roles'],
+					anonymous = dict_['anonymous'],
 					)
 		conn.execute(ins)
 	#TODO ensure to lower
@@ -319,7 +323,7 @@ async def config_fetchEmbed(message):
 
 	config_load(message.guild.id)	
 	
-
+	
 def fetch_value(guild, val, delim=None):
 	"""
 	Get a specific cell from the guilds config table

@@ -2,15 +2,14 @@
 
 #TODO Add method for admins to get a log of a user, channel, or guild
 
-import os
-import asyncio
 import aiohttp
 import aiofiles
 from pathlib import Path
 
 import pendulum
-import sqlalchemy
-from sqlalchemy import MetaData, Table, Column, Integer, String 
+import pandas as pd
+import xlsxwriter
+from sqlalchemy import MetaData, Table, Column, Integer, String, select
 
 from tutil import debug, fetchFile, is_admin, config_fetchEmbed
 from tfilter import importCustom
@@ -133,14 +132,30 @@ async def fetchEmbed(message, time):
 	[await fetcher(each, url, time, message) for each in extSet if ext in extSet[each]]
 
 
-#Placeholder function
 def getLog(message):
 	"""
-	Get an excel file log of a user, channel, or guild
+	Get an excel file log of a guild
 	:param message: <Discord.message object>
-	:return: <String> Describing file location
+	:return: <List> Describing output and file location
 	"""
-	pass
+	select_st = select([Corpus]).where(
+		Corpus.c.guild == message.guild.id)
+	df = [None]
+	with ENGINE.connect() as conn:
+		result = conn.execute(select_st).fetchall()
+		keys = conn.execute(select_st).keys()
+
+		entries = [each.values() for each in result]
+		for each in entries:
+			each[0] = 'id_{}'.format(each[0])
+			each[3] = 'uid_{}'.format(each[3])
+			each[11] = 'mid_{}'.format(each[11])
+			each[13] = 'gid_{}'.format(each[13])
+
+		df[0] = pd.DataFrame(entries, columns=keys)
+	with pd.ExcelWriter('{}/log/Log_{}.xlsx'.format(DEFAULT_DIR, message.guild.id), engine='xlsxwriter') as writer:
+		df[0].to_excel(writer, sheet_name='Messages')
+	return ['Log of all messages for this guild:', '{}/log/Log_{}.xlsx'.format(DEFAULT_DIR, message.guild.id)]
 
 
 #Placeholder function

@@ -12,7 +12,7 @@ import tquote
 import tword
 import tsched
 from tutil import is_admin, debug, guildList, fetch_value, incrementUsage, fetchFile, wrap
-from constants import ENGINE, TZ_ABBRS, DIVIDER
+from constants import ENGINE, TZ_ABBRS, DIVIDER, extSet
 
 
 #Nested dictionary
@@ -30,7 +30,8 @@ def setup():
         Column('guild_id', Integer),
         Column('guild_name', String),
         Column('name', String),
-    Column('value', String),
+        Column('embed', String),
+        Column('value', String),
     )
     meta.create_all(ENGINE)
     guilds = guildList()
@@ -57,7 +58,7 @@ def importCustomCommands(guild):
             commands = dict()
             for each in result:
                 each = list(each)
-                commands[each[3]] = each[4] 
+                commands[each[3]] = each[5] 
             customCommands[guild] = commands
 
 
@@ -67,8 +68,10 @@ def get_command(message):
     :param message: <Discord.message> Raw message object
     :return: <str> Banner
     """
-    incrementUsage(message.guild, 'custom')
     custom = None
+    embed_image = None
+    links = ''
+    custom = '.'
     args = message.content.split()
     config = tsched.load_config(message.guild.id)
 
@@ -84,11 +87,15 @@ def get_command(message):
         url = ' '
         timestamp = pendulum.now(tz='America/New_York').to_datetime_string()
 
-    try:
-        print('[-] custom - {} by {} in {} - {}'.format(args[0], message.author.name, message.channel.name, message.guild.name))
-			
+    try:	
         guildCommands = customCommands[message.guild.id]
         custom = guildCommands[args[0]]
+        for each in custom.split():
+            if each.find('http') != -1:
+                if each.split('.')[-1] in extSet['image']:
+                    embed_image = each
+                else:
+                    links = '{}\n{}'.format(links, each)
         prev = deepcopy(custom)
         count = 0
 
@@ -118,48 +125,70 @@ def get_command(message):
     except:
         pass
     finally:
-        banner = Embed(title=args[0], description=custom)
-        return banner
+        if custom == '.':
+            return None
+        else:
+            incrementUsage(message.guild, 'custom')
+            print('[-] custom - {} by {} in {} - {}'.format(args[0], message.author.name, message.channel.name, message.guild.name))
+            banner = Embed(title=args[0], description=custom)
+            if embed_image:
+                banner.set_image(url=embed_image)
 
+            if links == '':
+                links = None
+            return links, banner
+
+@debug
 def insert_command(message):
-    """
-    Add a new custom command to the database.
-    :param message: <Discord.message> Raw message object
-    :return: <str> Banner notifying if new command has been created or exisisting has been updated.
-    """
-    if is_admin(message.author):
-        args = message.content.split()
+	"""
+	Add a new custom command to the database.
+	:param message: <Discord.message> Raw message object
+	:return: <str> Banner notifying if new command has been created or exisisting has been updated.
+	"""
+	#if is_admin(message.author):
+	args = message.content.split()
+	links = str(message.attachments[0].url) if message.attachments else ''
+	print(args)
+	print(links)
 
-        with ENGINE.connect() as conn:
-            select_st = select([Commands]).where(and_(
-                Commands.c.guild_id == message.guild.id,
-                Commands.c.name == args[0]
-                ))
-            result = conn.execute(select_st).fetchone()
-            
-            if result:
-                ins = Commands.update().where(and_(
-                    Commands.c.guild_name == message.guild.name,
-                    Commands.c.name == args[0])).values(
-                        value = ' '.join(args[1:]),
-                    )
-                conn.execute(ins)
-                importCustomCommands(message.guild.id)
-                banner = Embed(title='Updated `{}`'.format(args[0], description=' '.join(args[1:])))
-                return banner
-            else:
-                ins = Commands.insert().values(
-                    id = message.id,
-                    guild_id = message.guild.id,
-                    guild_name = message.guild.name,
-                    name = args[0],
-                    value = ' '.join(args[1:]),
-                )
-                conn.execute(ins)
-                importCustomCommands(message.guild.id)
-                banner = Embed(title='Added custom command `{}`'.format(args[0]), description=' '.join(args[1:]))
-                return banner
+	for each in args:
+		if each.find('http') != -1:
+			if each.split('.')[-1] in extSet['image']:
+				links = '{}\n{}'.format(links, each)
 
+	with ENGINE.connect() as conn:
+		select_st = select([Commands]).where(and_(
+			Commands.c.guild_id == message.guild.id,
+			Commands.c.name == args[0]
+			))
+		result = conn.execute(select_st).fetchone()
+		
+		if result:
+			ins = Commands.update().where(and_(
+				Commands.c.guild_name == message.guild.name,
+				Commands.c.name == args[0])).values(
+					value = '{} {}'.format(' '.join(args[1:]), links),
+					links = links,
+				)
+			conn.execute(ins)
+			importCustomCommands(message.guild.id)
+			banner = Embed(title='Updated `{}`'.format(args[0], description=' '.join(args[1:])))
+			return banner
+		else:
+			ins = Commands.insert().values(
+				id = message.id,
+				guild_id = message.guild.id,
+				guild_name = message.guild.name,
+				name = args[0],
+				value = '{} {}'.format(' '.join(args[1:]), links),
+				embed = links,
+			)
+			conn.execute(ins)
+			importCustomCommands(message.guild.id)
+			banner = Embed(title='Added custom command `{}`'.format(args[0]), description=' '.join(args[1:]))
+			return banner
+
+@debug
 def delete_command(message):
     """
     Permanently remove a custom command if it exists
@@ -182,6 +211,7 @@ def delete_command(message):
                 conn.execute(del_st)
                 importCustomCommands(message.guild.id)
                 return 'Deleted {}'.format(args[0])
+                importCustomCommands(message.guild.id)
             else:
                 return 'Command `{}` does not exist.'.format(args[0])
 
@@ -200,7 +230,7 @@ def getHelp(message):
         for name, value in guildCommands.items():
             custom = '{}`{}`: {}\n'.format(custom, name, value)
         banner.add_field(name='Custom commands available in this server are:', value=custom)
-        return banner
+        return None, banner
     except:
         pass
 

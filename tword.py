@@ -170,6 +170,7 @@ def wiki(message):
 
 
 #TODO update help to embed
+@debug
 async def wolfram(message):
 	"""
 	Return an image based response from the Wolfram Alpha API
@@ -215,7 +216,14 @@ async def wolfram(message):
 					else:
 						return ['[!] Wolfram Server Status {}'.format(resp.status), None]
 		else:
-			return [fetchFile('help', 'wolfram'), None]
+			fields = fetchFile('help', 'wolfram').split('\n')
+			print(fields)
+			for idx, each in enumerate(fields):
+				print(each)
+				banner.add_field(name=str(idx), value=each)
+			print(banner)
+			return banner
+			#return [fetchFile('help', 'wolfram'), None]
 	except:
 		print('[!] Wolfram failed to process command on: {}'.format(message.content))
 		return None
@@ -263,6 +271,7 @@ async def getTodaysWord(message):
 	return banner
 
 
+#TODO Error with text formatting, so no return
 async def getTodaysPoem(message):
 	"""
 	Pull the poem of the day from www.poems.com

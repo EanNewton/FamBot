@@ -4,7 +4,14 @@ from os import path, getenv
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from googletrans.constants import LANGCODES
-from nltk.corpus import stopwords
+from nltk.data import find as nltk_find
+from nltk import download as nltk_download
+try:
+    nltk_find('stopwords')
+except LookupError:
+    nltk_download('stopwords')
+finally:
+    from nltk.corpus import stopwords
 
 ##################
 # File Locations #
@@ -22,7 +29,8 @@ TOKEN = getenv('DISCORD_TOKEN')
 POC_TOKEN = getenv('POC_TOKEN')
 GUILD = getenv('DISCORD_GUILD')
 WOLFRAM = getenv('WOLFRAM_TOKEN')
-VERSION = '9.15.2020'
+VERSION = '01.20.2021'
+VERBOSE = True
 
 
 #################################
@@ -45,6 +53,38 @@ URL_KEYWORDS = {
     'NOTES:': '**NOTES:**'
     }
 
+extSet = {
+    'image': [
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'
+    ],
+    'audio': [
+        '3gp', 'aa', 'aac', 'aax', 'act', 'aiff', 'alac', 'amr', 
+        'ape', 'au', 'awb', 'dct', 'dss', 'dvf', 'flac', 'gsm', 
+        'iklax', 'ivs', 'm4a', 'm4b', 'm4p', 'mmf', 'mp3', 'mpc',
+        'msv', 'nmf', 'nsf', 'ogg', 'oga', 'mogg', 'opus', 'ra', 
+        'rm', 'raw', 'rf64', 'sln', 'tta', 'voc', 'vox', 'wav', 
+        'wma', 'wv', 'webm', '8svx', 'cda'
+    ],
+    'video': [
+        'webm', 'mkv', 'flv', 'vob', 'ogv', 'ogg', 'drc', 
+        'gifv', 'mng', 'avi', 'mts', 'm2ts', 'ts', 'mov', 'qt', 
+        'wmv', 'yuv', 'rm', 'rmvb', 'asf', 'amv', 'mp4', 'm4p', 
+        'm4v', 'mpg', 'mp2', 'mpeg', 'mpe', 'mpv', 'm4v', 'svi', 
+        '3gp', '3g2', 'mxf', 'roq', 'nsv', 'f4v', 'f4p', 'f4a', 'f4b'
+    ],
+    'document': [
+        '0', '1st', '600', '602', 'abw', 'acl', 'afp', 'ami', 
+        'ans', 'ascaww', 'ccf', 'csv', 'cwk', 'dbk', 'dita', 'doc', 
+        'docm', 'docx', 'dotdotx', 'dwd', 'egt', 'epub', 'ezw', 
+        'fdx', 'ftm', 'ftx', 'gdoc', 'html', 'hwp', 'hwpml', 'log', 
+        'lwp', 'mbp', 'md', 'me', 'mcw', 'mobinb', 'nbp', 'neis', 
+        'odm', 'odoc', 'odt', 'osheet', 'ott', 'ommpages', 'pap', 
+        'pdax', 'pdf', 'quox', 'rtf', 'rpt', 'sdw', 'sestw', 
+        'sxw', 'tex', 'info', 'troff', 'txt', 'uof', 'uoml', 'viawpd', 
+        'wps', 'wpt', 'wrd', 'wrf', 'wri', 'xhtml', 'xht', 'xml', 'xps'
+    ]
+}
+
 jsonFormatter = [[
 		['0=', 'Monday = '],
 		['1=', 'Tuesday = '],
@@ -66,6 +106,7 @@ jsonFormatter = [[
 		['lore_format', 'Lore Format'],
 		['filtered', 'Blacklisted Words'],
 		['mod_roles', 'Moderator Roles'],
+        ['anonymous', 'Anonymous Mode'],
 	]]
 
 TZ_ABBRS = {
@@ -100,7 +141,7 @@ with open('./docs/locales/abbr.txt', 'r') as f:
 		val = val.strip('\n')
 		tzAbbrs[key] = val
 '''
-EIGHTBALL = {
+EIGHTBALL = [
     #Yes
 	'It is certain.', 
     'It is decidedly so.', 
@@ -124,7 +165,7 @@ EIGHTBALL = {
     'My sources say no.', 
     'Outlook not so good',
 	'Very doubtful.'
-}
+]
 
 STOPWORDS = set(stopwords.words("english")).union([
 	"channel cannot", 

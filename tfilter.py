@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+#DEPRECATED
 import os
 from sqlalchemy import update, insert, select, and_
 from sqlalchemy import MetaData, Table, Column, Integer, String 

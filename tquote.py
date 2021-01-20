@@ -1,19 +1,20 @@
 #!/usr/bin/python3
 
 import random
-from os import listdir, mkdir
+from os import listdir
 from os.path import isdir
-import asyncio
 import aiohttp
 import aiofiles
 from pathlib import Path
 
 import pendulum
 from discord import Embed
+import pandas as pd
+import xlsxwriter
 from sqlalchemy import and_, func, update, select, MetaData, Table, Column, Integer, String 
 
-from tutil import debug, fetchFile, is_admin, incrementUsage
-from constants import DEFAULT_DIR, ENGINE
+from tutil import debug, fetchFile, is_admin, incrementUsage, fetch_value
+from constants import DEFAULT_DIR, ENGINE, extSet
 
 			
 def setup():
@@ -75,24 +76,55 @@ def helper(message):
 			elif args[1] == 'help' and is_admin(message.author):
 				return getHelp(message.author).split('@LORE')[1]
 			else: 
-				return getQuote(guild, Lore, ' '.join(args[1:]))
+				return getQuoteRaw(guild, Lore, ' '.join(args[1:]))
 		else:
-			return getQuote(guild, Lore)
+			return getQuoteRaw(guild, Lore)
 
 	#Quote with options		
 	elif len(args) > 1:
 		incrementUsage(message.guild, 'quote')
 		if args[1] == 'help':
 			return getHelp(message.author).split('@LORE')[0]
+		elif args[1] == 'delete' and is_admin(message.author):
+			return deleteQuote(message.guild.id, args[2])
+		elif args[1] == 'log' and is_admin(message.author):
+			return getQuoteLog(message.guild.id)
 		else:
-			return getQuote(guild, Quotes, ' '.join(args[1:]))
+			return getQuoteRaw(guild, Quotes, ' '.join(args[1:]))
 	
 	#Any random quote
 	else:
 		incrementUsage(message.guild, 'quote')
-		return getQuote(guild, Quotes)
-	
+		return getQuoteRaw(guild, Quotes)
 
+
+def getQuoteLog(guild):
+	"""
+	Return an xlsx of all quotes in the guild to the user.
+	:param guild:
+	:return:
+	"""
+	df = [None, None]
+	for idx, Table in enumerate({Quotes, Lore}):
+		select_st = select([Table]).where(
+				Table.c.guild == guild)
+		with ENGINE.connect() as conn:
+			result = conn.execute(select_st).fetchall()
+			keys = conn.execute(select_st).keys()
+
+			entries = [each.values() for each in result]
+			for each in entries:
+				each[0] = 'id_{}'.format(each[0])
+				each[4] = 'g_{}'.format(each[4])
+
+			df[idx] = pd.DataFrame(entries, columns=keys)
+			
+	with pd.ExcelWriter('{}/log/quoteLog_{}.xlsx'.format(DEFAULT_DIR, guild), engine='xlsxwriter') as writer:
+		df[1].to_excel(writer, sheet_name='Sheet_1')
+		df[0].to_excel(writer, sheet_name='Sheet_2')
+	return ['Log of all quotes and lore for this guild:', '{}/log/quoteLog_{}.xlsx'.format(DEFAULT_DIR, guild)]
+
+	
 def insertQuote(message, Table, adder=None):
 	"""
 	Insert a quote to the database
@@ -123,9 +155,11 @@ def insertQuote(message, Table, adder=None):
 
 	embed = str(message.attachments[0].url) if message.attachments else None
 	if not embed:
+		embed = ''
 		for each in args:
 			if each.find('http') != -1:
-				embed = each
+				if each.split('.')[-1] in extSet['image']:
+					embed = '{}\n{}'.format(embed, each)
 	date = pendulum.now(tz=server_locale).to_day_datetime_string()
 	
 	with ENGINE.connect() as conn:
@@ -141,8 +175,10 @@ def insertQuote(message, Table, adder=None):
 			)
 			conn.execute(ins)
 
-
-			banner = Embed(title="{} Added Quote: {}".format(adder, message.id), description=text)
+			if not fetch_value(message.guild.id, 10):
+				banner = Embed(title="{} Added Quote: {}".format(adder, message.id), description=text)
+			else:
+				banner = Embed(title="Added Quote: {}".format(message.id), description=text)
 			if embed:
 				banner.set_image(url=embed)
 			banner.set_footer(text=stm.format(message.author.name, date))
@@ -230,33 +266,44 @@ def getQuoteRaw(guild, Table, username=None):
 	"""
 
 	if username:
-		select_st = select([Table]).where(and_(
+		select_user = select([Table]).where(and_(
 			Table.c.name == username,
 			Table.c.guild == guild)).order_by(func.random())
+		select_id = select([Table]).where(and_(
+			Table.c.id == username,
+			Table.c.guild == guild))
 	else:
 		select_st = select([Table]).where(
-			Table.c.guild == guild).order_by(func.random())
-			
+			Table.c.guild == guild).order_by(func.random())	
 	with ENGINE.connect() as conn:
-		result = conn.execute(select_st).fetchone()
+		if username:
+			result = conn.execute(select_id).fetchone()
+			if not result:
+				result = conn.execute(select_user).fetchone()
+		else:
+			result = conn.execute(select_st).fetchone()
 		if result:
 			config = load_config(guild)
 			if config:			
 				if(Table.name == 'famQuotes'):
 					stm = config[4].replace('\\n', '\n')
+					title = "Quote {}".format(result[0])
 				elif(Table.name == 'famLore'):
 					stm = config[5].replace('\\n', '\n')
+					title = "Lore {}".format(result[0])
 			else:	
 				if(Table.name == 'famQuotes'):
-					stm = '{}\n ---{} on {}'
+					stm = '{}\n{}\n ---{} on {}'
+					title = "Quote {}".format(result[0])
 				elif(Table.name == 'famLore'):
-					stm = '{}\n ---Scribed by the Lore Master {}, on the blessed day of {}'
+					stm = '{}\n{}\n ---Scribed by the Lore Master {}, on the blessed day of {}'
+					title = "Lore {}".format(result[0])
 			#Check if there is an attached img or file to send as well
 			if len(result) > 6 and result[6]:
 				stm = stm + '\n' + result[6]
 			#Result fields translate as
 			#[1]: author, [2]: quote, [3]: date, [6]: embed url
-			return stm.format(result[2], result[1], result[3])
+			return stm.format(title, result[2], result[1], result[3])
 
 
 def deleteQuote(guild, msg_id):
@@ -272,19 +319,17 @@ def deleteQuote(guild, msg_id):
 				Table.c.id == msg_id,
 				Table.c.guild == guild
 			))
-			result = conn.execute(select_st).fetchone()
-			if result:
-				quote = '{}\n ---{} on {}'.format(result[2], result[1], result[3])
+			try:
+				result = conn.execute(select_st).fetchone()
+				if result:
+					quote = '{}\n ---{} on {}'.format(result[2], result[1], result[3])
 
-				ins = Table.delete().where(and_(
-					Table.c.id == msg_id,
-					Table.c.guild == guild
-					))
-				conn.execute(ins)
-
-				return 'Deleted quote:\n`{}`'.format(quote)
-			else:
-				return 'Quote does not exist.'
+					ins = Table.delete().where(and_(
+						Table.c.id == msg_id,
+						Table.c.guild == guild
+						))
+					conn.execute(ins)
+			except: pass
 
 
 def checkExists(guild, msg_id):
