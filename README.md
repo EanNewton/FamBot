@@ -144,9 +144,11 @@ Aliased names for the command are:
 + !quote
 
 Optional parameters are:
-+ !quote [USER] --- Display a quote that was said by that specific user. Note that this is their actual username (case sensitive) and not their display nickname so as to prevent confusion as users change nicknames often. If you are unsure click on the user in either the right panel users list or on their profile picture next to any message they've sent to see their actual username. This does not include the discriminator, which is a # sign folowed by four numbers.
++ !quote [USER] --- Display a quote that was said by that specific user. You can either use @user or their username format. Note that this is their actual username (case sensitive) and not their display nickname so as to prevent confusion as users change nicknames often. If you are unsure click on the user in either the right panel users list or on their profile picture next to any message they've sent to see their actual username. This does not include the discriminator, which is a # sign folowed by four numbers.
++ !quote [ID] --- Display a specific quote by its ID number.
 + !quote help --- Display a brief explanation of the command usage available to the user.
-+ !quote log -- Admin command to return a log of all saved quotes in Excel format. Note: This is posted to the channel the command is used in and therefore available to any users who can view that channel.
++ !quote log --- Admin command to return a log of all saved quotes in Excel format. Note: This is posted to the channel the command is used in and therefore available to any users who can view that channel.
++ !quote delete [ID] --- Admin command to remove a quote by its ID number.
 
 **Examples**
 
@@ -316,17 +318,6 @@ Aliased names for the command are:
 **Examples**
 
 ![word example](https://github.com/EanNewton/FamBot/blob/master/Samples/word.png)
-
-## !poem <a name = "!poem"></a>
-Get the Poem of the Day from https://poems.com/todays-poem/
-
-Aliased names for the command are:
-+ !poem
-+ !potd
-
-**Examples**
-
-![poem example](https://github.com/EanNewton/FamBot/blob/master/Samples/poem.png)
 
 ## !yandex <a name = "!yandex"></a>
 Return a link to a reverse image search.
