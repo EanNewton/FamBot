@@ -2,11 +2,13 @@
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>
 `!quote` Display a random quote.
 `!quote USER` Display a quote from a specific USER.
+`!quote ID` Display a quote with the specified ID.
 This is the user\'s full username, not their server nickname.
 It is case sensitive.
 React to a message with 🗨 to add it to the database.
 For Admins:
 React to the message that was added with ❌ to remove it.
+`!quote log` to get an Excel sheet of all quotes and lore. Note: this will be posted to the channel the command is used in and therefore available to all users who can view that channel.
 @LORE
 **Lore Help**
 <<>><<>><<>><<>><<>><<>><<>><<>><<>>

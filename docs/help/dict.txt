@@ -17,8 +17,6 @@ Use `!tr langs` for a full list of language codes.
 -- `!wolf`
 `!word` Get the Word of the Day from wordsmith.org
 -- `!wotd`
-`!poem` Get the Poem of the Day from poems.com 
--- `!potd`
 `!google PHRASE` Return a link to Let Me Google That For You for the search PHRASE
 -- `!lmgtfy`
 -- `!g`
