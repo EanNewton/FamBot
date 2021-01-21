@@ -167,7 +167,7 @@ Optional parameters are:
   + !lore add [USER] [TEXT] --- Add a new lore entry of [TEXT] with the author set as [USER] at the current date and time. Note that the [USER] must be a single word, any text after the first whitespace will be part of [TEXT]. Administrators may add a :x: reaction to the "!lore add" message to remove the entry.
   
 ## !dict <a name = "!dict"></a>
-Returns the English Wiktionary entry for a word or phrase. This does not necessarily need to be an English word, it simply needs to have an entry in the https://en.wiktionary.org site.
+Returns the English Wiktionary entry for a word or phrase. This does not necessarily need to be an English word, it simply needs to have an entry in the https://en.wiktionary.org site. Due to Discord's character limit for Embed objects, words with very long entries may not return anything.
 
 Aliased names for the command are:
 + !dict
@@ -180,7 +180,7 @@ Optional parameters are:
 + !dict help --- Show all available web interfaced commands.
 
 **Example**
-> !dict computer
+> !dict baseball
 ![dict example](https://github.com/EanNewton/FamBot/blob/master/Samples/dict.png)
 
 ## !stats <a name = "!stats"></a>
@@ -197,32 +197,32 @@ Optional parameters are:
 **Examples**
 >!stats
 ---
-![stats default](https://i.imgur.com/RtQR9kJ.png)
+![stats default](https://raw.githubusercontent.com/EanNewton/FamBot/master/Samples/stats.png)
 ---
 
 >!stats user
 ---
-![stats user](https://i.imgur.com/YNXJUy0.png)
+![stats user](https://github.com/EanNewton/FamBot/blob/master/Samples/stats%20user.png)
 ---
 
 >!stats channel
 ---
-![stats channel](https://i.imgur.com/Fi7RRRy.png)
+![stats channel](https://github.com/EanNewton/FamBot/blob/master/Samples/stats%20channel.png)
 ---
 
 >!stats count 2 20
 ---
-![stats count](https://i.imgur.com/lgu9Z3U.png)
+![stats count](https://github.com/EanNewton/FamBot/blob/master/Samples/stats%20count.png)
 ---
 
 >!stats phrases 2 5 10
 ---
-![stats phrases](https://i.imgur.com/PcEZXSZ.png)
+![stats phrases](https://github.com/EanNewton/FamBot/blob/master/Samples/stats%20phrases.png)
 ---
 
 >!stats common 10
 ---
-![stats common](https://i.imgur.com/AkxHHUD.png)
+![stats common](https://github.com/EanNewton/FamBot/blob/master/Samples/stats%20common.png)
 ---
 
 ## !8ball <a name = "!8ball"></a>
