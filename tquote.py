@@ -74,8 +74,9 @@ def helper(message):
 			if args[1] == 'add' and is_admin(message.author):
 				return insertQuote(message, Lore)
 			elif args[1] == 'help' and is_admin(message.author):
-				return getHelp(message.author).split('@LORE')[1]
-			else: 
+				return getHelp(message.author)
+				#return getHelp(message.author).split('@LORE')[1]
+			else:
 				return getQuoteRaw(guild, Lore, ' '.join(args[1:]))
 		else:
 			return getQuoteRaw(guild, Lore)
@@ -84,7 +85,8 @@ def helper(message):
 	elif len(args) > 1:
 		incrementUsage(message.guild, 'quote')
 		if args[1] == 'help':
-			return getHelp(message.author).split('@LORE')[0]
+			return getHelp(message.author)
+			#return getHelp(message.author).split('@LORE')[0]
 		elif args[1] == 'delete' and is_admin(message.author):
 			return deleteQuote(message.guild.id, args[2])
 		elif args[1] == 'log' and is_admin(message.author):
@@ -414,16 +416,18 @@ def load_config(guild):
 		result = conn.execute(select_st).fetchone()
 	return result
 
-
+@debug
 def getHelp(author):
 	"""
 	Get the help file in ./docs/help 
 	:param message: <Discord.message.author object>
 	:return: <String> The local help file
 	"""
-	banner = fetchFile('help', 'quotes')
+	text = fetchFile('help', 'quotes')
 	if not is_admin(author):
-		banner = banner.split('For Admins:')[0]
+		text = text.split('For Admins:')[0]
+	print(text)
+	banner = Embed(title='General Help', description=text)
 	return banner	
 	
 	

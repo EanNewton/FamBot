@@ -107,6 +107,7 @@ jsonFormatter = [[
 		['filtered', 'Blacklisted Words'],
 		['mod_roles', 'Moderator Roles'],
         ['anonymous', 'Anonymous Mode'],
+        ['timer_channel', 'Timer Channel ID'],
 	]]
 
 TZ_ABBRS = {

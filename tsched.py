@@ -4,7 +4,7 @@ import pendulum
 from discord import Embed
 from sqlalchemy import and_, update, select, MetaData, Table, Column, Integer, String 
 
-from tutil import debug, fetchFile, is_admin, incrementUsage
+from tutil import debug, fetchFile, is_admin, incrementUsage, fetch_config
 from constants import DIVIDER, TZ_ABBRS, ENGINE, help_general
 
 				
@@ -29,6 +29,7 @@ def setup():
 		Column('lore_format', String),
 		Column('url', String),
 		Column('qAdd_format', String),
+		Column('timer_channel', String),
 		)
 	meta.create_all(ENGINE)
 	print('[+] End Schedule Setup')
@@ -52,6 +53,47 @@ def helper(message):
 		'help': lambda: getHelp(message),
 		'override': lambda: override(message),
 	}.get(operator, lambda: None)()	
+
+
+def getNextSchedTime(message):
+	config = load_config(message.guild.id)
+	server_locale = config[2]
+	dt = pendulum.now(tz=server_locale)
+	schedRawStr = config[3]
+	days = schedRawStr.split(';')
+	hours = [day.split('=') for day in days]
+	schedule = []
+	schedTime = []
+	dict_ = {}
+
+	for each in hours:
+		if each[0] != '' and each[1] != '':
+			if each[0] != ' ' and each[1] != ' ':
+				dict_[int(each[0])] = each[1].split(',')
+	for each in dict_.items():
+		for hour in each[1]:
+			if ':' in hour:
+				hour = hour.split(':')
+			if hour != '' and hour != ' ':
+				schedTime.append(hour)
+		schedule.append(pendulum.now(tz=server_locale).add(days=each[0]))
+
+	while(schedule[0].day_of_week != pendulum.MONDAY):
+		for day in range(len(schedule)):
+			schedule[day] = schedule[day].add(days=1)
+
+	if dt.day_of_week != pendulum.MONDAY:
+		for day in range(len(schedule)):
+			if isinstance(schedTime[day], list):
+				# Contains minutes
+				schedule[day] = schedule[day].at(
+					int(schedTime[day][0]), int(schedTime[day][1]))
+			else:
+				schedule[day] = schedule[day].at(int(schedTime[day]))
+
+
+	diff = schedule[0].diff_for_humans()
+	return diff
 
 
 
@@ -427,15 +469,18 @@ def getHelp(message):
 	"""
 	incrementUsage(message.guild, 'help')
 	args = message.content.split()
+	banner = Embed(title='Schedule')
 
 	if len(args) < 3:
 		#Get general help
-		banner = fetchFile('help', 'schedule')
+		raw = fetchFile('help', 'schedule')
 		if not is_admin(message.author):
-			banner = banner.split('For Admins:')[0]
+			raw = banner.split('For Admins:')[0]
+		banner.add_field(name='Help', value=raw)
 	else: 
 		#Get list of cities or continents
-		banner = fetchFile('locales', args[2].lower())
+		raw = fetchFile('locales', args[2].lower())
+		banner.add_field(name='Locales in {}'.format((args[2].lower())), value=raw)
 
 	return banner
 	

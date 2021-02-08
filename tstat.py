@@ -17,9 +17,10 @@ import seaborn as sns
 from tutil import debug, fetchFile, incrementUsage
 from constants import PATH_DB, DEFAULT_DIR, STOPWORDS
 
-
+@debug
 def setup(guild, user=None, channel=None):
 	global log_df, clean_desc, stem_desc
+	log_df = []
 	clean_desc = []
 	stem_desc = []
 	
@@ -36,10 +37,11 @@ def setup(guild, user=None, channel=None):
 			sql_st = 'Select content from corpus where guild={}'.format(guild)
 			log_df = pd.read_sql(sql_st, conn)
 
-	log_df['word_count'] = log_df['content'].apply(lambda x: len(str(x).split(" ")))
-	getNorm(log_df.content)
-	getLem(log_df['clean_desc'])
-		
+		log_df['word_count'] = log_df['content'].apply(lambda x: len(str(x).split(" ")))
+		getNorm(log_df.content)
+		#Lemmatizer broke despite no changes to code
+		#If fixed, revert references to 'clean_desc' further in to 'stem_desc'
+		#getLem(log_df['clean_desc'])
 	print("[+] Stats setup complete with user={} channel={}".format(user, channel))
 
 
@@ -57,7 +59,7 @@ def getNorm(dataframe):
 		clean_desc.append(desc)
 	log_df['clean_desc'] = clean_desc
 
-
+@debug
 def getLem(dataframe):
 	"""
 	Lemmatize words, such as running --> run
@@ -67,11 +69,12 @@ def getLem(dataframe):
 	for w in range(len(dataframe)):
 		split_text = dataframe[w].split()
 		lem = WordNetLemmatizer()
-		split_text = [lem.lemmatize(word) for word in split_text if not word in STOPWORDS]
+		split_text = [lem.lemmatize(word) for word in split_text if word not in STOPWORDS]
 		split_text = " ".join(split_text)
 		stem_desc.append(split_text)
+	return '1'
 
-
+@debug
 def helper(message):
 	incrementUsage(message.guild, 'stats')
 	text = message.content
@@ -120,7 +123,7 @@ def getFreq(args):
 			limit = 1
 		elif limit > 99:
 			limit = 99
-	freq = pd.Series(' '.join(stem_desc).split()).value_counts()[:limit]
+	freq = pd.Series(' '.join(clean_desc).split()).value_counts()[:limit]
 	freq = str(freq).split('dtype')[0]
 
 	split_freq = [each.split('\n') for each in freq.split(' ') if each]
@@ -200,7 +203,7 @@ def wordCloud(type_, guild):
 		stopwords=STOPWORDS, 
 		max_words=1000, 
 		min_font_size=20
-	).generate(str(stem_desc))
+	).generate(str(clean_desc))
 	
 	fig = plt.figure(figsize=(8,8), facecolor=None)
 	plt.imshow(wordcloud)
@@ -228,9 +231,9 @@ def make_ngrams(low, high, n=None):
 		strip_accents='unicode', 
 		ngram_range=(low, high), 
 		max_features=20000
-		).fit(stem_desc)
+		).fit(clean_desc)
 
-	bag_of_words = vec.transform(stem_desc)
+	bag_of_words = vec.transform(clean_desc)
 	sum_words = bag_of_words.sum(axis=0)
 
 	words_freq = [(word, sum_words[0, i]) for word, i in vec.vocabulary_.items() if not word in STOPWORDS]

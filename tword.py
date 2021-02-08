@@ -170,7 +170,6 @@ def wiki(message):
 
 
 #TODO update help to embed
-@debug
 async def wolfram(message):
 	"""
 	Return an image based response from the Wolfram Alpha API
@@ -182,48 +181,43 @@ async def wolfram(message):
 	args = message.content.split()
 	banner = Embed(title="Wolfram Alpha")
 	try:
-		if args[1].lower() in {'simple', 'txt', 'text', 'textual'}:
-			query_st = quote_plus(' '.join(args[2:]))
-			query = URL_WOLF_TXT.format(WOLFRAM, query_st)
-			
-			async with aiohttp.ClientSession() as session:
-				async with session.get(query) as resp:
-					if resp.status == 200:
-						text = await resp.read()
-					elif resp.status == 501:
-						return 'Wolfram cannot interpret your request.'
-					else:
-						return ['[!] Wolfram Server Status {}'.format(resp.status), None]
+		if len(args) > 1:
+			if args[1].lower() in {'simple', 'txt', 'text', 'textual'}:
+				query_st = quote_plus(' '.join(args[2:]))
+				query = URL_WOLF_TXT.format(WOLFRAM, query_st)
 
-			text = text.decode('UTF-8')
-			banner.add_field(name=' '.join(args[2:]), value=text)
-			return banner
+				async with aiohttp.ClientSession() as session:
+					async with session.get(query) as resp:
+						if resp.status == 200:
+							text = await resp.read()
+						elif resp.status == 501:
+							return 'Wolfram cannot interpret your request.'
+						else:
+							return ['[!] Wolfram Server Status {}'.format(resp.status), None]
 
-		elif args[1].lower() in {'complex', 'graphic', 'graphical', 'image', 'img', 'gif'}:
-			query_st = quote_plus(' '.join(args[2:]))
-			query = URL_WOLF_IMG.format(WOLFRAM, query_st)
-			filePath = '{}/log/wolf/{}.gif'.format(DEFAULT_DIR, message.id)
-			
-			async with aiohttp.ClientSession() as session:
-				async with session.get(query) as resp:
-					if resp.status == 200:
-						f = await aiofiles.open(filePath, mode='wb')
-						await f.write(await resp.read())
-						await f.close()
-						return [None, filePath]
-					elif resp.status == 501:
-						return ['Wolfram cannot interpret your request.', None]
-					else:
-						return ['[!] Wolfram Server Status {}'.format(resp.status), None]
-		else:
-			fields = fetchFile('help', 'wolfram').split('\n')
-			print(fields)
-			for idx, each in enumerate(fields):
-				print(each)
-				banner.add_field(name=str(idx), value=each)
-			print(banner)
-			return banner
-			#return [fetchFile('help', 'wolfram'), None]
+				text = text.decode('UTF-8')
+				banner.add_field(name=' '.join(args[2:]), value=text)
+				return banner
+
+			elif args[1].lower() in {'complex', 'graphic', 'graphical', 'image', 'img', 'gif'}:
+				query_st = quote_plus(' '.join(args[2:]))
+				query = URL_WOLF_IMG.format(WOLFRAM, query_st)
+				filePath = '{}/log/wolf/{}.gif'.format(DEFAULT_DIR, message.id)
+
+				async with aiohttp.ClientSession() as session:
+					async with session.get(query) as resp:
+						if resp.status == 200:
+							f = await aiofiles.open(filePath, mode='wb')
+							await f.write(await resp.read())
+							await f.close()
+							return [None, filePath]
+						elif resp.status == 501:
+							return ['Wolfram cannot interpret your request.', None]
+						else:
+							return ['[!] Wolfram Server Status {}'.format(resp.status), None]
+
+		banner = Embed(title='Wolfram Help', description=fetchFile('help', 'wolfram'))
+		return banner
 	except:
 		print('[!] Wolfram failed to process command on: {}'.format(message.content))
 		return None
@@ -279,6 +273,7 @@ async def getTodaysPoem(message):
 	:return: <str> Banner
 	"""
 	#TODO add column to usage table
+	#TODO breaks on some days when webpage uses different formatting
 	#incrementUsage(message.guild, 'potd')
 
 	async with aiohttp.ClientSession() as session:

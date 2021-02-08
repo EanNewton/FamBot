@@ -10,7 +10,7 @@
 #TODO fix mention supression on quotes
 
 import logging
-from random import choice
+from random import choice, randint
 
 import pendulum
 import discord
@@ -24,7 +24,7 @@ import tlog
 import tstat
 import tcustom
 from tutil import is_admin, debug, config_create, config_helper, guildList
-from tutil import config_fetchEmbed, fetchFile, incrementUsage, fetch_value
+from tutil import config_fetchEmbed, fetchFile, incrementUsage, fetch_value, register_timer_channel
 from tutil import setup as utilSetup
 from speller import Speller
 from constants import TOKEN, POC_TOKEN, GUILD, VERSION, EIGHTBALL, DEFAULT_DIR, help_general, DIVIDER, VERBOSE
@@ -35,6 +35,8 @@ spell = Speller('cmd')
 
 @bot.event
 async def on_ready():
+	#global counter
+	#counter = 0
 	print(
 		f'{bot.user} has connected to Discord!\n'
 		f'Revision date: {VERSION}\n'
@@ -64,6 +66,7 @@ async def on_guild_join(guild):
 	utilSetup()
 
 
+
 @bot.event
 async def on_message(message):
 	incrementUsage(message.guild, 'raw_messages')
@@ -91,6 +94,22 @@ async def on_message(message):
 				return
 		except:
 			pass
+
+		# if message.content == '!create timer' and is_admin(message.author):
+		# 	diff = tsched.getNextSchedTime(message)
+		# 	channel = await message.guild.create_voice_channel('Next stream {}'.format(diff), position=0)
+		# 	register_timer_channel(message, channel.id)
+		#
+		# timer_channel = message.guild.get_channel(int(fetch_value(message.guild.id, 11)))
+		# try:
+		# 	ra = randint(0, 100)
+		# 	await timer_channel.edit(name='Next {}'.format(ra))
+		# except:
+		# 	pass
+		#await timer_channel.edit(name='Next stream {} {}'.format(tsched.getNextSchedTime(message), counter))
+		#counter += 1
+
+
 		if args[0][0] != '!':
 			return
 		#correct minor typos
@@ -101,6 +120,7 @@ async def on_message(message):
 
 		if operator in {'quote', 'lore', 'q', 'l'}:
 			banner = tquote.helper(message)
+			print(type(banner))
 			if type(banner) is str:
 				await message.channel.send(banner)
 			elif type(banner) is list:

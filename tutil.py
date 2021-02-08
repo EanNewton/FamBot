@@ -35,6 +35,7 @@ def setup():
 		Column('filtered', String),
 		Column('mod_roles', String),
 		Column('anonymous', Integer),
+		Column('timer_channel', Integer),
 		)
 	Stats = Table(
 		'usageCounts', meta,
@@ -256,6 +257,7 @@ def config_createDefault(guild):
 			filtered = 'none',
 			mod_roles = 'mod;admin;discord mod;',
 			anonymous = 1,
+			timer_channel=0,
 			)		
 		conn.execute(ins)
 
@@ -285,6 +287,7 @@ def config_load(guild):
 					filtered = dict_['filtered'],
 					mod_roles = dict_['mod_roles'],
 					anonymous = dict_['anonymous'],
+					timer_channel = dict_['timer_channel'],
 					)
 		conn.execute(ins)
 	#TODO ensure to lower
@@ -322,8 +325,8 @@ async def config_fetchEmbed(message):
 				print('[+] Saved: {}'.format(filePath))	
 
 	config_load(message.guild.id)	
-	
-	
+
+
 def fetch_value(guild, val, delim=None):
 	"""
 	Get a specific cell from the guilds config table
@@ -338,10 +341,35 @@ def fetch_value(guild, val, delim=None):
 		result = res.fetchone()
 
 	if result and result[val]:
-		result = result[val].split(delim)
-		result[:] = (val for val in result if val not in {'', ' ', '\n', None})
+		if type(result[val]) is str:
+			result = result[val].split(delim)
+			result[:] = (val for val in result if val not in {'', ' ', '\n', None})
+		else:
+			result = result[val]
 		return result
 
+
+def fetch_config(guild):
+	"""
+	Internal function to get Guild configuration data for schedule formatting and default locale
+	:param guild: <Int> Discord guild ID
+	:return: <List> SQLAlchemy row result from database
+	"""
+	with ENGINE.connect() as conn:
+		select_st = select([Config]).where(Config.c.id == guild)
+		res = conn.execute(select_st)
+		result = res.fetchone()
+	if result:
+		return result
+	return None
+
+
+def register_timer_channel(message, id_):
+	config = fetch_config(message.guild.id)
+	if config:
+		with ENGINE.connect() as conn:
+			update_st = Config.update().where(Config.c.id == message.guild.id).values(timer_channel=id_)
+			conn.execute(update_st)
 	
 def guildList():
 	"""
