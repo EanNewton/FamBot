@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from googletrans.constants import LANGCODES
 from nltk.data import find as nltk_find
 from nltk import download as nltk_download
+
 try:
     nltk_find('stopwords')
 except LookupError:
@@ -19,7 +20,7 @@ finally:
 DEFAULT_DIR = path.dirname(path.abspath(__file__))
 PATH_DB = path.join(path.dirname(__file__), './log/quotes.db')
 PATH_WOTD = path.join(path.dirname(__file__), './docs/wordoftheday.txt')
-ENGINE = create_engine('sqlite:///./log/quotes.db', echo = False)
+ENGINE = create_engine('sqlite:///./log/quotes.db', echo=False)
 
 ##################
 # Bot & API Info #
@@ -29,19 +30,16 @@ TOKEN = getenv('DISCORD_TOKEN')
 POC_TOKEN = getenv('POC_TOKEN')
 GUILD = getenv('DISCORD_GUILD')
 WOLFRAM = getenv('WOLFRAM_TOKEN')
-VERSION = '01.20.2021'
-VERBOSE = True
-
+VERSION = '06.05.2021'
+VERBOSE = 0
 
 #################################
 # Internal Function Static Data #
 #################################
-#combine all 2 letter codes and fully qualified names into flat list from a dict()
+# combine all 2 letter codes and fully qualified names into flat list from a dict()
 LANGCODES = [each for tuple_ in LANGCODES.items() for each in tuple_]
-DIVIDER = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n' 
+DIVIDER = '<<>><<>><<>><<>><<>><<>><<>><<>><<>>\n'
 URL_WOTD = 'https://www.wordsmith.org/words/today.html'
-#URL_POTD = 'https://www.poetryfoundation.org/poems/poem-of-the-day.html'
-URL_POTD = 'https://poems.com/todays-poem/'
 URL_WOLF_IMG = 'http://api.wolframalpha.com/v1/simple?appid={}&i={}'
 URL_WOLF_TXT = 'http://api.wolframalpha.com/v1/result?appid={}&i={}'
 
@@ -51,64 +49,64 @@ URL_KEYWORDS = {
     'PRONUNCIATION:': '**PRONUNCIATION:**',
     'ETYMOLOGY:': '**ETYMOLOGY:**',
     'NOTES:': '**NOTES:**'
-    }
+}
 
 extSet = {
     'image': [
         'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff'
     ],
     'audio': [
-        '3gp', 'aa', 'aac', 'aax', 'act', 'aiff', 'alac', 'amr', 
-        'ape', 'au', 'awb', 'dct', 'dss', 'dvf', 'flac', 'gsm', 
+        '3gp', 'aa', 'aac', 'aax', 'act', 'aiff', 'alac', 'amr',
+        'ape', 'au', 'awb', 'dct', 'dss', 'dvf', 'flac', 'gsm',
         'iklax', 'ivs', 'm4a', 'm4b', 'm4p', 'mmf', 'mp3', 'mpc',
-        'msv', 'nmf', 'nsf', 'ogg', 'oga', 'mogg', 'opus', 'ra', 
-        'rm', 'raw', 'rf64', 'sln', 'tta', 'voc', 'vox', 'wav', 
+        'msv', 'nmf', 'nsf', 'ogg', 'oga', 'mogg', 'opus', 'ra',
+        'rm', 'raw', 'rf64', 'sln', 'tta', 'voc', 'vox', 'wav',
         'wma', 'wv', 'webm', '8svx', 'cda'
     ],
     'video': [
-        'webm', 'mkv', 'flv', 'vob', 'ogv', 'ogg', 'drc', 
-        'gifv', 'mng', 'avi', 'mts', 'm2ts', 'ts', 'mov', 'qt', 
-        'wmv', 'yuv', 'rm', 'rmvb', 'asf', 'amv', 'mp4', 'm4p', 
-        'm4v', 'mpg', 'mp2', 'mpeg', 'mpe', 'mpv', 'm4v', 'svi', 
+        'webm', 'mkv', 'flv', 'vob', 'ogv', 'ogg', 'drc',
+        'gifv', 'mng', 'avi', 'mts', 'm2ts', 'ts', 'mov', 'qt',
+        'wmv', 'yuv', 'rm', 'rmvb', 'asf', 'amv', 'mp4', 'm4p',
+        'm4v', 'mpg', 'mp2', 'mpeg', 'mpe', 'mpv', 'm4v', 'svi',
         '3gp', '3g2', 'mxf', 'roq', 'nsv', 'f4v', 'f4p', 'f4a', 'f4b'
     ],
     'document': [
-        '0', '1st', '600', '602', 'abw', 'acl', 'afp', 'ami', 
-        'ans', 'ascaww', 'ccf', 'csv', 'cwk', 'dbk', 'dita', 'doc', 
-        'docm', 'docx', 'dotdotx', 'dwd', 'egt', 'epub', 'ezw', 
-        'fdx', 'ftm', 'ftx', 'gdoc', 'html', 'hwp', 'hwpml', 'log', 
-        'lwp', 'mbp', 'md', 'me', 'mcw', 'mobinb', 'nbp', 'neis', 
-        'odm', 'odoc', 'odt', 'osheet', 'ott', 'ommpages', 'pap', 
-        'pdax', 'pdf', 'quox', 'rtf', 'rpt', 'sdw', 'sestw', 
-        'sxw', 'tex', 'info', 'troff', 'txt', 'uof', 'uoml', 'viawpd', 
+        '0', '1st', '600', '602', 'abw', 'acl', 'afp', 'ami',
+        'ans', 'ascaww', 'ccf', 'csv', 'cwk', 'dbk', 'dita', 'doc',
+        'docm', 'docx', 'dotdotx', 'dwd', 'egt', 'epub', 'ezw',
+        'fdx', 'ftm', 'ftx', 'gdoc', 'html', 'hwp', 'hwpml', 'log',
+        'lwp', 'mbp', 'md', 'me', 'mcw', 'mobinb', 'nbp', 'neis',
+        'odm', 'odoc', 'odt', 'osheet', 'ott', 'ommpages', 'pap',
+        'pdax', 'pdf', 'quox', 'rtf', 'rpt', 'sdw', 'sestw',
+        'sxw', 'tex', 'info', 'troff', 'txt', 'uof', 'uoml', 'viawpd',
         'wps', 'wpt', 'wrd', 'wrf', 'wri', 'xhtml', 'xht', 'xml', 'xps'
     ]
 }
 
 jsonFormatter = [[
-		['0=', 'Monday = '],
-		['1=', 'Tuesday = '],
-		['2=', 'Wednesday = '],
-		['3=', 'Thursday = '],
-		['4=', 'Friday = '],
-		['5=', 'Saturday = '],
-		['6=', 'Sunday = '],
-		[',', ', '],
-		[';', '; '],
-	],[
-		['id', 'Server ID'],
-		['guild_name', 'Server Name'],
-		['locale', 'Server Locale'],
-		['schedule', 'Schedule'],
-		['url', 'URL Footer'],
-		['quote_format', 'Quote Format'],
-		['qAdd_format', 'Quote Added Format'],
-		['lore_format', 'Lore Format'],
-		['filtered', 'Blacklisted Words'],
-		['mod_roles', 'Moderator Roles'],
-        ['anonymous', 'Anonymous Mode'],
-        ['timer_channel', 'Timer Channel ID'],
-	]]
+    ['0=', 'Monday = '],
+    ['1=', 'Tuesday = '],
+    ['2=', 'Wednesday = '],
+    ['3=', 'Thursday = '],
+    ['4=', 'Friday = '],
+    ['5=', 'Saturday = '],
+    ['6=', 'Sunday = '],
+    [',', ', '],
+    [';', '; '],
+], [
+    ['id', 'Server ID'],
+    ['guild_name', 'Server Name'],
+    ['locale', 'Server Locale'],
+    ['schedule', 'Schedule'],
+    ['url', 'URL Footer'],
+    ['quote_format', 'Quote Format'],
+    ['qAdd_format', 'Quote Added Format'],
+    ['lore_format', 'Lore Format'],
+    ['filtered', 'Blacklisted Words'],
+    ['mod_roles', 'Moderator Roles'],
+    ['anonymous', 'Anonymous Mode'],
+    ['timer_channel', 'Timer Channel ID'],
+]]
 
 TZ_ABBRS = {
     'jst': 'Asia/Tokyo',
@@ -133,7 +131,7 @@ TZ_ABBRS = {
     'la': 'America/Los_Angeles',
     'los-angeles': 'America/Los_Angeles',
     'los angeles': 'America/Los_Angeles',
-    }
+}
 
 '''
 with open('./docs/locales/abbr.txt', 'r') as f:
@@ -143,43 +141,74 @@ with open('./docs/locales/abbr.txt', 'r') as f:
 		tzAbbrs[key] = val
 '''
 EIGHTBALL = [
-    #Yes
-	'It is certain.', 
-    'It is decidedly so.', 
+    # Yes
+    'It is certain.',
+    'It is decidedly so.',
     'Without a doubt.',
-	'Yes -- definitely.', 
-    'You may rely on it.', 
+    'Yes -- definitely.',
+    'You may rely on it.',
     'As I see it, yes.',
-	'Most likely.', 
-    'Outlook good.', 
-    'Yes.', 
+    'Most likely.',
+    'Outlook good.',
+    'Yes.',
     'Signs point to yes.',
-    #Maybe
-	'Reply hazy, try again.', 
-    'Ask again later.', 
-	'Better not tell you now.', 
+    # Maybe
+    'Reply hazy, try again.',
+    'Ask again later.',
+    'Better not tell you now.',
     'Cannot predict now.',
-	'Concentrate and ask again.', 
-    #No
-    'Don\'t count on it.', 
-	'My reply is no.', 
-    'My sources say no.', 
+    'Concentrate and ask again.',
+    # No
+    'Don\'t count on it.',
+    'My reply is no.',
+    'My sources say no.',
     'Outlook not so good',
-	'Very doubtful.'
+    'Very doubtful.'
 ]
 
 STOPWORDS = set(stopwords.words("english")).union([
-	"channel cannot", 
-	"channel cannot used music", 
-	"cannot used music command", 
-	"cannot used", 
-	"used music", 
-	"music command", 
-	"channel cannot used", 
-	"cannot used music", 
-	"used music command", 
-	"channel cannot used music command",
-	"quote",
+    "wa",
+    "thi",
+    "https",
+    "tenor",
+    "com",
+    "lol'",
+    "lol '",
+    "gif",
+    "gif'",
+    "gif '",
+    "it'",
+    "it '",
+    "quote'",
+    "quote '",
+    "youtu",
+    "cdn",
+    "discordapp",
+    "youtu be",
+    "twitch",
+    "twitter",
+    " https",
+    "https ",
+    "https:",
+    "https:/",
+    "https://",
+    "twitch tv",
+    "twitch.tv",
+    "com attachments",
+    "com/attachments",
+    ".com/attachments",
+    ".com/attachments/",
+    "channel cannot",
+    "channel cannot used music",
+    "cannot used music command",
+    "cannot used",
+    "used music",
+    "music command",
+    "channel cannot used",
+    "cannot used music",
+    "used music command",
+    "channel cannot used music command",
+    "quote",
     "gif",
     "www",
     "http",
@@ -201,7 +230,7 @@ STOPWORDS = set(stopwords.words("english")).union([
     "cc",
     "discordapp",
     "discord",
-    ])
+])
 
 PUNCTUATION = [
     ',',
@@ -237,17 +266,15 @@ PUNCTUATION = [
     '|',
 ]
 
-
 #############
 # Help Info #
 #############
 help_general = {
     'commands': '',
     'paypal': 'https://www.paypal.com/biz/fund?id=UHBZFEDYWW7LS',
-    'patreon': 'https://www.patreon.com/tangerinebot',
     'invite': 'https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=8&scope=bot',
     'github': 'https://github.com/EanNewton/FamBot'
-    
+
 }
 
 help_dict = {
