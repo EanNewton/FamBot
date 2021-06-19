@@ -5,7 +5,7 @@ from discord import Embed
 import pandas as pd
 from sqlalchemy import and_, func, select, MetaData, Table, Column, Integer, String
 
-from tutil import fetch_file, is_admin, increment_usage, fetch_value
+from tutil import fetch_file, is_admin, increment_usage, fetch_value, debug
 from constants import DEFAULT_DIR, ENGINE, VERBOSE, extSet
 
 
@@ -32,6 +32,7 @@ def setup():
         Column('guild', String),
         Column('guild_name', String),
         Column('embed', String),
+        Column('context', String),
     )
     Lore = Table(
         'famLore', meta,
@@ -59,7 +60,6 @@ def helper(message):
     for each in message.mentions:
         text = text.replace('<@!{}>'.format(each.id), each.name)
     args = text.split()
-    guild = message.guild.id
 
     # Lore
     if args[0] == '!lore':
@@ -72,9 +72,9 @@ def helper(message):
             elif args[1] == 'help' and is_admin(message.author):
                 return get_help(message.author)
             else:
-                return get_quote(guild, Lore, ' '.join(args[1:]), True)
+                return get_quote(message, Lore, ' '.join(args[1:]), True)
         else:
-            return get_quote(guild, Lore, None, True)
+            return get_quote(message, Lore, None, True)
 
     # Quote with options
     elif len(args) > 1:
@@ -86,12 +86,12 @@ def helper(message):
         elif args[1] == 'log' and is_admin(message.author):
             return get_quote_log(message.guild.id)
         else:
-            return get_quote(guild, Quotes, ' '.join(args[1:]), True)
+            return get_quote(message, Quotes, ' '.join(args[1:]), True)
 
     # Any random quote
     else:
         increment_usage(message.guild, 'quote')
-        return get_quote(guild, Quotes, None, True)
+        return get_quote(message, Quotes, None, True)
 
 
 def get_quote_log(guild):
@@ -147,6 +147,8 @@ def insert_quote(message, Table, adder=None):
     text = text.replace('@everyone', '@ everyone')
     text = text.replace('@here', '@ here')
 
+    jump_url = message.jump_url
+
     args = text.split()
 
     embed = str(message.attachments[0].url) if message.attachments else None
@@ -168,6 +170,7 @@ def insert_quote(message, Table, adder=None):
                 guild=str(message.guild.id),
                 guild_name=message.guild.name,
                 embed=embed,
+                context=jump_url,
             )
             conn.execute(ins)
 
@@ -199,7 +202,7 @@ def insert_quote(message, Table, adder=None):
     return banner
 
 
-def get_quote(guild, Table, username=None, raw=False):
+def get_quote(message, Table, username=None, raw=False):
     """
 	Retrieve a quote from the database.
 	:param guild: <int> message.guild.id
@@ -211,13 +214,13 @@ def get_quote(guild, Table, username=None, raw=False):
     if username:
         select_user = select([Table]).where(and_(
             Table.c.name == username,
-            Table.c.guild == guild)).order_by(func.random())
+            Table.c.guild == message.guild.id)).order_by(func.random())
         select_id = select([Table]).where(and_(
             Table.c.id == username,
-            Table.c.guild == guild))
+            Table.c.guild == message.guild.id))
     else:
         select_rand = select([Table]).where(
-            Table.c.guild == guild).order_by(func.random())
+            Table.c.guild == message.guild.id).order_by(func.random())
 
     with ENGINE.connect() as conn:
         if username:
@@ -228,13 +231,14 @@ def get_quote(guild, Table, username=None, raw=False):
             result = conn.execute(select_rand).fetchone()
 
         # Result fields translate as
-        # [0]: message id, [1]: author, [2]: quote, [3]: date, [6]: embed url
+        # [0]: message id, [1]: author, [2]: quote, [3]: date, [6]: embed url, [7]: jump_url
         if result:
-            config = load_config(guild)
+            config = load_config(message.guild.id)
             if config:
                 if Table.name == 'famQuotes':
                     stm = config[4].replace('\\n', '\n')
                     title = "Quote {}".format(result[0])
+                    context_url = '{}'.format(result[7])
                 elif Table.name == 'famLore':
                     stm = config[5].replace('\\n', '\n')
                     title = "Lore {}".format(result[0])
@@ -242,6 +246,7 @@ def get_quote(guild, Table, username=None, raw=False):
                 if Table.name == 'famQuotes':
                     stm = '---{} on {}'
                     title = "Quote {}".format(result[0])
+                    context_url = '{}'.format(result[7])
                 elif Table.name == 'famLore':
                     stm = '---Scribed by the Lore Master {}, on the blessed day of {}'
                     title = "Lore {}".format(result[0])
@@ -250,14 +255,22 @@ def get_quote(guild, Table, username=None, raw=False):
             # Check if there is an attached img or file to send as well
             if len(result) > 6 and result[6]:
                 stm = stm + '\n' + result[6]
+                result[2].replace(result[6], '')
             # Result fields translate as
-            # [1]: author, [2]: quote, [3]: date, [6]: embed url
-            return stm.format(title, result[2], result[1], result[3])
+            # [1]: author, [2]: quote, [3]: date, [6]: embed url, [7]: jump_url
+            if result[7]:
+                text = '{} \n\n{}'.format(result[2], context_url)
+            else:
+                text = result[2]
+            return stm.format(title, text, result[1], result[3])
 
         else:
             stm = stm.format(result[1], result[3])
 
+            if len(result) > 6 and result[6]:
+                result[2].replace(result[6], '')
             banner = Embed(title=title, description=result[2])
+            banner.add_field(name='Context ', value=context_url, inline=False)
             if len(result) > 6 and result[6]:
                 banner.set_image(url=result[6])
             banner.set_footer(text=stm)

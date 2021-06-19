@@ -64,7 +64,11 @@ async def on_message(message):
             await message.channel.send(embed=banner["embed"], file=banner["file"])
 
         elif banner["embed"]:
-            await message.channel.send(embed=banner["embed"])
+            if type(banner["embed"]) is list:
+                await message.channel.send(embed=banner["embed"][0])
+                await message.channel.send(embed=banner["embed"][1])
+            else:
+                await message.channel.send(embed=banner["embed"])
 
         elif banner["file"]:
             await message.channel.send(file=banner["file"])

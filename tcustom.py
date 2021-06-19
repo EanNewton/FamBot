@@ -10,7 +10,7 @@ from sqlalchemy import and_, select, MetaData, Table, Column, Integer, String
 
 import tquote
 import tsched
-from tutil import is_admin,  guild_list, fetch_value, increment_usage, fetch_file
+from tutil import is_admin,  guild_list, fetch_value, increment_usage, fetch_file, debug
 from constants import ENGINE, VERBOSE, extSet
 
 custom_commands = dict()
@@ -57,7 +57,7 @@ def import_custom_commands(guild):
                 commands[each[3]] = each[5]
             custom_commands[guild] = commands
 
-
+@debug
 def get_command(message):
     """
     Return a custom command to be sent to Discord.
@@ -69,12 +69,22 @@ def get_command(message):
     custom = '.'
     args = message.content.split()
     config = tsched.load_config(message.guild.id)
+    quotes = False
 
-    if args[0] == '$custom' or args[0:2] == ['$help', 'custom']:
-        if VERBOSE >= 1:
-            print('[-] custom - help by {} in {} - {}'.format(
-                message.author.name, message.channel.name, message.guild.name))
-        return get_help(message)
+    if VERBOSE >= 2:
+        print("Config: ")
+        print(config)
+
+    try:
+        if args[0] == '$custom' or args[0:2] == ['$help', 'custom']:
+            if VERBOSE >= 1:
+                print('[-] custom - help by {} in {} - {}'.format(
+                    message.author.name, message.channel.name, message.guild.name))
+            return get_help(message)
+    except Exception as e:
+        if VERBOSE >= 2:
+            print("Exception: ")
+            print(e)
 
     if config:
         server_locale = config[2]
@@ -83,18 +93,23 @@ def get_command(message):
     else:
         url = ' '
         timestamp = pendulum.now(tz='America/New_York').to_datetime_string()
+        server_locale = 'America/New_York'
 
     try:
         # all custom commands for the guild
         guild_commands = custom_commands[message.guild.id]
         if VERBOSE >= 2:
+            print("Guild Commands: ")
             print(guild_commands)
         # the value to be returned to the user, in raw formatting
         custom = guild_commands[args[0]]
         if VERBOSE >= 2:
+            print("Custom: ")
             print(custom)
 
         # Check for image links or general links
+        if VERBOSE >= 2:
+            print("Checking for links...")
         for each in custom.split():
             if each.find('http') != -1:
                 if each.split('.')[-1] in extSet['image']:
@@ -108,6 +123,8 @@ def get_command(message):
         # for nested commands, not the most efficient solution but it works
         # if you can improve it please issue a code merge request
         while True:
+            if VERBOSE >= 2:
+                print("Formatting command, loop {}...".format(count))
             # Discord's character limit is 2000
             # count is chosen arbitrarily, move up or down for recursion limit
             if len(custom) + len(prev) > 1999 or count > 50:
@@ -127,8 +144,10 @@ def get_command(message):
                 custom = custom.replace('<GUILD>', message.guild.name)
                 while '<SCHED>' in custom:
                     custom = custom.replace('<SCHED>', tsched.get_schedule(message, True))
-                custom = custom.replace('<QUOTE>', tquote.get_quote(message.guild.id, tquote.Quotes, raw=True))
-                custom = custom.replace('<LORE>', tquote.get_quote(message.guild.id, tquote.Lore, raw=True))
+                #if '<QUOTE>' in custom:
+                #    custom = custom.replace('<QUOTE>', tquote.get_quote(message, tquote.Quotes, raw=True))
+                #    quotes = True
+                custom = custom.replace('<LORE>', tquote.get_quote(message, tquote.Lore, raw=True))
                 if custom == prev:
                     break
                 else:
@@ -137,11 +156,12 @@ def get_command(message):
 
     except Exception as e:
         if VERBOSE >= 2:
-           # print('[!] Exception in tcustom {}'.format(e))
+            print('[!] Exception in tcustom {}'.format(e))
             pass
     finally:
         # Cleanup from quote with user
-        custom = custom.replace('>', '')
+        if quotes:
+            custom = custom.replace('>', '')
         if custom == '.':
             return None
         else:
@@ -249,8 +269,9 @@ def get_help(message):
         banner = Embed(title='Custom Command Help', description=fetch_file('help', 'custom'))
         for name, value in guild_commands.items():
             custom = '{}`{}`: {}\n'.format(custom, name, value)
-        banner.add_field(name='Custom commands available in this server are:', value=custom)
-        return None, banner
+        available = Embed(title='Custom commands available in this server are:', description=custom)
+        # banner.add_field(name='Custom commands available in this server are:', value=custom)
+        return None, [banner, available]
     except Exception as e:
         if VERBOSE >= 0:
             print('[!] Exception in get help custom {}'.format(e))

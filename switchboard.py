@@ -15,6 +15,7 @@ from speller import Speller
 from constants import EIGHTBALL, DEFAULT_DIR, help_general, VERBOSE
 
 
+
 def get_quote(result):
     banner = tquote.helper(result["message"])
     if type(banner) is str:
@@ -64,7 +65,7 @@ def get_help(result):
     result["embed"] = banner
     return result
 
-
+@debug
 async def dispatch(message):
     # Preprocessing
     increment_usage(message.guild, 'raw_messages')
@@ -131,7 +132,7 @@ async def dispatch(message):
     # Doip
     elif operator == 'doip' and int(message.guild.id) == 453859595262361611:
         increment_usage(message.guild, 'doip')
-        result["rawText"] = tquote.get_quote(message.guild.id, tquote.Quotes, "LaDoIphin", True)
+        result["rawText"] = tquote.get_quote(message, tquote.Quotes, "LaDoIphin", True)
         result["file"] = '{}/docs/doip.jpg'.format(DEFAULT_DIR)
 
     # GIF
