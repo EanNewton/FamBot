@@ -31,7 +31,7 @@ POC_TOKEN = getenv('POC_TOKEN')
 GUILD = getenv('DISCORD_GUILD')
 WOLFRAM = getenv('WOLFRAM_TOKEN')
 VERSION = '06.19.2021'
-VERBOSE = 0
+VERBOSE = 1
 
 #################################
 # Internal Function Static Data #

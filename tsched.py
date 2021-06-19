@@ -193,14 +193,14 @@ def get_schedule(message, raw=False):
 			return banner
 
 
-def override(message):
+async def override(message):
 	"""
 	Admin command to manually change a user's saved location
 	:param message: <Discord.message object> Describing which users to change to which locations
 	:return: <String> Describing if the users' location was set or updated successfully
 	"""
 	increment_usage(message.guild, 'sched')
-	if is_admin(message.author):
+	if await is_admin(message.author, message):
 		banner = Embed(title='Schedule Override', description='Change a user\'s location.')
 		args = message.content.split()
 		# Args should translate as: 1 id, 2 name, 3 locale
@@ -323,7 +323,7 @@ def load_config(guild):
 		return result
 
 
-def get_help(message):
+async def get_help(message):
 	"""
 	Get the command help file from ./docs/help
 	:param message: <Discord.message object>
@@ -336,7 +336,7 @@ def get_help(message):
 	if len(args) < 3:
 		# Get general help
 		raw = fetch_file('help', 'schedule')
-		if not is_admin(message.author):
+		if not await is_admin(message.author, message):
 			raw = raw.split('For Admins:')[0]
 		banner.add_field(name='Help', value=raw)
 	else:

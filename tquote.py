@@ -49,7 +49,7 @@ def setup():
         print('[+] End Quotes Setup')
 
 
-def helper(message):
+async def helper(message):
     """
 	Main entry point from main.py, handles majority of argument parsing
 	:param message: <Discord.message object>
@@ -65,12 +65,12 @@ def helper(message):
     if args[0] == '!lore':
         increment_usage(message.guild, 'lore')
         if len(args) > 1:
-            if args[1] == 'add' and is_admin(message.author):
+            if args[1] == 'add' and await is_admin(message.author, message):
                 return insert_quote(message, Lore)
-            elif args[1] == 'delete' and is_admin(message.author):
+            elif args[1] == 'delete' and await is_admin(message.author, message):
                 return delete_quote(message.guild.id, args[2])
-            elif args[1] == 'help' and is_admin(message.author):
-                return get_help(message.author)
+            elif args[1] == 'help' and await is_admin(message.author, message):
+                return get_help(message)
             else:
                 return get_quote(message, Lore, ' '.join(args[1:]), True)
         else:
@@ -80,10 +80,10 @@ def helper(message):
     elif len(args) > 1:
         increment_usage(message.guild, 'quote')
         if args[1] == 'help':
-            return get_help(message.author)
-        elif args[1] == 'delete' and is_admin(message.author):
+            return get_help(message)
+        elif args[1] == 'delete' and await is_admin(message.author, message):
             return delete_quote(message.guild.id, args[2])
-        elif args[1] == 'log' and is_admin(message.author):
+        elif args[1] == 'log' and await is_admin(message.author, message):
             return get_quote_log(message.guild.id)
         else:
             return get_quote(message, Quotes, ' '.join(args[1:]), True)
@@ -337,14 +337,14 @@ def load_config(guild):
     return result
 
 
-def get_help(author):
+async def get_help(message):
     """
 	Get the help file in ./docs/help 
 	:param message: <Discord.message.author object>
 	:return: <String> The local help file
 	"""
     text = fetch_file('help', 'quotes')
-    if not is_admin(author):
+    if not await is_admin(message.author, message):
         text = text.split('For Admins:')[0]
     banner = Embed(title='General Help', description=text)
     return banner

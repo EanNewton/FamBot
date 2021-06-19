@@ -14,7 +14,7 @@ import discord
 import switchboard
 import tquote
 import tcustom
-from tutil import is_admin, config_create, fetch_file
+from tutil import is_admin, config_create, fetch_file, is_admin_test
 from tutil import setup as util_setup
 from constants import TOKEN, POC_TOKEN, VERSION, DIVIDER, VERBOSE, DEFAULT_DIR
 
@@ -93,7 +93,7 @@ async def on_raw_reaction_add(payload):
 
     # Remove a quote
     # emoji is :x:
-    if str(payload.emoji) == '❌' and is_admin(payload.member):
+    if str(payload.emoji) == '❌' and await is_admin_test(payload.member, message):
         try:
             banner = tquote.delete_quote(message.guild.id, message.id)
             if VERBOSE >= 2:
@@ -104,12 +104,12 @@ async def on_raw_reaction_add(payload):
                 print('[!] Exception in Remove quote: {}'.format(e))
             pass
         if VERBOSE >= 2:
-            print('[+] Deleted command.')
-        await message.channel.send(tcustom.delete_command(message))
+            print('[+] Deleting command.')
+        await message.channel.send(await tcustom.delete_command(message))
 
     # Add a custom guild command
     # emoji is :gear:
-    if str(payload.emoji) == '⚙️' and is_admin(payload.member):
+    if str(payload.emoji) == '⚙️' and await is_admin_test(payload.member, message):
         if VERBOSE >= 2:
             print('[+] Added command.')
         await message.channel.send(embed=tcustom.insert_command(message))

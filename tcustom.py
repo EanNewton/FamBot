@@ -10,7 +10,7 @@ from sqlalchemy import and_, select, MetaData, Table, Column, Integer, String
 
 import tquote
 import tsched
-from tutil import is_admin,  guild_list, fetch_value, increment_usage, fetch_file, debug
+from tutil import is_admin,  guild_list, fetch_value, increment_usage, fetch_file, debug, is_admin_test
 from constants import ENGINE, VERBOSE, extSet
 
 custom_commands = dict()
@@ -35,7 +35,7 @@ def setup():
     if VERBOSE >= 0:
         print('[+] End Custom Commands Setup')
 
-
+@debug
 def import_custom_commands(guild):
     """
     Internal function to grab any custom commands from the database
@@ -43,6 +43,9 @@ def import_custom_commands(guild):
     :return: <None>
     """
     name = ' '.join(fetch_value(guild, 1))
+
+    if VERBOSE >= 2:
+        print(name)
 
     with ENGINE.connect() as conn:
         select_st = select([Commands]).where(
@@ -184,7 +187,7 @@ def insert_command(message):
 	:param message: <Discord.message> Raw message object
 	:return: <str> Banner notifying if new command has been created or exisisting has been updated.
 	"""
-    # if is_admin(message.author):
+    # if await is_admin(message.author):
     args = message.content.split()
     links = str(message.attachments[0].url) if message.attachments else ''
 
@@ -229,22 +232,32 @@ def insert_command(message):
                 print('[+] Updated {}'.format((args[0])))
             return banner
 
-
-def delete_command(message):
+@debug
+async def delete_command(message):
     """
     Permanently remove a custom command if it exists
     :param message: <Discord.message object>
     :return: <String> Notifying command has been removed 
     """
-    if is_admin(message.author):
+    admin = await is_admin_test(message.author, message)
+    if admin:
         args = message.content.split()
+        if VERBOSE >= 2:
+            print("Args:")
+            print(args)
         with ENGINE.connect() as conn:
             select_st = select([Commands]).where(and_(
                 Commands.c.guild_id == message.guild.id,
                 Commands.c.name == args[0]
             ))
             result = conn.execute(select_st).fetchone()
+            if VERBOSE >= 2:
+                print("Result:")
+                print(result)
             if result:
+                if VERBOSE >= 2:
+                    print("Result:")
+                    print(result)
                 del_st = Commands.delete().where(and_(
                     Commands.c.guild_id == message.guild.id,
                     Commands.c.name == args[0]

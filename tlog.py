@@ -8,7 +8,7 @@ import pendulum
 import pandas as pd
 from sqlalchemy import and_, MetaData, Table, Column, Integer, String, select
 
-from tutil import fetch_file, is_admin, config_fetch_embed
+from tutil import fetch_file, is_admin, config_fetch_embed, debug
 from constants import DEFAULT_DIR, ENGINE, VERBOSE
 
 extSet = {}
@@ -55,7 +55,7 @@ async def log_message(message):
 
     if message.attachments:
         await fetch_embed(message, timestamp)
-        if is_admin(message.author) and message.attachments[0].file_name == '{}.json'.format(message.guild.id):
+        if await is_admin(message.author, message) and message.attachments[0].file_name == '{}.json'.format(message.guild.id):
             await config_fetch_embed(message)
 
 
@@ -129,7 +129,7 @@ async def fetch_embed(message, time):
     ext = str(url.split('.')[-1].lower())
     [await fetcher(each, url, time, message) for each in extSet if ext in extSet[each]]
 
-
+@debug
 def get_log(message):
     """
 	Get an excel file log of a guild
@@ -150,7 +150,6 @@ def get_log(message):
             except:
                 pass
 
-            print(user)
             select_st = select([Corpus]).where(and_(
                 Corpus.c.guild == message.guild.id,
                 Corpus.c.user_id == user))
@@ -177,7 +176,6 @@ def get_log(message):
             for each in message.channel_mentions:
                 channel = each.name
 
-            print(channel)
             if VERBOSE >= 2:
                 print(message.channel, channel)
             select_st = select([Corpus]).where(and_(
@@ -203,24 +201,29 @@ def get_log(message):
 
     else:
         # Get a log of the guild
+        if VERBOSE >= 2:
+            print('Getting full log...')
         select_st = select([Corpus]).where(
             Corpus.c.guild == message.guild.id)
         df = [None]
         with ENGINE.connect() as conn:
             result = conn.execute(select_st).fetchall()
-            keys = conn.execute(select_st).keys()
+            if result:
+                keys = conn.execute(select_st).keys()
 
-            entries = [each.values() for each in result]
-            for each in entries:
-                each[0] = 'id_{}'.format(each[0])
-                each[3] = 'uid_{}'.format(each[3])
-                each[11] = 'mid_{}'.format(each[11])
-                each[13] = 'gid_{}'.format(each[13])
+                entries = [each.values() for each in result]
+                for each in entries:
+                    each[0] = 'id_{}'.format(each[0])
+                    each[3] = 'uid_{}'.format(each[3])
+                    each[11] = 'mid_{}'.format(each[11])
+                    each[13] = 'gid_{}'.format(each[13])
 
-            df[0] = pd.DataFrame(entries, columns=keys)
-        with pd.ExcelWriter('{}/log/Log_{}.xlsx'.format(DEFAULT_DIR, message.guild.id), engine='xlsxwriter') as writer:
-            df[0].to_excel(writer, sheet_name='Messages')
-        return ['Log of all messages for this guild:', '{}/log/Log_{}.xlsx'.format(DEFAULT_DIR, message.guild.id)]
+                df[0] = pd.DataFrame(entries, columns=keys)
+                with pd.ExcelWriter('{}/log/Log_{}.xlsx'.format(DEFAULT_DIR, message.guild.id), engine='xlsxwriter') as writer:
+                    df[0].to_excel(writer, sheet_name='Messages')
+                return ['Log of all messages for this guild:', '{}/log/Log_{}.xlsx'.format(DEFAULT_DIR, message.guild.id)]
+            else:
+                return None
 
 
 # Placeholder function

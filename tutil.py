@@ -11,6 +11,7 @@ import json
 import functools
 import aiohttp
 import aiofiles
+import discord
 
 from sqlalchemy import select, MetaData, Table, Column, Integer, String
 
@@ -94,24 +95,78 @@ def fetch_file(directory, filename):
         return f.read()
 
 
-def is_admin(author):
+@debug
+async def is_admin(author, message):
     """
 	Check if a discord user has been given bot admin permissions
+    :param message:
 	:param author: <Discord.message.author object>
 	:return: <bool>
 	"""
-    try:
-        if author.guild.owner_id == author.id or int(author.id) == 184474309891194880:
+
+
+    if type(author) is discord.User and not author.bot:
+        if author.id == 184474309891194880 or author.id == message.guild.owner_id:
             return True
-    except:
-        pass
-    try:
-        for role in author.roles:
-            if str(role).lower() in modRoles[author.guild.id]:
+        else:
+            await author.send(content='Role based permissions are not currently supported by DiscordPy in private \
+channels. Please try again in a different channel, or the guild owner can issue the command here.')
+            return False
+    else:
+        try:
+            if author.guild.owner_id == author.id or author.id == 184474309891194880:
                 return True
-    except:
-        pass
-    return False
+        except Exception as e:
+            if VERBOSE >= 2:
+                print("Exception in is_admin: {}".format(e))
+            else:
+                pass
+        try:
+            for role in author.roles:
+                if str(role).lower() in modRoles[author.guild.id]:
+                    return True
+        except Exception as e:
+            if VERBOSE >= 2:
+                print("Exception in is_admin: {}".format(e))
+            else:
+                pass
+        return False
+
+@debug
+async def is_admin_test(author, message):
+    """
+	Check if a discord user has been given bot admin permissions
+    :param message:
+	:param author: <Discord.message.author object>
+	:return: <bool>
+	"""
+
+    if type(author) is discord.User and not author.bot:
+        if author.id == 184474309891194880 or author.id == message.guild.owner_id:
+            return True
+        else:
+            await author.send(content='Role based permissions are not currently supported by DiscordPy in private \
+channels. Please try again in a different channel, or the guild owner can issue the command here.')
+            return False
+    else:
+        try:
+            if author.guild.owner_id == author.id or author.id == 184474309891194880:
+                return True
+        except Exception as e:
+            if VERBOSE >= 2:
+                print("Exception in is_admin: {}".format(e))
+            else:
+                pass
+        try:
+            for role in author.roles:
+                if str(role).lower() in modRoles[author.guild.id]:
+                    return True
+        except Exception as e:
+            if VERBOSE >= 2:
+                print("Exception in is_admin: {}".format(e))
+            else:
+                pass
+        return False
 
 
 def wrap(s, w):
@@ -185,14 +240,14 @@ def increment_usage(guild, command):
             return increment_usage(guild, command)
 
 
-def config_helper(message):
+async def config_helper(message):
     """
 	Create or reset the server config entry
 	:param message: <Discord.message object>
 	:return: <String> Describing file location
 	"""
     increment_usage(message.guild, 'config')
-    if is_admin(message.author):
+    if await is_admin(message.author, message):
         args = message.content.split()
         if len(args) > 1 and args[1] == 'reset':
             return config_reset(message.guild)
@@ -211,7 +266,6 @@ def update_mod_roles():
             modRoles[guild] = [str(role).lower() for role in roles]
             if VERBOSE >= 1:
                 print('[+] Updated mod roles')
-
 
 
 def config_create(guild):
@@ -344,6 +398,7 @@ async def config_fetch_embed(message):
     config_load(message.guild.id)
 
 
+@debug
 def fetch_value(guild, val, delim=None):
     """
 	Get a specific cell from the guilds config table

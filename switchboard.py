@@ -10,7 +10,7 @@ import tlog
 import tstat
 import tcustom
 import tgif
-from tutil import is_admin, config_helper, fetch_file, increment_usage, debug
+from tutil import is_admin, config_helper, fetch_file, increment_usage, debug, is_admin_test
 from speller import Speller
 from constants import EIGHTBALL, DEFAULT_DIR, help_general, VERBOSE
 
@@ -47,10 +47,10 @@ async def get_gif(result):
     return result
 
 
-def get_help(result):
+async def get_help(result):
     increment_usage(result["message"].guild, 'help')
     help_ = fetch_file('help', 'general')
-    if not is_admin(result["message"].author):
+    if not await is_admin(result["message"].author, result["message"]):
         help_ = help_.split('For Admins:')[0]
 
     banner = Embed(title='General Help', description=help_)
@@ -68,6 +68,8 @@ def get_help(result):
 @debug
 async def dispatch(message):
     # Preprocessing
+    if message.author.bot:
+        return None
     increment_usage(message.guild, 'raw_messages')
     await tlog.log_message(message)
     args = message.content.split()
@@ -88,7 +90,7 @@ async def dispatch(message):
     # Correct minor typos
     spell = Speller('cmd')
     operator = spell(args[0][1:])
-    if args[0][0] != '$' or message.author.bot:
+    if args[0][0] != '$':
         return None
     if VERBOSE >= 2:
         print('[-] {} by {} in {} - {}'.format(operator, message.author.name, message.channel.name, message.guild.name))
@@ -111,13 +113,20 @@ async def dispatch(message):
 
     # Config
     elif operator == 'config':
-        result["file"] = config_helper(message)
+        result["file"] = await config_helper(message)
+        if result["file"] and type(result["file"]) is not DiscordFile:
+            result["file"] = DiscordFile(result["file"])
+        await message.author.send(file=result["file"])
+        return None
 
     # Log
-    elif operator == 'log' and is_admin(message.author):
+    elif operator == 'log' and await is_admin_test(message.author, message):
         banner = tlog.get_log(message)
-        result["rawText"] = banner[0]
         result["file"] = banner[1]
+        if result["file"] and type(result["file"]) is not DiscordFile:
+            result["file"] = DiscordFile(result["file"])
+        await message.author.send(content=banner[0], file=result["file"])
+        return None
 
     # Schedule
     elif operator in {'schedule', 'sched', 's'}:
@@ -150,7 +159,7 @@ async def dispatch(message):
 
     # General Help
     elif operator == 'help':
-        result = get_help(result)
+        result = await get_help(result)
 
     if result["file"] and type(result["file"]) is not DiscordFile:
         result["file"] = DiscordFile(result["file"])
