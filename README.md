@@ -3,9 +3,11 @@
  <img src="https://i.imgur.com/M3wjra4.png" alt="Tangerine Bot logo"></a>
 </p>
 
+
 <h3 align="center">Tangerine Bot</h3>
 
 <div align="center">
+
   ![Status](https://img.shields.io/badge/status-active-success.svg)
   ![Platform](https://img.shields.io/badge/platform-discord-blue.svg)
   ![Language](https://img.shields.io/badge/language-python-yellow.svg)
