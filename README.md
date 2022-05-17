@@ -385,10 +385,6 @@ Additional Parameters include:
 
 ----
 
-## Architecture
-
-The core architecture of the bot is a series of Python files hooked into a SQLite database via SQLalchemy. In order to support modularity and unpredictable future extensions it was decided on to store and pull help files and the like from editable server side files stored in plain text format, to transfer configuration files as XML.
-
 ## Process Flow
 
 ### On Boot
