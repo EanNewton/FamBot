@@ -92,7 +92,13 @@ The project has been growing and adding features as requested since then. If the
       python3 ./main.py
       ```
 
-      
+6. If all was successful you should see output in your terminal that looks something like:
+
+   ```bash
+   {bot.user} has connected to Discord!
+   Revision date: {VERSION}
+   ```
+     
 
 ## API Tokens
 
