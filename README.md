@@ -5,6 +5,7 @@
 
 
 <h3 align="center">Tangerine Bot</h3>
+<h3 align="center">Discord Bot to provide time zone conversions, user quote system, reverse image search, Wolfram Alpha and Wiktionary querying, and more!</h3>
 
 <div align="center">
 
@@ -12,7 +13,7 @@
   ![Platform](https://img.shields.io/badge/platform-discord-blue.svg)
   ![Language](https://img.shields.io/badge/language-python-yellow.svg)
   ![License](https://img.shields.io/badge/license-GNU%20GPL%20v3-green)
-
+	
 </div>
 
 ---
@@ -20,62 +21,174 @@
 # 📝 Table of Contents
 
 
-- [📝 Table of Contents](#-table-of-contents)
-- [About](#about-a-name--abouta)
-- [List of Commands](#list-of-commands-a-name--commandlista)
-  - [!help](#help-a-name--helpa)
-  - [!config](#config-a-name--configa)
-  - [!log](#log-a-name--loga)
-  - [!sched](#sched-a-name--scheda)
-  - [!quote](#quote-a-name--quotea)
-  - [!lore](#lore-a-name--lorea)
-  - [!dict](#dict-a-name--dicta)
-  - [!stats](#stats-a-name--statsa)
-  - [!google](#google-a-name--googlea)
-  - [!gif](#gif-a-name--gifa)
-  - [!word](#word-a-name--worda)
-  - [!yandex](#yandex-a-name--yandexa)
-  - [!custom](#custom-a-name--customa)
+- [About](#about)
+- [How To Run This Bot](#how-to-run-this-bot)
+  - [API Tokens](#api-tokens)
+- [List of Commands](#list-of-commands)
+  - [!help](#help)
+  - [!config](#config)
+  - [!log](#log)
+  - [!sched](#sched)
+  - [!quote](#quote)
+  - [!lore](#lore)
+  - [!dict](#dict)
+  - [!stats](#stats)
+  - [!8ball](#8ball)
+  - [!wolfram](#wolfram)
+  - [!google](#google)
+  - [!gif](#gif)
+  - [!word](#word)
+  - [!yandex](#yandex)
+  - [!custom](#custom)
 - [How It Works](#how-it-works)
-  - [Architecture](#architecture)
   - [Process Flow](#process-flow)
+- [Footnotes](#footnotes)
 
-# About <a name = "about"></a>
+# About
 
 I initially created this bot to address a problem I saw occurring frequently: Twitch was helping to connect people from all over the globe, which is a wonderful thing, but it brought the problem of communicating across all those disparate places. A streamer would say something like, "Hey friends! I'll be streaming every Tuesday at 6:00PM!" but when exactly that 6:00PM on Tuesday actually is would be different for people located in London vs New York vs Melbourne. I wanted a simple and intuitive way for anyone to find out when it would occur for them with a single command. 
 
 The project has been growing and adding features as requested since then. If there's a change you'd like to see feel free to issue a Pull Request or contact me.
 
-Or, clone the the project to a local directory and launch it with:
-`python3 main.py`
-You will need a bot token from the Discord Developer portal as well as one from Wolfram, placed into ./.env
+---
 
-# List of Commands <a name = "commandlist"></a>
-+ [!help](#!help)
-+ [!config](#!config)
-+ [!log](#!log)
-+ [!custom](#!custom)
-+ [!sched](#!sched)
-+ [!quote](#!quote)
-+ [!lore](#!lore)
-+ [!dict](#!dict)
-+ [!stats](#!stats)
-+ [!8ball](#!8ball)
-+ [!wolfram](#!wolfram)
-+ [!google](#!google)
-+ [!word](#!word)
-+ [!poem](#!poem)
-+ [!yandex](#!yandex)
+# How To Run This Bot
+
+1. Start by cloning this repository. This is frequently done via the command line with:
+
+`git clone https://github.com/EanNewton/FamBot.git`
+
+2. You will need a bot token from the Discord Developer portal, as well as one for Wolfram Alpha's API if you plan to use that functionality. Links and guides on doing so are below. Place these tokens in the appropriate field of the `.env` file of this project. 
+
+3. Install Python3. You can find download links and documentation at: https://www.python.org/downloads/
+
+4. Install dependencies. You can use either pipenv (recommended) or simply pip.
+
+   1. For pipenv: 
+
+      ```bash
+      cd FamBot
+      pipenv install
+      ```
+
+   2. For pip:
+
+      ```bash
+      cd FamBot
+      python3 -m pip install -r ./requirements.txt
+      ```
+
+5. Launch the bot!
+
+   1. For pipenv:
+
+      ```bash
+      pipenv run python main.py
+      ```
+
+   2. For pip:
+
+      ```bash
+      python3 ./main.py
+      ```
+
+      
+
+## API Tokens
+
+### Discord API Token [^1]
+
+Creating a bot user in discord is really easy!
+
+1. First, go to [Discord's Developer Portal](https://discord.com/developers/applications) and click "New Application":
+
+   ![The "new application" button can be found in the top right of the developer portal page](https://i.imgur.com/hQ8AxNn.png)
+
+2. Now give your bot a name, read the linked terms of service, and click create.
+
+   ![New application form, with a box to input the bot's name](https://i.imgur.com/qmObZGn.png)
+
+   On the new screen you will be able to change your bot profile image, bot description and several other details.
+
+   ![The "general information" page of a discord bot user shows a selection box for the app icon and a name and description form](https://i.imgur.com/5mrEjbm.png)
+
+3. Finally, to create the bot user itself (rather than merely the application flow), click "Bot" on the left sidebar. Then click "Add Bot", and after reading the confirmation prompt, "Yes, do it!".
+
+   ![The "bot" button is under "settings" on the left sidebar, and the "add bot" button can be found in the "Build-A-Bot" panel](https://i.imgur.com/fXPj4zS.png)
+   ![The confirmation popup warns that this action is irrevocable, and presents a choice between "Nevermind" and "Yes, do it!" to continue with the action](https://i.imgur.com/Z4cIBkO.png)
+
+### Fetching your bot's token
+
+Once you've already created a bot, you can access the bot's page on the developer portal, and under the "Bot" tab again, use the "Click to Reveal Token" button under your bot username – alternatively, simply click "Copy" and the token will be copied to your clipboard directly. This token can then be embedded in your `config.json` file for `discord-irc`. Note that **this token should be kept private**, and must be reset if it is leaked – see "[Token security](#token-security)" for more information.
+
+![After adding the bot successfully, the bot page will now show a section for the token, with "copy" and "regenerate" buttons](https://i.imgur.com/D3xcdzZ.png)
+
+### Adding your bot to your server
+
+Now it's time to invite your bot to your server! Don't worry about the bot being up and running for this next step.
+
+1. First, fetch your bot's "client ID" back from the "General information" tab:
+
+   ![Your app's client ID can be found under the name and description boxes of "General Information"](https://i.imgur.com/vMZeAeV.png)
+
+2. Head to the following URL, replacing `YOUR_CLIENT_ID_HERE` with the ID you grabbed above: `https://discord.com/oauth2/authorize?scope=bot&permissions=0&client_id=YOUR_CLIENT_ID_HERE`
+
+   ([more information can be found about this URL in Discord's developer docs](https://discord.com/developers/docs/topics/oauth2#bots))
+
+3. You'll be presented with a consent dialog, explaining what's necessary to attach the bot to your server. Please read this carefully, then select the right server from the dropdown, and click Authorize!
+
+   ![The consent dialog provides some information about the application and you, and explains that you need "Manage Servers" permission to add the bot to a server](https://i.imgur.com/nK01E71.png)
+
+   You may then be required to fill in a CAPTCHA, and will then be presented with an "Authorized" panel!
+
+   ![The authorized panel presents no additional information and can be safely closed](https://i.imgur.com/80jK0NH.png)
+
+Note: your bot will connect to your server, but may not have specific permissions that you want. If you want to create an automatic role for it in your server, go to "Bot" tab in your bot settings page and scroll down. Select the desired permissions, and copy the result number to the URL you  previously used to access the consent dialog (e.g. instead of `&permissions=0`, use `&permissions=131072` to provide it with "Mention Everyone" permissions).
+
+That's it! Now you can start your bot and enjoy chatting!
+
+### Token security
+
+**IMPORTANT**: you should NEVER give your bot's token to anybody you do not trust, and especially never publish it in a public location, such as a Git repo. The token gives **full access** to your bot account, and a malicious actor could use it to hijack the bot (ranging from the irritating – such as leaving all your servers, and breaking your bridge – to the much more serious – such a spamming unfavorable links or deleting messages and channels in servers where it has moderator permissions). **Keep your token secret!**
+
+However, if your token ever does get compromised or you suspect it has been, not all is lost: the very first thing you should do is [go to your Discord Apps page](https://discord.com/developers/applications), select the relevant bot, and then under the "Bot" tab of the left sidebar, **regenerate the token** in the same location you originally accessed the token. This will give you a brand-new unique token that you can update in your bot's config.
+
+![The "bot token" panel, same as in the "Fetching your bot's token" header above](https://i.imgur.com/D3xcdzZ.png)
+
+Ensure to take the appropriate measures to secure this token where it can't be leaked or compromised (especially if you've already been bit by this once!). If you would like to build a bot based on `discord-irc` and open source your bot's code, you can store the token in a separate file _outside the main repository_, or else add this file to `.gitignore` to ensure it isn't published with the rest of your bot – `discord-irc` provides its `--config` flag for this purpose.
+
+### Wolfram Alpha API Token
+
+You will need to create an account and follow the steps for a free developer account from Wolfram found here: https://products.wolframalpha.com/api/
+
+---
+
+# List of Commands
+  - [!help](#help)
+  - [!config](#config)
+  - [!log](#log)
+  - [!sched](#sched)
+  - [!quote](#quote)
+  - [!lore](#lore)
+  - [!dict](#dict)
+  - [!stats](#stats)
+  - [!8ball](#8ball)
+  - [!wolfram](#wolfram)
+  - [!google](#google)
+  - [!gif](#gif)
+  - [!word](#word)
+  - [!yandex](#yandex)
+  - [!custom](#custom)
 
 
-## !help <a name = "!help"></a>
+## !help
 Displays a list of available commands and a brief description of what they do.
 
 **Examples**
 
 ![help example](https://github.com/EanNewton/FamBot/blob/master/Samples/help.png)
 
-## !config <a name = "!config"></a>
+## !config
 Generates a config file in JSON format. Only usable by the server owner and roles designated as server administrators. Simply edit the file as you desire and then drag and drop it back into any channel in your discord to apply the changes. 
 
 Optional parameters are: 
@@ -128,11 +241,11 @@ Quote Added Format: What is displayed when a user reacts with :speech_left: to a
     It also follows the {} order of text, author, date.
 ```
 
-## !log <a name = "!log"></a>
+## !log
 Admin command to get a log of all messages sent in the guild in Excel format.
 Note: This will be sent to the channel the command was used in and therefore available to any users who can see the channel.
 
-## !sched <a name = "!sched"></a>
+## !sched
 Display a schedule of upcoming events for the server in the user's own time zone. Any events occurring today will be bolded.
 
 Aliased names for the command are:
@@ -151,7 +264,7 @@ Optional parameters are:
 
 ![sched exmaple](https://github.com/EanNewton/FamBot/blob/master/Samples/sched.png)
 
-## !quote <a name = "!quote"></a>
+## !quote
 Users can react to any message in the discord with the :speech_left: reaction to add it to a list of quotes. 
 Quotes may be any message that is not from a bot, including text, images, videos, embeds, or files.
 A random quote can then be displayed by using the !quote command.
@@ -172,7 +285,7 @@ Optional parameters are:
 
 ![quote example](https://github.com/EanNewton/FamBot/blob/master/Samples/quote.png)
 
-## !lore <a name = "!lore"></a>
+## !lore
   Works almost exactly the same as !quote but new entries can only be added by administrators, a sort of VIP version of !quote or a randomized version of a pinned message.
 
   Aliased names for the command are:
@@ -184,7 +297,7 @@ Optional parameters are:
   + !lore [USER] --- Display a piece of lore from a specific user.
   + !lore add [USER] [TEXT] --- Add a new lore entry of [TEXT] with the author set as [USER] at the current date and time. Note that the [USER] must be a single word, any text after the first whitespace will be part of [TEXT]. Administrators may add a :x: reaction to the "!lore add" message to remove the entry.
 
-## !dict <a name = "!dict"></a>
+## !dict
 Returns the English Wiktionary entry for a word or phrase. This does not necessarily need to be an English word, it simply needs to have an entry in the https://en.wiktionary.org site. Due to Discord's character limit for Embed objects, words with very long entries may not return anything.
 
 Aliased names for the command are:
@@ -201,7 +314,7 @@ Optional parameters are:
 > !dict baseball
 ![dict example](https://github.com/EanNewton/FamBot/blob/master/Samples/dict.png)
 
-## !stats <a name = "!stats"></a>
+## !stats
 Display some fun info about the messages being sent. The default command will generate a word cloud of the most common words for the server.
 
 Optional parameters are:
@@ -243,7 +356,7 @@ Optional parameters are:
 ![stats common](https://github.com/EanNewton/FamBot/blob/master/Samples/stats%20common.png)
 ---
 
-## !8ball <a name = "!8ball"></a>
+## !8ball
 The classic 1950's magic eight ball by Carter and Bookman, now on your Discord. 
 Use !8ball followed by a question to have your fortune read.
 
@@ -275,7 +388,7 @@ Possible responses are:
 + Outlook not so good.
 + Very doubtful.
 
-## !wolfram <a name = "!8ball"></a>
+## !wolfram
 Query the Wolfram computational intelligence engine.
 
 Optional parameters are:
@@ -300,7 +413,7 @@ Aliased names for the command are:
 ![wolf  example 2](https://github.com/EanNewton/FamBot/blob/master/Samples/wolftxt.png)
 ---
 
-## !google <a name = "!google"></a>
+## !google
 Did someone ask a question that could have been Googled? Send a link to Let Me Google That For You for them.
 
 Aliased names for the command are:
@@ -313,7 +426,7 @@ Aliased names for the command are:
 ---
 `https://lmgtfy.com/?q=what+is+a+banana&iie=1`
 
-## !gif <a name = "!gif"></a>
+## !gif
 Display a random gif or add a new one.
 
 Aliased names for the command are:
@@ -326,7 +439,7 @@ Optional Parameters include:
 + !gif add nsfw --- Same as `!gif add` but marks it as NSFW.
 + !gif nsfw --- Include gifs marked as NSFW in possible responses.
 
-## !word <a name = "!word"></a>
+## !word
 Get the Word of the Day from https://wordsmith.org/words/today.html
 
 Aliased names for the command are:
@@ -337,7 +450,7 @@ Aliased names for the command are:
 
 ![word example](https://github.com/EanNewton/FamBot/blob/master/Samples/word.png)
 
-## !yandex <a name = "!yandex"></a>
+## !yandex
 Return a link to a reverse image search.
 
 Aliased names for the command are:
@@ -349,7 +462,7 @@ Aliased names for the command are:
 Optional parameters are:
 + !yandex [URL] --- Given a URL to an image return a link to a reverse image search for the provided image. You can right click an image within Discord and choose Copy Link.
 
-## !custom <a name = "!custom"></a>
+## !custom
 Add custom commands to your discord.
 Admins can react to any message with :gear: to add a new command. The first word of the message will be the command name, the remainder will be what is displayed. The command name is taken literally so if you want a ! or . or any prefix make sure to include that.
 Admins can react to any message :X: to remove a command where the first word matches a command name to remove it.
@@ -632,4 +745,10 @@ class Word(object):
 ```
 
 
+
+---
+
+# Footnotes
+
+[^1]: Thank you to [Reactiflux](https://github.com/reactiflux/discord-irc/wiki/Creating-a-discord-bot-&-getting-a-token) for the writeup on getting a Discord API token.
 
