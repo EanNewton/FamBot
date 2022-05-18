@@ -56,7 +56,7 @@ The project has been growing and adding features as requested since then. If the
 
 1. Start by cloning this repository. This is frequently done via the command line with: `git clone https://github.com/EanNewton/FamBot.git`
 
-2. You will need a bot token from the Discord Developer portal, as well as one for Wolfram Alpha's API if you plan to use that functionality. Links and guides on doing so are below. Place these tokens in the appropriate field of the `.env` file of this project. 
+2. You will need a bot token from the Discord Developer portal, as well as one for Wolfram Alpha's API if you plan to use that functionality. Links and guides on doing so are below. Place these tokens in the appropriate field of the `.env` file of this project. Note: The tokens do NOT need to be wrapped in quotes but there should be no white space.
 
 3. Install Python3. You can find download links and documentation at: https://www.python.org/downloads/
 
