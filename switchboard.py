@@ -1,5 +1,6 @@
 from random import choice
 
+import discord
 from discord import Embed
 from discord import File as DiscordFile
 
@@ -14,9 +15,14 @@ from tutil import is_admin, config_helper, fetch_file, increment_usage, debug, i
 from speller import Speller
 from constants import EIGHTBALL, DEFAULT_DIR, help_general, VERBOSE
 
-
-
-def get_quote(result):
+# Break out functions to prevent dispatch() from
+# becoming overly lengthy
+def get_quote(result: dict) -> dict:
+    """
+    Pass off to tquote.py
+    :param result:
+    :return:
+    """
     banner = tquote.helper(result["message"])
     if type(banner) is str:
         result["rawText"] = banner
@@ -28,7 +34,12 @@ def get_quote(result):
     return result
 
 
-async def get_wolfram(result):
+async def get_wolfram(result: dict) -> dict:
+    """
+    Pass off to tword.py
+    :param result:
+    :return:
+    """
     banner = await tword.wolfram(result["message"])
     if type(banner) is list:
         result["rawText"] = banner[0]
@@ -38,7 +49,12 @@ async def get_wolfram(result):
     return result
 
 
-async def get_gif(result):
+async def get_gif(result: dict) -> dict:
+    """
+    Pass off to tgif.py
+    :param result:
+    :return:
+    """
     args = result["message"].content.split()
     if len(args) > 1 and args[1] == 'add':
         await tgif.get_react(result["message"])
@@ -47,7 +63,12 @@ async def get_gif(result):
     return result
 
 
-async def get_help(result):
+async def get_help(result: dict) -> dict:
+    """
+    Return help text.
+    :param result:
+    :return:
+    """
     increment_usage(result["message"].guild, 'help')
     help_ = fetch_file('help', 'general')
     if not await is_admin(result["message"].author, result["message"]):
@@ -57,6 +78,7 @@ async def get_help(result):
     banner.add_field(name='Help support this bot!', value='All donations go to development and server costs.',
                      inline=False)
     banner.add_field(name='PayPal', value=help_general['paypal'])
+    # TODO patreon + invite?
     # banner.add_field(name='Patreon', value=help_general['patreon'])
     banner.add_field(name='More Information',
                      value='This bot is open source, find it at: {}'.format(help_general['github']))
@@ -66,14 +88,23 @@ async def get_help(result):
     return result
 
 @debug
-async def dispatch(message):
+async def dispatch(message: discord.Message) -> (None, dict):
+    """
+    Process raw discord.Message object and send it to dedicated function.
+    :param message:
+    :return:
+    """
     # Preprocessing
+    # Prevent recursive loops or triggering from other bots.
     if message.author.bot:
         return None
+    # Register a new message in the database
     increment_usage(message.guild, 'raw_messages')
     await tlog.log_message(message)
+    # Setup for checking commands
     args = message.content.split()
     result = {"message": message, "rawText": None, "embed": None, "file": None}
+    # TODO redo logging
     if VERBOSE >= 2:
         print('[-] {} by {} in {} - {}'.format(args[0][1:], message.author.name, message.channel.name, message.guild.name))
 
@@ -163,4 +194,5 @@ async def dispatch(message):
 
     if result["file"] and type(result["file"]) is not DiscordFile:
         result["file"] = DiscordFile(result["file"])
+
     return result

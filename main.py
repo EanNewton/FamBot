@@ -22,7 +22,7 @@ bot = discord.Client()
 
 
 @bot.event
-async def on_ready():
+async def on_ready() -> None:
     print(
         f'{bot.user} has connected to Discord!\n'
         f'Revision date: {VERSION}\n'
@@ -41,7 +41,12 @@ async def on_ready():
 
 
 @bot.event
-async def on_guild_join(guild):
+async def on_guild_join(guild: discord.guild) -> None:
+    """
+    Create a blank new config in the database and send a DM to the guild owner.
+    :param guild:
+    :return:
+    """
     if VERBOSE >= 1:
         print('[+] Joined a new guild: {}'.format(guild.name))
     config_file = config_create(guild)
@@ -53,7 +58,14 @@ async def on_guild_join(guild):
 
 
 @bot.event
-async def on_message(message):
+async def on_message(message: discord.Message) -> None:
+    """
+    Dispatch the raw message object to switchboard.py
+    Switchboard filters input then redirects to dedicated functions
+    Send discord.message object to Discord API for posting, return None
+    :param message:
+    :return:
+    """
     banner = await switchboard.dispatch(message)
 
     if banner:
@@ -78,7 +90,16 @@ async def on_message(message):
 
 
 @bot.event
-async def on_raw_reaction_add(payload):
+async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
+    """
+    Called whenever a reaction is added to a message.
+    Using on_raw_reaction_add() instead of on_reaction_add() because
+    on_raw is called regardless of the state of the internal message cache.
+    Python and Discord are picky about the emoji string comparison, if
+    you encounter issues, keep trying different things.
+    :param payload:
+    :return:
+    """
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
 
@@ -115,6 +136,7 @@ async def on_raw_reaction_add(payload):
         await message.channel.send(embed=tcustom.insert_command(message))
 
 
+# TODO redo logging with loguru
 @bot.event
 async def on_error(event, *args, **kwargs):
     # For errors with the bot itself

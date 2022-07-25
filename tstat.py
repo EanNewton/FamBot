@@ -3,6 +3,7 @@
 import re
 import sqlite3
 
+import discord
 from discord import Embed, File
 import pandas as pd
 from wordcloud import WordCloud
@@ -15,7 +16,14 @@ from tutil import fetch_file, increment_usage
 from constants import PATH_DB, DEFAULT_DIR, STOPWORDS, VERBOSE
 
 
-def setup(guild, user=None, channel=None):
+def setup(guild: int, user=None, channel=None) -> None:
+    """
+    TODO
+    :param guild:
+    :param user:
+    :param channel:
+    :return:
+    """
     global log_df, clean_description, stem_description
     log_df = []
     clean_description = []
@@ -40,12 +48,13 @@ def setup(guild, user=None, channel=None):
         print("[+] Stats setup complete with user={} channel={}".format(user, channel))
 
 
-def normalize_pd_dataframe(dataframe):
+def normalize_pd_dataframe(dataframe: pd.DataFrame) -> None:
     """
 	Remove special characters and normalize words
 	:param dataframe: <Pandas dataframe>
 	:return: <Pandas dataframe>
 	"""
+
     for w in range(len(dataframe)):
         desc = log_df['content'][w].lower()
         desc = re.sub('[^a-zA-Z]', ' ', desc)
@@ -56,22 +65,24 @@ def normalize_pd_dataframe(dataframe):
     log_df['clean_description'] = clean_description
 
 
-def lematize_pd_dataframe(dataframe):
+def lematize_pd_dataframe(dataframe: pd.DataFrame) -> str:
     """
 	Lemmatize words, such as running --> run
 	:param dataframe: <Pandas dataframe>
 	:return: <Pandas dataframe>
 	"""
+
     for w in range(len(dataframe)):
         split_text = dataframe[w].split()
         lem = WordNetLemmatizer()
         split_text = [lem.lemmatize(word) for word in split_text if word not in STOPWORDS]
         split_text = " ".join(split_text)
         stem_description.append(split_text)
+    # TODO check why we return 1
     return '1'
 
 
-def helper(message):
+def helper(message: discord.Message):
     increment_usage(message.guild, 'stats')
     text = message.content
 
@@ -106,12 +117,13 @@ def helper(message):
     }.get(operator, lambda: None)()
 
 
-def word_frequency(args):
+def word_frequency(args: list) -> (None, discord.Embed):
     """
 	Generate a pandas Series of word frequency pairs
 	:param args: <List> user supplied input describing upper limit
 	:return: <List> Contains Pandas series of word frequency pairs
 	"""
+
     limit = 10
     if len(args) >= 3:
         limit = int(args[2])
@@ -149,13 +161,14 @@ def word_frequency(args):
     return None, banner
 
 
-def word_count(args, guild):
+def word_count(args: list, guild: str) -> tuple[discord.File, discord.Embed]:
     """
 	Create a bar plot of message lengths
 	:param args: <List> user supplied input describing minimum and maximum lengths
 	:param guild: <String> Discord guild name
 	:return: <List> Strings describing args and filename of graph
 	"""
+
     if len(args) == 4:
         low = int(args[2])
         high = int(args[3])
@@ -185,13 +198,14 @@ def word_count(args, guild):
     return image, banner
 
 
-def word_cloud(type_, guild):
+def word_cloud(type_: str, guild: str) -> tuple[discord.File, discord.Embed]:
     """
 	Create a word cloude
 	:param type_: <String> Either the user, channel, or guild name
 	:param guild: <String> Discord guild name
 	:return: <List> Strings describing the type_ and filename
 	"""
+
     word_cloud_obj = WordCloud(
         width=800,
         height=800,
@@ -215,7 +229,7 @@ def word_cloud(type_, guild):
     return image, banner
 
 
-def make_ngrams(low, high, n=None):
+def make_ngrams(low: int, high: int, n=None) -> list:
     """
 	Internal function to convert corpus into a set of ngrams
 	:param low: <Int> Lower ngram length
@@ -236,13 +250,14 @@ def make_ngrams(low, high, n=None):
     return words_freq[:n]
 
 
-def get_ngrams(args, guild):
+def get_ngrams(args: list, guild: str) -> tuple[discord.File, discord.Embed]:
     """
 	Create a bar plot of common short phrases within messages
 	:param args: <String> User supplied input describing low, high, and limit
 	:param guild: <String> Discord guild name
 	:return: <List> Strings describing args and filename
 	"""
+
     # Validate input arguments
     if len(args) >= 4:
         low = int(args[2])
@@ -288,7 +303,13 @@ def get_ngrams(args, guild):
     return image, banner
 
 
-def get_help(message):
+def get_help(message: discord.Message) -> tuple[None, discord.Embed]:
+    """
+    Get help file.
+    :param message:
+    :return:
+    """
+
     increment_usage(message.guild, 'help')
     banner = Embed(title='Stats Help', description=fetch_file('help', 'stats'))
     return None, banner

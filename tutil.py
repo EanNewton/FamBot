@@ -20,7 +20,7 @@ from constants import DEFAULT_DIR, jsonFormatter, ENGINE, VERBOSE
 modRoles = dict()
 
 
-def setup():
+def setup() -> None:
     global meta, Config, Stats
     meta = MetaData()
     Config = Table(
@@ -89,14 +89,19 @@ def debug(func):
         return func
 
 
-def fetch_file(directory, filename):
-    """Safely read in a dynamically designated local file"""
+def fetch_file(directory: str, filename: str):
+    """
+    Safely read in a dynamically designated local file
+    :param directory:
+    :param filename:
+    :return:
+    """
     with open('{}/docs/{}/{}.txt'.format(DEFAULT_DIR, directory, filename), 'r') as f:
         return f.read()
 
 
 @debug
-async def is_admin(author, message):
+async def is_admin(author: discord.User, message: discord.Message) -> bool:
     """
 	Check if a discord user has been given bot admin permissions
     :param message:
@@ -133,7 +138,7 @@ channels. Please try again in a different channel, or the guild owner can issue 
         return False
 
 @debug
-async def is_admin_test(author, message):
+async def is_admin_test(author: discord.User, message: discord.Message) -> bool:
     """
 	Check if a discord user has been given bot admin permissions
     :param message:
@@ -169,15 +174,20 @@ channels. Please try again in a different channel, or the guild owner can issue 
         return False
 
 
-def wrap(s, w):
-    """Break a long string s into a list of strings of length w"""
+def wrap(s: str, w: int) -> list:
+    """
+    Break a long string s into a list of strings of length w
+    :param s:
+    :param w:
+    :return:
+    """
     return [s[i:i + w] for i in range(0, len(s), w)]
 
 
 ############################
 # Config Utility Functions #
 ############################
-def increment_usage(guild, command):
+def increment_usage(guild: discord.guild, command: str) -> int:
     """Keeps track of how many times various commands have been used"""
     with ENGINE.connect() as conn:
         select_st = select([Stats]).where(Stats.c.id == guild.id)
@@ -210,6 +220,7 @@ def increment_usage(guild, command):
                 custom=dict_['custom'],
             )
             conn.execute(ins)
+            # TODO why are we returning 1?
             return 1
 
         else:
@@ -240,13 +251,15 @@ def increment_usage(guild, command):
             return increment_usage(guild, command)
 
 
-async def config_helper(message):
+async def config_helper(message: discord.Message):
     """
 	Create or reset the server config entry
 	:param message: <Discord.message object>
 	:return: <String> Describing file location
 	"""
+
     increment_usage(message.guild, 'config')
+
     if await is_admin(message.author, message):
         args = message.content.split()
         if len(args) > 1 and args[1] == 'reset':
@@ -255,11 +268,12 @@ async def config_helper(message):
             return config_create(message.guild)
 
 
-def update_mod_roles():
+def update_mod_roles() -> None:
     """
 	Sync in-memory mod roles with database values for all guilds
 	:return: <None>
 	"""
+
     for guild in guild_list():
         roles = fetch_value(guild, 9, ';')
         if roles:
@@ -268,12 +282,13 @@ def update_mod_roles():
                 print('[+] Updated mod roles')
 
 
-def config_create(guild):
+def config_create(guild: discord.guild) -> str:
     """
 	Get the config file for the server and give to the user
 	:param guild: <Discord.guild object>
 	:return: <String> Describing file location
 	"""
+
     with ENGINE.connect() as conn:
         select_st = select([Config]).where(Config.c.id == guild.id)
         result = conn.execute(select_st).fetchone()
@@ -304,14 +319,16 @@ def config_create(guild):
             return config_create(guild)
 
 
-def config_create_default(guild):
+def config_create_default(guild: discord.guild) -> None:
     """
 	Create a new default entry for the given guild
 	:param guild: <Discord.guild object>
 	:return: <None>
 	"""
+
     if VERBOSE >= 1:
         print('[+] Creating new guild config for {}'.format(guild.name))
+
     with ENGINE.connect() as conn:
         ins = Config.insert().values(
             id=guild.id,
@@ -330,12 +347,13 @@ def config_create_default(guild):
         conn.execute(ins)
 
 
-def config_load(guild):
+def config_load(guild: int) -> None:
     """
 	Load the JSON file supplied by user into the database
 	:param guild: <Int> Discord guild ID
 	:return: <None>
 	"""
+
     # Undo the pretty printing
     with open('{}/docs/config/{}.json'.format(DEFAULT_DIR, guild), 'r') as f:
         dict_ = json.loads(f.read().split('```', maxsplit=1)[0])
@@ -364,7 +382,7 @@ def config_load(guild):
         print('[+] Loaded new config for {}'.format(guild.name))
 
 
-def config_reset(guild):
+def config_reset(guild: int) -> str:
     """
 	Return the config to default values
 	:param guild: <Discord.guild object>
@@ -378,7 +396,7 @@ def config_reset(guild):
     return config_create(guild)
 
 
-async def config_fetch_embed(message):
+async def config_fetch_embed(message: discord.Message) -> None:
     """
 	User has uploaded a new config file, grab it from the Discord servers
 	:param message: <Discord.message object>
@@ -399,7 +417,7 @@ async def config_fetch_embed(message):
 
 
 @debug
-def fetch_value(guild, val, delim=None):
+def fetch_value(guild: int, val: str, delim=None) -> list:
     """
 	Get a specific cell from the guilds config table
 	:param guild: <Int> Discord guild ID
@@ -407,6 +425,7 @@ def fetch_value(guild, val, delim=None):
 	:param delim: (Optional) <String> Delimeter for splitting values within the cell
 	:return: <List> Values from within the specified cell
 	"""
+
     with ENGINE.connect() as conn:
         select_st = select([Config]).where(Config.c.id == guild)
         res = conn.execute(select_st)
@@ -421,12 +440,13 @@ def fetch_value(guild, val, delim=None):
         return result
 
 
-def fetch_config(guild):
+def fetch_config(guild: int) -> list:
     """
 	Internal function to get Guild configuration data for schedule formatting and default locale
 	:param guild: <Int> Discord guild ID
 	:return: <List> SQLAlchemy row result from database
 	"""
+
     with ENGINE.connect() as conn:
         select_st = select([Config]).where(Config.c.id == guild)
         res = conn.execute(select_st)
@@ -436,11 +456,12 @@ def fetch_config(guild):
     return None
 
 
-def guild_list():
+def guild_list() -> list:
     """
 	Get a list of all guilds ids
 	:return: <List> IDs for all guilds the bot is active in
 	"""
+
     with ENGINE.connect() as conn:
         select_st = select([Config])
         res = conn.execute(select_st)

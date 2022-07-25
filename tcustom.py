@@ -4,6 +4,7 @@
 
 from copy import deepcopy
 
+import discord
 import pendulum
 from discord import Embed
 from sqlalchemy import and_, select, MetaData, Table, Column, Integer, String
@@ -16,7 +17,7 @@ from constants import ENGINE, VERBOSE, extSet
 custom_commands = dict()
 
 
-def setup():
+def setup() -> None:
     global meta, Commands
     meta = MetaData()
     Commands = Table(
@@ -30,13 +31,15 @@ def setup():
     )
     meta.create_all(ENGINE)
     guilds = guild_list()
+
     for each in guilds:
         import_custom_commands(each)
+
     if VERBOSE >= 0:
         print('[+] End Custom Commands Setup')
 
 @debug
-def import_custom_commands(guild):
+def import_custom_commands(guild: int) -> None:
     """
     Internal function to grab any custom commands from the database
     :param guild: <Int> Discord guild ID
@@ -61,11 +64,12 @@ def import_custom_commands(guild):
             custom_commands[guild] = commands
 
 @debug
-def get_command(message):
+def get_command(message: discord.Message) -> (None, (str, discord.Embed)):
     """
-    Return a custom command to be sent to Discord.
-    :param message: <Discord.message> Raw message object
-    :return: <str> Banner
+    Check to see if the Message object is a custom guild-level
+    command, or if it is an override for a default command.
+    :param message: <discord.Message> Raw message object
+    :return: None or (<str>, <discord.Embed>)
     """
     embed_image = None
     links = ''
@@ -74,11 +78,13 @@ def get_command(message):
     config = tsched.load_config(message.guild.id)
     quotes = False
 
+    # TODO update logging
+    # Log message
     if VERBOSE >= 2:
         print("Config: ")
         print(config)
-
     try:
+        # TODO Replace command prefix in code at global level for quicker testing
         if args[0] == '$custom' or args[0:2] == ['$help', 'custom']:
             if VERBOSE >= 1:
                 print('[-] custom - help by {} in {} - {}'.format(
@@ -119,17 +125,18 @@ def get_command(message):
                     embed_image = each
                 else:
                     links = '{}\n{}'.format(links, each)
+
         # Setting up for nested loops
         prev = deepcopy(custom)
         count = 0
-
         # for nested commands, not the most efficient solution but it works
         # if you can improve it please issue a code merge request
         while True:
             if VERBOSE >= 2:
                 print("Formatting command, loop {}...".format(count))
             # Discord's character limit is 2000
-            # count is chosen arbitrarily, move up or down for recursion limit
+            # count is the recursion limit
+            # count is chosen arbitrarily, lower number = fewer cycles
             if len(custom) + len(prev) > 1999 or count > 50:
                 break
             else:
@@ -147,6 +154,7 @@ def get_command(message):
                 custom = custom.replace('<GUILD>', message.guild.name)
                 while '<SCHED>' in custom:
                     custom = custom.replace('<SCHED>', tsched.get_schedule(message, True))
+                # TODO do we still need this?
                 #if '<QUOTE>' in custom:
                 #    custom = custom.replace('<QUOTE>', tquote.get_quote(message, tquote.Quotes, raw=True))
                 #    quotes = True
@@ -181,7 +189,7 @@ def get_command(message):
             return links, banner
 
 
-def insert_command(message):
+def insert_command(message: discord.Message) -> discord.Embed:
     """
 	Add a new custom command to the database.
 	:param message: <Discord.message> Raw message object
@@ -191,6 +199,7 @@ def insert_command(message):
     args = message.content.split()
     links = str(message.attachments[0].url) if message.attachments else ''
 
+    # Check for web links in message's text
     for each in args:
         if each.find('http') != -1:
             if each.split('.')[-1] in extSet['image']:
@@ -203,6 +212,7 @@ def insert_command(message):
         ))
         result = conn.execute(select_st).fetchone()
 
+        # Guild already has at least one custom command
         if result:
             ins = Commands.update().where(and_(
                 Commands.c.guild_name == message.guild.name,
@@ -210,12 +220,15 @@ def insert_command(message):
                 value='{} {}'.format(' '.join(args[1:]), links),
                 links=links,
             )
+            # TODO DRY the below
             conn.execute(ins)
             import_custom_commands(message.guild.id)
             banner = Embed(title='Updated `{}`'.format(args[0], description=' '.join(args[1:])))
             if VERBOSE >= 1:
                 print('[+] Updated {}'.format((args[0])))
             return banner
+
+        # Guild has zero existing custom commands
         else:
             ins = Commands.insert().values(
                 id=message.id,
@@ -233,27 +246,37 @@ def insert_command(message):
             return banner
 
 @debug
-async def delete_command(message):
+async def delete_command(message: discord.Message) -> str:
     """
     Permanently remove a custom command if it exists
     :param message: <Discord.message object>
-    :return: <String> Notifying command has been removed 
+    :return: <String> Notifying command has been removed
     """
-    admin = await is_admin_test(message.author, message)
-    if admin:
+    try:
+        admin = await is_admin_test(message.author, message)
+    except:
+        return "Error checking roles status."
+
+    if not admin:
+        return "Only admins may perform this action."
+
+    else:
         args = message.content.split()
         if VERBOSE >= 2:
             print("Args:")
             print(args)
+
         with ENGINE.connect() as conn:
             select_st = select([Commands]).where(and_(
                 Commands.c.guild_id == message.guild.id,
                 Commands.c.name == args[0]
             ))
             result = conn.execute(select_st).fetchone()
+            # TODO logging
             if VERBOSE >= 2:
                 print("Result:")
                 print(result)
+
             if result:
                 if VERBOSE >= 2:
                     print("Result:")
@@ -269,7 +292,7 @@ async def delete_command(message):
                 return 'Command `{}` does not exist.'.format(args[0])
 
 
-def get_help(message):
+def get_help(message: discord.Message) -> (None, list):
     """
     Get the command help file from ./docs/help
     :param message: <Discord.message object>
@@ -290,5 +313,5 @@ def get_help(message):
             print('[!] Exception in get help custom {}'.format(e))
         pass
 
-
+# Register with SQLAlchemy on import
 setup()

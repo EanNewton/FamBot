@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-
+import discord
 import pendulum
 from discord import Embed
 from sqlalchemy import select, MetaData, Table, Column, Integer, String
@@ -36,13 +36,14 @@ def setup():
 		print('[+] End Schedule Setup')
 
 
-def helper(message, op_override=None):
+def helper(message: discord.Message, op_override=None):
 	"""
 	Main entry point from main.py
 	:param op_override: Activate a specific operator
 	:param message: <Discord.message object>
 	:return: <lambda function> Internal function dispatch
 	"""
+
 	args = message.content.split()
 	ops = {'get', 'set', 'help', 'override', 'next'}
 
@@ -51,6 +52,7 @@ def helper(message, op_override=None):
 		operator = args[1]
 	if op_override:
 		operator = op_override
+
 	return {
 		'get': lambda: get_schedule(message),
 		'set': lambda: set_schedule(message),
@@ -60,13 +62,16 @@ def helper(message, op_override=None):
 	}.get(operator, lambda: None)()
 
 
-def get_schedule(message, raw=False):
+# TODO this is a terribly long and confusing function,
+# TODO consider rewriting it
+def get_schedule(message: discord.Message, raw=False) -> discord.Embed:
 	"""
 	Return next scheduled event
 	:param raw: True = return only next event
 	:param message: <discord.Message>
 	:return: <discord.Embed>
 	"""
+
 	config = load_config(message.guild.id)
 	if config:
 		guild_name = config[1]
@@ -106,7 +111,7 @@ def get_schedule(message, raw=False):
 						else:
 							schedule[day] = schedule[day].at(int(scheduled_times[day]))
 					diff = schedule[0].diff_for_humans()
-					
+
 			banner = Embed(title='Schedule for {}'.format(guild_name))
 			banner.add_field(name="Next event {}.".format(diff), value="Join us!")
 			return banner
@@ -128,7 +133,7 @@ def get_schedule(message, raw=False):
 					user = get_user(message.author.id)
 					if user:
 						locale = user[2]
-			
+
 			# Needed for handling partial weeks, ie so we don't post a message with only 1 or 2 days
 			schedule_duplicate = schedule.copy()
 			# Show current server time vs current user time
@@ -193,7 +198,7 @@ def get_schedule(message, raw=False):
 			return banner
 
 
-async def override(message):
+async def override(message: discord.Message) -> discord.Embed:
 	"""
 	Admin command to manually change a user's saved location
 	:param message: <Discord.message object> Describing which users to change to which locations
@@ -238,7 +243,7 @@ async def override(message):
 		return banner
 
 
-def set_schedule(message):
+def set_schedule(message: discord.Message) -> discord.Embed:
 	"""
 	User command to set their locale
 	:param message: <Discord.message object> Describing where to set location to
@@ -274,7 +279,7 @@ def set_schedule(message):
 	return banner
 
 
-def insert_user(id_, guild_, name, locale):
+def insert_user(id_: int, guild_: discord.guild, name: str, locale: str) -> None:
 	"""
 	Internal function to set values in database for a single user
 	:param id_: <Int> User ID
@@ -283,6 +288,7 @@ def insert_user(id_, guild_, name, locale):
 	:param locale: <String> New location for the user
 	:return: <None>
 	"""
+
 	with ENGINE.connect() as conn:
 		ins = Users.insert().values(
 			id=id_,
@@ -294,12 +300,13 @@ def insert_user(id_, guild_, name, locale):
 		conn.execute(ins)
 
 
-def get_user(id_):
+def get_user(id_: int) -> (None, list):
 	"""
 	Internal function to get values from database for a single user
 	:param id_: <Int> User ID
 	:return: <List> SQLAlchemy row result from database
 	"""
+
 	with ENGINE.connect() as conn:
 		select_st = select([Users]).where(
 			Users.c.id == id_, )
@@ -309,7 +316,7 @@ def get_user(id_):
 		return result
 
 
-def load_config(guild):
+def load_config(guild: int) -> list:
 	"""
 	Internal function to get Guild configuration data for schedule formatting and default locale
 	:param guild: <Int> Discord guild ID
@@ -323,7 +330,7 @@ def load_config(guild):
 		return result
 
 
-async def get_help(message):
+async def get_help(message: discord.Message) -> discord.Embed:
 	"""
 	Get the command help file from ./docs/help
 	:param message: <Discord.message object>
@@ -346,5 +353,5 @@ async def get_help(message):
 
 	return banner
 
-
+# Register with SQLAlchemy on import
 setup()

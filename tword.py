@@ -4,6 +4,7 @@ import aiohttp
 import aiofiles
 from urllib.parse import quote_plus
 
+import discord
 from bs4 import BeautifulSoup
 from discord import Embed
 from wiktionaryparser import WiktionaryParser
@@ -16,7 +17,13 @@ from constants import help_dict
 parser = WiktionaryParser()
 
 
-def yandex(message):
+def yandex(message: discord.Message) -> str:
+    """
+    Search Yandex reverse image search
+    :param message:
+    :return:
+    """
+
     args = message.content.split()
     if len(args) < 2:
         return 'Please supply a URL to an image.'
@@ -25,19 +32,22 @@ def yandex(message):
     return '{}\n{}'.format(yandex, tineye)
 
 
-def wiki(message):
+def wiki(message: discord.Message) -> discord.Embed:
     """
 	Get the www.wiktionary.org entry for a word or phrase
-	:param message: <Discord.message object> 
+	:param message: <Discord.message object>
 	:return: <str> Banner or None
 	"""
+
     increment_usage(message.guild, 'dict')
     args = message.content.split()
+
     if len(args) == 1 or args[1] == 'help':
         banner = Embed(title="Wiktionary Help")
         banner.add_field(name='About', value=help_dict['main'])
         banner.add_field(name='Aliased Command Names', value=help_dict['alternative'])
         return banner
+
     else:
         try:
             word = message.content.split(' ', maxsplit=1)[1]
@@ -86,6 +96,7 @@ def wiki(message):
                 banner.add_field(name="Pronunciation, Audio Sample", value=defs_audio, inline=False)
 
                 return banner
+
         except Exception as e:
             if VERBOSE >= 0:
                 print('[!] Exception in wiki: {}'.format(e))
@@ -93,16 +104,17 @@ def wiki(message):
 
 
 # TODO update help to embed
-async def wolfram(message):
+async def wolfram(message: discord.Message) -> (list, str, discord.Embed):
     """
 	Return an image based response from the Wolfram Alpha API
-	:param message: <Discord.message object> 
+	:param message: <Discord.message object>
 	:return: <str> Banner or None
 	"""
     increment_usage(message.guild, 'wolf')
 
     args = message.content.split()
     banner = Embed(title="Wolfram Alpha")
+
     try:
         if len(args) > 1:
             if args[1].lower() in {'simple', 'txt', 'text', 'textual'}:
@@ -141,6 +153,7 @@ async def wolfram(message):
 
         banner = Embed(title='Wolfram Help', description=fetch_file('help', 'wolfram'))
         return banner
+
     except Exception as e:
         if VERBOSE >= 0:
             print('[!] Wolfram failed to process command on: {}'.format(message.content))
@@ -148,12 +161,13 @@ async def wolfram(message):
         return None
 
 
-async def get_todays_word(message):
+async def get_todays_word(message: discord.Message) -> discord.Embed:
     """
 	Pull the word of the day from www.wordsmith.org
-	:param message: <Discord.message object> 
+	:param message: <Discord.message object>
 	:return: <str> Banner
 	"""
+
     increment_usage(message.guild, 'wotd')
 
     async with aiohttp.ClientSession() as session:
@@ -190,11 +204,13 @@ async def get_todays_word(message):
     return banner
 
 
-def get_help(message):
+def get_help(message: discord.Message) -> list:
     """
 	Return the help file located in ./docs/help
 	:param message: <Discord.message object>
 	:return: <String> The local help file
 	"""
+
     increment_usage(message.guild, 'help')
+
     return wrap(fetch_file('help', 'dict'), 1990)

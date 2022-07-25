@@ -12,7 +12,7 @@ from tutil import fetch_file, is_admin, config_fetch_embed, debug
 from constants import DEFAULT_DIR, ENGINE, VERBOSE
 
 extSet = {}
-
+# TODO redo the entirety of logging
 
 def setup():
     global meta, Corpus

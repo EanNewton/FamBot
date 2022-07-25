@@ -1,6 +1,7 @@
 #!/usr/bin/python3
-
+import discord
 import pendulum
+import sqlalchemy
 from discord import Embed
 import pandas as pd
 from sqlalchemy import and_, func, select, MetaData, Table, Column, Integer, String
@@ -49,7 +50,7 @@ def setup():
         print('[+] End Quotes Setup')
 
 
-async def helper(message):
+async def helper(message: discord.Message):
     """
 	Main entry point from main.py, handles majority of argument parsing
 	:param message: <Discord.message object>
@@ -94,7 +95,7 @@ async def helper(message):
         return get_quote(message, Quotes, None, True)
 
 
-def get_quote_log(guild):
+def get_quote_log(guild: int) -> list:
     """
 	Return an xlsx of all quotes in the guild to the user.
 	:param guild:
@@ -121,7 +122,7 @@ def get_quote_log(guild):
     return ['Log of all quotes and lore for this guild:', '{}/log/quoteLog_{}.xlsx'.format(DEFAULT_DIR, guild)]
 
 
-def insert_quote(message, Table, adder=None):
+def insert_quote(message: discord.Message, Table: sqlalchemy.Table, adder=None) -> discord.Embed:
     """
 	Insert a quote to the database
 	:param message: <Discord.message object>
@@ -129,8 +130,10 @@ def insert_quote(message, Table, adder=None):
 	:param adder: <String> Username of the member who added the :speech_left:
 	:return: <String> Notifying of message being added
 	"""
+
     if Table is None:
         Table = Quotes
+
     config = load_config(message.guild.id)
     if config:
         server_locale = config[2]
@@ -138,6 +141,7 @@ def insert_quote(message, Table, adder=None):
     else:
         server_locale = 'Asia/Tokyo'
         stm = '--{} on {}'
+
     # Suppress any user or role mentions
     text = message.content
     for each in message.mentions:
@@ -148,7 +152,6 @@ def insert_quote(message, Table, adder=None):
     text = text.replace('@here', '@ here')
 
     jump_url = message.jump_url
-
     args = text.split()
 
     embed = str(message.attachments[0].url) if message.attachments else None
@@ -173,7 +176,6 @@ def insert_quote(message, Table, adder=None):
                 context=jump_url,
             )
             conn.execute(ins)
-
             if not fetch_value(message.guild.id, 10):
                 banner = Embed(title="{} Added Quote: {}".format(adder, message.id), description=text)
             else:
@@ -193,23 +195,22 @@ def insert_quote(message, Table, adder=None):
                 guild_name=message.guild.name,
             )
             conn.execute(ins)
-
             banner = Embed(title="Added Lore: {}".format(message.id), description=' '.join(args[3:]))
             if embed:
                 banner.set_image(url=embed)
             banner.set_footer(text=stm.format(args[2], date))
-
     return banner
 
 
-def get_quote(message, Table, username=None, raw=False):
+def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, raw=False) -> discord.Embed:
     """
 	Retrieve a quote from the database.
+    :param message:
 	:param guild: <int> message.guild.id
 	:param Table: (Optional) <SQLAlchemy.Table> Quotes or Lore, defaults to Quotes
 	:param username: (Optional) <str> Case sensitive Discord username, without discriminator
+    :param raw:
 	"""
-
 
     if username:
         select_user = select([Table]).where(and_(
@@ -258,6 +259,7 @@ def get_quote(message, Table, username=None, raw=False):
                 result[2].replace(result[6], '')
             # Result fields translate as
             # [1]: author, [2]: quote, [3]: date, [6]: embed url, [7]: jump_url
+            # TODO this should be a dict
             if result[7]:
                 text = '{} \n\n{}'.format(result[2], context_url)
             else:
@@ -278,13 +280,14 @@ def get_quote(message, Table, username=None, raw=False):
             return banner
 
 
-def delete_quote(guild, msg_id):
+def delete_quote(guild: int, msg_id: int) -> (str, None):
     """
 	Remove a quote from the database
 	:param guild: <Int> Discord guild ID
 	:param msg_id: <Int> Discord message ID
 	:return: <String> Notify if quote has been removed
 	"""
+
     with ENGINE.connect() as conn:
         for Table in {Quotes, Lore}:
             select_st = select([Table]).where(and_(
@@ -302,19 +305,22 @@ def delete_quote(guild, msg_id):
                     ))
                     conn.execute(ins)
                 return "Deleted quote: {}".format(quote)
+
             except Exception as e:
                 if VERBOSE >= 1:
                     print('[!] Exception in tquote: {}'.format(e))
                 return None
 
 
-def check_if_exists(guild, msg_id):
+def check_if_exists(guild: int, msg_id: int) -> bool:
     """
-	Internal function toeEnsure that we do not add the same message to the database multiple times
+	Internal function to ensure that we do not
+	add the same message to the database multiple times.
 	:param guild: <Int> Discord guild ID
 	:param msg_id: <Int> Discord message ID
 	:return: <Bool>
 	"""
+
     with ENGINE.connect() as conn:
         select_st = select([Quotes]).where(and_(
             Quotes.c.id == msg_id,
@@ -324,12 +330,13 @@ def check_if_exists(guild, msg_id):
     return False
 
 
-def load_config(guild):
+def load_config(guild: int) -> (None, list):
     """
 	Retrieve any formatting options from database
 	:param guild: <Int> Discord guild ID
 	:return: <List> SQLAlchemy row entry from Config Table
 	"""
+
     result = None
     with ENGINE.connect() as conn:
         select_st = select([Config]).where(Config.c.id == guild)
@@ -337,12 +344,13 @@ def load_config(guild):
     return result
 
 
-async def get_help(message):
+async def get_help(message: discord.Message) -> discord.Embed:
     """
-	Get the help file in ./docs/help 
+	Get the help file in ./docs/help
 	:param message: <Discord.message.author object>
 	:return: <String> The local help file
 	"""
+
     text = fetch_file('help', 'quotes')
     if not await is_admin(message.author, message):
         text = text.split('For Admins:')[0]
