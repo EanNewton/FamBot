@@ -9,7 +9,7 @@
 
 <div align="center">
 
-  ![Status](https://img.shields.io/badge/status-active-success.svg)
+  ![Status](https://img.shields.io/badge/status-stable-brightgreen.svg)
   ![Platform](https://img.shields.io/badge/platform-discord-blue.svg)
   ![Language](https://img.shields.io/badge/language-python-yellow.svg)
   ![License](https://img.shields.io/badge/license-GNU%20GPL%20v3-green)
