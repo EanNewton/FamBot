@@ -32,7 +32,7 @@ regex==2021.7.6
 requests==2.26.0
 scikit-learn==0.24.2
 scipy==1.7.0
-seaborn==0.11.1
+seaborn==0.12.0
 six==1.16.0
 sklearn==0.0
 sns==0.1
@@ -88,7 +88,7 @@ requests==2.26.0
 rfc3986==1.5.0
 scikit-learn==0.24.2
 scipy==1.7.0
-seaborn==0.11.1
+seaborn==0.12.0
 six==1.16.0
 sklearn==0.0
 sniffio==1.2.0
@@ -145,7 +145,7 @@ requests==2.26.0
 rfc3986==1.5.0
 scikit-learn==0.24.2
 scipy==1.7.0
-seaborn==0.11.1
+seaborn==0.12.0
 six==1.16.0
 sklearn==0.0
 sniffio==1.2.0
