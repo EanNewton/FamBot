@@ -8,7 +8,7 @@ certifi==2021.5.30
 chardet==4.0.0
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
-cycler==0.10.0
+cycler==0.11.0
 discord.py==1.7.3
 discord==1.7.3
 googletranslate==2.1.2
@@ -55,7 +55,7 @@ certifi==2021.5.30
 chardet==3.0.4
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
-cycler==0.10.0
+cycler==0.11.0
 discord.py==1.7.3
 discord==1.7.3
 googletrans==3.0.0
@@ -112,7 +112,7 @@ certifi==2021.5.30
 chardet==3.0.4
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
-cycler==0.10.0
+cycler==0.11.0
 discord.py==1.7.3
 discord==1.7.3
 googletrans==3.0.0
