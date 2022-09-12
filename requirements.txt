@@ -8,7 +8,7 @@ certifi==2021.5.30
 chardet==4.0.0
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
-cycler==0.10.0
+cycler==0.11.0
 discord.py==1.7.3
 discord==1.7.3
 googletranslate==2.1.2
@@ -37,7 +37,7 @@ six==1.16.0
 sklearn==0.0
 sns==0.1
 soupsieve==2.2.1; python_version >= '3.0'
-sqlalchemy==1.4.22
+sqlalchemy==1.4.41
 threadpoolctl==2.2.0
 tqdm==4.61.2
 typing-extensions==3.10.0.0
@@ -55,7 +55,7 @@ certifi==2021.5.30
 chardet==3.0.4
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
-cycler==0.10.0
+cycler==0.11.0
 discord.py==1.7.3
 discord==1.7.3
 googletrans==3.0.0
@@ -94,7 +94,7 @@ sklearn==0.0
 sniffio==1.2.0
 sns==0.1
 soupsieve==2.2.1; python_version >= '3.0'
-sqlalchemy==1.4.22
+sqlalchemy==1.4.41
 threadpoolctl==2.2.0
 tqdm==4.61.2
 typing-extensions==3.10.0.0
@@ -112,7 +112,7 @@ certifi==2021.5.30
 chardet==3.0.4
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
-cycler==0.10.0
+cycler==0.11.0
 discord.py==1.7.3
 discord==1.7.3
 googletrans==3.0.0
@@ -151,7 +151,7 @@ sklearn==0.0
 sniffio==1.2.0
 sns==0.1
 soupsieve==2.2.1; python_version >= '3.0'
-sqlalchemy==1.4.22
+sqlalchemy==1.4.41
 threadpoolctl==2.2.0
 tqdm==4.61.2
 typing-extensions==3.10.0.0
