@@ -4,7 +4,7 @@ async-timeout==3.0.1
 attrs==21.2.0
 beautifulsoup4==4.11.1
 bs4==0.0.1
-certifi==2021.5.30
+certifi==2022.9.14
 chardet==4.0.0
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
@@ -51,7 +51,7 @@ async-timeout==3.0.1
 attrs==21.2.0
 beautifulsoup4==4.11.1
 bs4==0.0.1
-certifi==2021.5.30
+certifi==2022.9.14
 chardet==3.0.4
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
@@ -108,7 +108,7 @@ async-timeout==3.0.1
 attrs==21.2.0
 beautifulsoup4==4.11.1
 bs4==0.0.1
-certifi==2021.5.30
+certifi==2022.9.14
 chardet==3.0.4
 charset-normalizer==2.0.3; python_version >= '3'
 click==8.0.1
