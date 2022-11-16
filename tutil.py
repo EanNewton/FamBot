@@ -36,7 +36,7 @@ def setup() -> None:
         Column('filtered', String),
         Column('mod_roles', String),
         Column('anonymous', Integer),
-        Column('timer_channel', Integer),
+    #    Column('timer_channel', Integer),
     )
     Stats = Table(
         'usageCounts', meta,
@@ -342,7 +342,7 @@ def config_create_default(guild: discord.guild) -> None:
             filtered='none',
             mod_roles='mod;admin;discord mod;',
             anonymous=1,
-            timer_channel=0,
+         #   timer_channel=0,
         )
         conn.execute(ins)
 
@@ -373,7 +373,7 @@ def config_load(guild: int) -> None:
             filtered=dict_['filtered'],
             mod_roles=dict_['mod_roles'],
             anonymous=dict_['anonymous'],
-            timer_channel=dict_['timer_channel'],
+         #   timer_channel=dict_['timer_channel'],
         )
         conn.execute(ins)
     # TODO ensure to lower
@@ -468,6 +468,30 @@ def guild_list() -> list:
         result = res.fetchall()
 
     return [each[0] for each in result]
+
+
+# TODO Implement this
+# def update_self():
+#     elif message.content.startswith('!update'):
+#         authorizedUsers = config['discord']['AuthorizedUsers'].split(',')
+#         userID = message.author.id
+#         if str(userID) in authorizedUsers:
+#             subprocess.run(["git", "fetch", "origin"])
+#             out = subprocess.check_output(["git", "rev-list", "--count", "origin/master...master"])
+#             commitsBehind = int(str(out.decode("utf-8")).rstrip())
+#             if commitsBehind > 0 and videoPlaying == False:
+#                 await channel.send('You are ' + str(out.decode("utf-8")).rstrip() + ' commits behind')
+#                 await channel.send('Updating')
+#                 videoPlaying = True
+#                 subprocess.run(["git", "reset", "--hard", "origin/master"])
+#                 subprocess.run(["systemctl", "restart", "videobot"])
+#             elif commitsBehind > 0 and videoPlaying == True:
+#                 await channel.send('You are ' + str(out.decode("utf-8")).rstrip() + ' commits behind')
+#                 await channel.send('Run this command when a video isn\'t streaming to update')
+#             else:
+#                 await channel.send('Videobot is up to date')
+#         else:
+#             await channel.send('Unauthorized User')
 
 
 setup()

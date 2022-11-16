@@ -10,6 +10,7 @@ import logging
 
 import pendulum
 import discord
+import configparser
 
 import switchboard
 import tquote
@@ -18,7 +19,18 @@ from tutil import is_admin, config_create, fetch_file, is_admin_test
 from tutil import setup as util_setup
 from constants import TOKEN, POC_TOKEN, VERSION, DIVIDER, VERBOSE, DEFAULT_DIR
 
-bot = discord.Client()
+# Read in server config
+config = configparser.ConfigParser()
+config.read(DEFAULT_DIR + '/config.ini')
+# Intents
+intents = discord.Intents.default()
+# TODO remove unneeded
+intents.messages = True
+intents.voice_states = True
+intents.presences = True
+intents.guild_messages = True
+intents.message_content = True
+bot = discord.Client(intents=intents)
 
 
 @bot.event
@@ -38,6 +50,7 @@ async def on_ready() -> None:
         print(DIVIDER)
         print('Total guilds: {}'.format(len(bot.guilds)))
         print('Total members: {}'.format(count))
+    await bot.change_presence(status=discord.Status.idle, activity=None)
 
 
 @bot.event
@@ -67,6 +80,9 @@ async def on_message(message: discord.Message) -> None:
     :return:
     """
     banner = await switchboard.dispatch(message)
+
+
+    # TODO multi page pretty print
 
     if banner:
         if banner["rawText"] and banner["file"]:
@@ -163,4 +179,6 @@ async def on_error(event, *args, **kwargs):
         else:
             return
 
-bot.run(TOKEN)
+bot.run(POC_TOKEN)
+
+# client.run(config['discord']['Key'])

@@ -11,13 +11,14 @@ import tlog
 import tstat
 import tcustom
 import tgif
+import tplex
 from tutil import is_admin, config_helper, fetch_file, increment_usage, debug, is_admin_test
 from speller import Speller
 from constants import EIGHTBALL, DEFAULT_DIR, help_general, VERBOSE
 
 # Break out functions to prevent dispatch() from
 # becoming overly lengthy
-#@debug
+@debug
 async def get_quote(result: dict) -> dict:
     """
     Pass off to tquote.py
@@ -33,6 +34,29 @@ async def get_quote(result: dict) -> dict:
     else:
         result["embed"] = banner
     return result
+
+
+@debug
+async def get_plex(result: dict) -> dict:
+    """
+    Pass off to tquote.py
+    :param result:
+    :return:
+    """
+    banner = await tplex.helper(result["message"])
+    print(type(banner))
+    if type(banner) is str:
+        print('raw')
+        result["rawText"] = banner
+    elif type(banner) is list:
+        print('list')
+        result["rawText"] = banner[0]
+        result["file"] = banner[1]
+    else:
+        result["embed"] = banner
+    print(result)
+    return result
+
 
 
 async def get_wolfram(result: dict) -> dict:
@@ -88,7 +112,7 @@ async def get_help(result: dict) -> dict:
     result["embed"] = banner
     return result
 
-#@debug
+@debug
 async def dispatch(message: discord.Message) -> (None, dict):
     """
     Process raw discord.Message object and send it to dedicated function.
@@ -101,6 +125,11 @@ async def dispatch(message: discord.Message) -> (None, dict):
     # Prevent recursive loops or triggering from other bots.
     if message.author.bot:
         return None
+    # TODO implement this into config
+    # Confirm we are in an approved channel
+    # if len(config['discord']['AllowedChannels']) > 0 and str(channel.id) not in config['discord'][
+    #     'AllowedChannels'].split(','):
+    #     return
     # Register a new message in the database
     increment_usage(message.guild, 'raw_messages')
     await tlog.log_message(message)
@@ -112,8 +141,9 @@ async def dispatch(message: discord.Message) -> (None, dict):
         print('[-] {} by {} in {} - {}'.format(args[0][1:], message.author.name, message.channel.name, message.guild.name))
 
     # Guild level custom commands
-    custom = tcustom.get_command(message)
-    custom = None
+    # custom = tcustom.get_command(message)
+    # custom = None
+    custom = False
     if custom:
         if VERBOSE >= 2:
             print('[-] {} by {} in {} - {}'.format(
@@ -124,8 +154,8 @@ async def dispatch(message: discord.Message) -> (None, dict):
 
     # Correct minor typos
 #    print('correcting typos')
-    spell = Speller('cmd')
-    operator = spell(args[0][1:])
+    # spell = Speller('cmd')
+    # operator = spell(args[0][1:])
  #   print(args)
     operator = args[0][1:]
     print(operator)
@@ -138,6 +168,10 @@ async def dispatch(message: discord.Message) -> (None, dict):
     if operator in {'quote', 'lore', 'q', 'l'}:
         print('getting quote')
         result = await get_quote(result)
+
+    if operator in {'plex'}:
+        print('calling plex')
+        result = await get_plex(result)
 
   #    Wolfram Alpha
     elif operator in {'w', 'wolf', 'wolfram'}:
@@ -204,5 +238,5 @@ async def dispatch(message: discord.Message) -> (None, dict):
     if result["file"] and type(result["file"]) is not DiscordFile:
         result["file"] = DiscordFile(result["file"])
 
-    # print(result)
+    print(result)
     return result
