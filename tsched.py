@@ -64,6 +64,7 @@ def helper(message: discord.Message, op_override=None):
 
 # TODO this is a terribly long and confusing function,
 # TODO consider rewriting it
+# If I resurrect this project, this is top of list for a rewrite
 def get_schedule(message: discord.Message, raw=False) -> discord.Embed:
 	"""
 	Return next scheduled event
