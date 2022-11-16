@@ -17,13 +17,14 @@ from constants import EIGHTBALL, DEFAULT_DIR, help_general, VERBOSE
 
 # Break out functions to prevent dispatch() from
 # becoming overly lengthy
-def get_quote(result: dict) -> dict:
+#@debug
+async def get_quote(result: dict) -> dict:
     """
     Pass off to tquote.py
     :param result:
     :return:
     """
-    banner = tquote.helper(result["message"])
+    banner = await tquote.helper(result["message"])
     if type(banner) is str:
         result["rawText"] = banner
     elif type(banner) is list:
@@ -87,13 +88,15 @@ async def get_help(result: dict) -> dict:
     result["embed"] = banner
     return result
 
-@debug
+#@debug
 async def dispatch(message: discord.Message) -> (None, dict):
     """
     Process raw discord.Message object and send it to dedicated function.
     :param message:
     :return:
     """
+    # print(message)
+    # print(message.content)
     # Preprocessing
     # Prevent recursive loops or triggering from other bots.
     if message.author.bot:
@@ -110,6 +113,7 @@ async def dispatch(message: discord.Message) -> (None, dict):
 
     # Guild level custom commands
     custom = tcustom.get_command(message)
+    custom = None
     if custom:
         if VERBOSE >= 2:
             print('[-] {} by {} in {} - {}'.format(
@@ -119,8 +123,12 @@ async def dispatch(message: discord.Message) -> (None, dict):
         return result
 
     # Correct minor typos
+#    print('correcting typos')
     spell = Speller('cmd')
     operator = spell(args[0][1:])
+ #   print(args)
+    operator = args[0][1:]
+    print(operator)
     if args[0][0] != '$':
         return None
     if VERBOSE >= 2:
@@ -128,9 +136,10 @@ async def dispatch(message: discord.Message) -> (None, dict):
 
     # Quotes
     if operator in {'quote', 'lore', 'q', 'l'}:
-        result = get_quote(result)
+        print('getting quote')
+        result = await get_quote(result)
 
-    # Wolfram Alpha
+  #    Wolfram Alpha
     elif operator in {'w', 'wolf', 'wolfram'}:
         result = await get_wolfram(result)
 
@@ -195,4 +204,5 @@ async def dispatch(message: discord.Message) -> (None, dict):
     if result["file"] and type(result["file"]) is not DiscordFile:
         result["file"] = DiscordFile(result["file"])
 
+    # print(result)
     return result

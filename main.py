@@ -87,6 +87,8 @@ async def on_message(message: discord.Message) -> None:
 
         elif banner["rawText"]:
             await message.channel.send(banner["rawText"])
+#        else:
+ #           await message.channel.send("No results.")
 
 
 @bot.event
@@ -102,11 +104,15 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
     """
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
+    print(payload)
+    print(payload.emoji)
 
     # Add a quote
     # emoji is :speech_left:
     if str(payload.emoji) == '🗨️' and not message.author.bot:
+        print('caught speech')
         if not tquote.check_if_exists(message.guild.id, message.id):
+            print('does not exist yet')
             banner = tquote.insert_quote(message, None, payload.member.name)
             if VERBOSE >= 2:
                 print('[+] Added quote {}.'.format(banner))

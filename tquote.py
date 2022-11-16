@@ -33,7 +33,7 @@ def setup():
         Column('guild', String),
         Column('guild_name', String),
         Column('embed', String),
-        Column('context', String),
+#        Column('context', String),
     )
     Lore = Table(
         'famLore', meta,
@@ -50,6 +50,7 @@ def setup():
         print('[+] End Quotes Setup')
 
 
+@debug
 async def helper(message: discord.Message):
     """
 	Main entry point from main.py, handles majority of argument parsing
@@ -61,6 +62,7 @@ async def helper(message: discord.Message):
     for each in message.mentions:
         text = text.replace('<@!{}>'.format(each.id), each.name)
     args = text.split()
+    print(args)
 
     # Lore
     if args[0] == '!lore':
@@ -95,6 +97,7 @@ async def helper(message: discord.Message):
         return get_quote(message, Quotes, None, True)
 
 
+@debug
 def get_quote_log(guild: int) -> list:
     """
 	Return an xlsx of all quotes in the guild to the user.
@@ -122,7 +125,8 @@ def get_quote_log(guild: int) -> list:
     return ['Log of all quotes and lore for this guild:', '{}/log/quoteLog_{}.xlsx'.format(DEFAULT_DIR, guild)]
 
 
-def insert_quote(message: discord.Message, Table: sqlalchemy.Table, adder=None) -> discord.Embed:
+@debug
+def insert_quote(message: discord.Message, Table: (None, sqlalchemy.Table), adder=None) -> discord.Embed:
     """
 	Insert a quote to the database
 	:param message: <Discord.message object>
@@ -173,7 +177,7 @@ def insert_quote(message: discord.Message, Table: sqlalchemy.Table, adder=None) 
                 guild=str(message.guild.id),
                 guild_name=message.guild.name,
                 embed=embed,
-                context=jump_url,
+#                context=jump_url,
             )
             conn.execute(ins)
             if not fetch_value(message.guild.id, 10):
@@ -202,6 +206,7 @@ def insert_quote(message: discord.Message, Table: sqlalchemy.Table, adder=None) 
     return banner
 
 
+@debug
 def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, raw=False) -> discord.Embed:
     """
 	Retrieve a quote from the database.
@@ -212,6 +217,8 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
     :param raw:
 	"""
 
+    Table = Quotes
+
     if username:
         select_user = select([Table]).where(and_(
             Table.c.name == username,
@@ -219,9 +226,11 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
         select_id = select([Table]).where(and_(
             Table.c.id == username,
             Table.c.guild == message.guild.id))
+#        print(select_user)
     else:
         select_rand = select([Table]).where(
             Table.c.guild == message.guild.id).order_by(func.random())
+ #       print(select_rand)
 
     with ENGINE.connect() as conn:
         if username:
@@ -229,17 +238,30 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
             if not result:
                 result = conn.execute(select_user).fetchone()
         else:
+  #          print('selecting')
+   #         print(conn)
+    #        print(conn.execute(select_rand))
+     #       result = conn.execute(select_rand)
+      #      print(result)
             result = conn.execute(select_rand).fetchone()
+       # print("result:")
+       # print(result)
 
         # Result fields translate as
         # [0]: message id, [1]: author, [2]: quote, [3]: date, [6]: embed url, [7]: jump_url
         if result:
             config = load_config(message.guild.id)
+        #    print('config:')
+         #   print(config)
+            stm = '---{} on {}'
+            context_url = 'blank'
+            title = 'Quote {}'.format(result[0])
             if config:
                 if Table.name == 'famQuotes':
                     stm = config[4].replace('\\n', '\n')
                     title = "Quote {}".format(result[0])
-                    context_url = '{}'.format(result[7])
+                    context_url = 'test'
+                    # context_url = '{}'.format(result[7])
                 elif Table.name == 'famLore':
                     stm = config[5].replace('\\n', '\n')
                     title = "Lore {}".format(result[0])
@@ -247,11 +269,12 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
                 if Table.name == 'famQuotes':
                     stm = '---{} on {}'
                     title = "Quote {}".format(result[0])
-                    context_url = '{}'.format(result[7])
+                    context_url = 'test'
+                    # context_url = '{}'.format(result[7])
                 elif Table.name == 'famLore':
                     stm = '---Scribed by the Lore Master {}, on the blessed day of {}'
                     title = "Lore {}".format(result[0])
-
+         #   print(stm, title, context_url)
         if raw:
             # Check if there is an attached img or file to send as well
             if len(result) > 6 and result[6]:
@@ -260,7 +283,7 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
             # Result fields translate as
             # [1]: author, [2]: quote, [3]: date, [6]: embed url, [7]: jump_url
             # TODO this should be a dict
-            if result[7]:
+            if len(result) > 7 and result[7]:
                 text = '{} \n\n{}'.format(result[2], context_url)
             else:
                 text = result[2]
@@ -312,7 +335,8 @@ def delete_quote(guild: int, msg_id: int) -> (str, None):
                 return None
 
 
-def check_if_exists(guild: int, msg_id: int) -> bool:
+@debug
+def check_if_exists(guild, msg_id) -> bool:
     """
 	Internal function to ensure that we do not
 	add the same message to the database multiple times.
@@ -321,11 +345,17 @@ def check_if_exists(guild: int, msg_id: int) -> bool:
 	:return: <Bool>
 	"""
 
+    print(type(guild), type(msg_id))
     with ENGINE.connect() as conn:
+        print('connected')
+        print(guild, msg_id)
         select_st = select([Quotes]).where(and_(
             Quotes.c.id == msg_id,
             Quotes.c.guild == guild))
-        if conn.execute(select_st).fetchall():
+        print(select_st)
+        result = conn.execute(select_st).fetchall()
+        print("Result: {}".format(result))
+        if result:
             return True
     return False
 
