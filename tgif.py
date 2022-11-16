@@ -4,15 +4,14 @@
 import random
 from os import listdir
 from os.path import isdir
-import aiohttp
-import aiofiles
 from pathlib import Path
 
+import aiofiles
+import aiohttp
 import discord
-from discord import Embed
 
-from tutil import increment_usage, fetch_file
 from constants import DEFAULT_DIR, VERBOSE
+from tutil import increment_usage
 
 
 def get_react(message: discord.Message) -> str:

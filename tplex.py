@@ -1,15 +1,25 @@
+# TODO pull raw lists then convert to render for messaging
+# so that filters can be combined DRY
+# TODO atomize movie queue for preservation when q ends
+# TODO add command to see queue
+# TODO add skip vote command
+# TODO add shuffle / sort queue command
+# TODO page-ize long results
+# TODO list most recently added
+
 import configparser
 # import os
 import random
 # import secrets
 # import subprocess
 # from multiprocessing import Process
+import re
 
 import discord
 from plexapi.myplex import MyPlexAccount
 
 from tutil import wrap, debug
-from constants import DEFAULT_DIR
+from constants import DEFAULT_DIR, DIVIDER
 
 # Read in config
 config = configparser.ConfigParser()
@@ -30,6 +40,8 @@ intents.presences = True
 intents.guild_messages = True
 intents.message_content = True
 client = discord.Client(intents=intents)
+#regex_is_digit = '^[0-9]+$'
+regex_is_year = "\d{4}"
 
 # global videoPlaying
 # global ffmpegID
@@ -45,7 +57,7 @@ async def helper(message: discord.Message, op_override=None):
     """
 
     args = message.content.split()
-    ops = {'list', 'search', 'help', 'invite'}
+    ops = {'list', 'search', 'help', 'invite', 'year'}
 
     operator = 'get'
     if len(args) > 1 and args[1] in ops:
@@ -55,9 +67,62 @@ async def helper(message: discord.Message, op_override=None):
 
     return {
         'list': lambda: list_parse(args),
+        'year': lambda: list_parse(args)
         'search': lambda: search_parse(args),
         'help': lambda: help(),
     }.get(operator, lambda: None)()
+
+
+@debug
+def list_parse(args):
+    year = None
+    if 'tv' in args:
+        pass
+    #     return list_tv(args[2:])
+    elif 'movie' in args:
+        # List all movies from certain year
+        year = re.findall(regex_is_year, args[-1])
+        if year:
+            return list_movies_year(args[-1])
+        # List all movies matching title
+        else:
+            return list_movies(args[2:])
+    elif 'music' in args:
+        pass
+    #     return list_music(args[2:])
+    else:
+        return 'Please specify whether to search `movie`, `tv`, or `music`.'
+
+@debug
+def list_movies(args: list) -> list:
+    movies = plex.library.section('Movies')
+    msg = ''
+    if 'unwatched' in args:
+        for video in movies.search(unwatched=True):
+            msg = f'{msg}{video.title}\n'
+    elif 'random' in args:
+        choice = random.choice(movies.search())
+        msg = f'{choice.title} ({choice.year})'
+    else:
+        for video in movies.search():
+            msg = f'{msg}{video.title}\n'
+    return wrap(msg, 1999)
+
+
+@debug
+def list_movies_year(year: str) -> list:
+    """
+    List all movies released in a specified year.
+    :param year:
+    :return:
+    """
+    msg = 'No movie found'
+    movies = plex.library.section('Movies')
+    result = movies.all(year=year)
+    if len(result) > 0:
+        for video in result:
+            msg = f'**{year}**\r{DIVIDER}\r`{video.title}`\r'
+    return wrap(msg, 1999)
 
 
 @debug
@@ -72,54 +137,28 @@ def search_parse(args):
     else:
         return 'Please specify whether to search `movie`, `tv`, or `music`.'
 
-@debug
-def list_parse(args):
-    if 'tv' in args:
-        pass
-    #     return list_tv(args[2:])
-    elif 'movie' in args:
-        return list_movies(args[2:])
-    elif args[2].lower() == 'music':
-        pass
-    #     return list_music(args[2:])
-    else:
-        return 'Please specify whether to search `movie`, `tv`, or `music`.'
 
 @debug
-def list_movies(args):
-    movies = plex.library.section('Movies')
-    msg = ''
-    if 'unwatched' in args:
-        for video in movies.search(unwatched=True):
-            msg = f'{msg}{video.title}\n'
-    elif 'random' in args:
-        choice = random.choice(movies.search())
-        msg = f'{choice.title} ({choice.year})'
-    else:
-        for video in movies.search():
-            msg = f'{msg}{video.title}\n'
-    if len(msg) > 1999:
-        return wrap(msg, 1999)
-    else:
-        return msg
-
-@debug
-def search_movies(args):
+def search_movies(args: list) -> list:
     # Define blank message
-    msg = ''
-    # Get the name of the movie from the message
+    msg = 'No movie found'
+    year = None
     name = ' '.join(args).strip()
-    print(f'searching {name}')
+    # Check if specific year was requested to avoid remakes
+    year = re.findall(regex_is_year, args[-1])
+    # Get the name of the movie from the message
     # Define the movie library
     movies = plex.library.section('Movies')
-    result = movies.search(name)
+    if year:
+        name = ' '.join(args[:-1]).strip()
+        result = movies.search(name, year=year)
+    else:
+        result = movies.search(name)
     if len(result) > 0:
         # Loop through the search results and add them to the message
         for video in result:
             msg = f'{msg}`{video.title} - {video.year}`\r'
-    else:
-        msg = 'No movie found'
-    return msg
+    return wrap(msg, 1999)
 
 
 def search_tv(args):
@@ -144,6 +183,7 @@ def search_tv(args):
     return wrap(msg, 1999)
 
 
+# TODO update to match when finished
 def help():
     # Print out commands available
     return '**!search {movie}** Search for a movie by name\r' \
