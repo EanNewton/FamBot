@@ -323,6 +323,49 @@ def get_search_help() -> str:
     """
 
 
+# play
+# @bot.command()
+# async def play(ctx, *item):
+#     global queue
+#     item = ' '.join(item)
+#     movies = plex.library.section('Movies')
+#     try:
+#         def check(m):
+#             return m.author == ctx.message.author and m.channel == ctx.channel
+#
+#         x = movies.search(item)
+#         x.sort(reverse=True, key=lambda a: simbet(a.title, item))
+#         if not x:
+#             return
+#         y = []
+#         for l in x:
+#             y.append(l.title)
+#         if item == x[0].title:
+#             movie = x[0]
+#         else:
+#             o = await ctx.send(f"Did you mean **{x[0].title}**?? yes/no")
+#             try:
+#                 msg = await bot.wait_for("message", check=check, timeout=10)
+#                 if msg.content.lower() == 'yes':
+#                     movie = x[0]
+#                 else:
+#                     return
+#             except:
+#                 await o.reply("Timed out")
+#                 return
+#         await ctx.message.reply("Playing `" + movie.title + '`')
+#
+#         if not queue:
+#             queue = plexapi.playqueue.PlayQueue.create(plex, movie)
+#             client.playMedia(queue)
+#             await ctx.message.reply("Playing `" + item + '`')
+#         else:
+#             queue.addItem(movie)
+#             client.refreshPlayQueue(queue)
+#             await ctx.message.reply("Added to queue!")
+#     except plexapi.exceptions.NotFound:
+#         await ctx.message.reply("Movie not found!")
+
 #
 # @debug
 # def list_movies(args: list) -> list:
