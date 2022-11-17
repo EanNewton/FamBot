@@ -184,6 +184,15 @@ def wrap(s: str, w: int) -> list:
     return [s[i:i + w] for i in range(0, len(s), w)]
 
 
+def flatten_sublist(l: list):
+    """
+    Convert a list of lists l into a flat list
+    :param l:
+    :return:
+    """
+    return [item for sublist in l for item in sublist]
+
+
 ############################
 # Config Utility Functions #
 ############################

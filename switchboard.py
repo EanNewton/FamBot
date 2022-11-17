@@ -45,15 +45,16 @@ async def get_plex(result: dict) -> dict:
     """
     banner = await tplex.helper(result["message"])
     print(type(banner))
-    if type(banner) is str:
-        print('raw')
-        result["rawText"] = banner
-    elif type(banner) is list:
-        print('list')
-        result["rawText"] = banner[0]
-        result["file"] = banner[1]
-    else:
-        result["embed"] = banner
+    result["rawText"] = banner
+    # if type(banner) is str:
+    #     print('raw')
+    #     result["rawText"] = banner
+    # elif type(banner) is list:
+    #     print('list')
+    #     result["rawText"] = banner[0]
+    #     result["file"] = banner[1]
+    # else:
+    #     result["embed"] = banner
     print(result)
     return result
 

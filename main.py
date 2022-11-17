@@ -47,9 +47,9 @@ async def on_ready() -> None:
                 f'Member count: {each.member_count}'
             )
             count += each.member_count
-        print(DIVIDER)
-        print('Total guilds: {}'.format(len(bot.guilds)))
-        print('Total members: {}'.format(count))
+    print('Total guilds: {}'.format(len(bot.guilds)))
+    print('Total members: {}'.format(count))
+    print('***🟢 ------------ Server Online ------------ 🟢***')
     await bot.change_presence(status=discord.Status.idle, activity=None)
 
 
@@ -102,7 +102,12 @@ async def on_message(message: discord.Message) -> None:
             await message.channel.send(file=banner["file"])
 
         elif banner["rawText"]:
-            await message.channel.send(banner["rawText"])
+            # TODO notify results are too long and clip
+            if type(banner["rawText"]) is list:
+                for each in banner["rawText"]:
+                    await message.channel.send(each)
+            else:
+                await message.channel.send(banner["rawText"])
 #        else:
  #           await message.channel.send("No results.")
 

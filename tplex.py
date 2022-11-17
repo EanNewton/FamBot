@@ -5,46 +5,26 @@
 # TODO add skip vote command
 # TODO add shuffle / sort queue command
 # TODO page-ize long results
-# TODO list most recently added
 
 import configparser
-# import os
 import random
-# import secrets
-# import subprocess
-# from multiprocessing import Process
 import re
 
 import discord
 from plexapi.myplex import MyPlexAccount
+from plexapi.library import Library
 
-from tutil import wrap, debug
+from tutil import wrap, debug, flatten_sublist
 from constants import DEFAULT_DIR, DIVIDER
 
 # Read in config
 config = configparser.ConfigParser()
 config.read(DEFAULT_DIR + '/config.ini')
-# os.chdir(os.path.dirname(os.path.realpath(__file__)))
 # Connect to plex server
 account = MyPlexAccount(config['plex']['Username'], config['plex']['Password'])
 plex = account.resource(config['plex']['Server']).connect()
-# Global variables to handle state
-# videoPlaying = False
-# ffmpegID = 0
-# Define discord client
-intents = discord.Intents.default()
-# TODO remove unneeded
-intents.messages = True
-intents.voice_states = True
-intents.presences = True
-intents.guild_messages = True
-intents.message_content = True
-client = discord.Client(intents=intents)
-#regex_is_digit = '^[0-9]+$'
+regex_is_year = r"\d{4}"
 
-# global videoPlaying
-# global ffmpegID
-global plexClient
 
 @debug
 async def helper(message: discord.Message, op_override=None):
@@ -64,11 +44,13 @@ async def helper(message: discord.Message, op_override=None):
     if op_override:
         operator = op_override
 
-    return {
+    result = {
         'search': lambda: search_dispatch(args),
-        'help': lambda: help(),
+        'help': lambda: get_help(),
     }.get(operator, lambda: None)()
-
+    if not result:
+        return 'Nothing found. Please see `$plex search -h` or `$plex help` for more information.'
+    return result
 
 
 @debug
@@ -77,13 +59,13 @@ def search_dispatch(args):
     Search the Plex instance.
 
     plex search libraries
-    plex search (movie | tv | music) --option <argument>
-    plex search (movie | tv | music) ([<title>] [<year>]) --option <argument>
-    plex search (movie | tv | music) random
-    plex search (movie | tv | music) collections
-    plex search (movie | tv | music) unwatched
-    plex search (movie | tv | music) recent
-    plex search (movie | tv | music) inprogress
+    plex search <library> --option <argument>
+    plex search <library> ([<title>] [<year>]) --option <argument>
+    plex search <library> random
+    plex search <library> collections
+    plex search <library> unwatched
+    plex search <library> recent
+    plex search <library> inprogress
 
     Options:
       -h --help            Show this help prompt
@@ -92,6 +74,7 @@ def search_dispatch(args):
       -t --title           Title of the media
       -y --year            Year of release
       -d --decade          Search for a specific decade (e.g. 2000)
+      -L --library         Specify which library section to search [Default: Movies]
       -A --actor           Search by actor name
       -D --director        Search by director name
       -g --genre           Search for a specific genre
@@ -104,19 +87,24 @@ def search_dispatch(args):
     """
     # Sanitize input
     # Some users will do --option=argument while some will do --option argument
-    args = args.split('=')
-    args = args.strip()
+    try:
+        args = [arg.split('=') for arg in args]
+        args = flatten_sublist(args)
+    except:
+        pass
+    # args = args.strip()
     # Add if statement to this to avoid -D becoming equivalent to -d, etc
-    args = [arg.lower() for arg in args if not arg.startswith('-')]
+    args = [arg.lower().strip() if not arg.startswith('-') else arg for arg in args]
     # TODO add Speller library
+    args = args[2:]
+    #print(f'args are: {args}')
 
-    regex_is_year = r"\d{4}"
     # Setup blanks
     options = {
         "library": None,
-        "limit": 10,
+        "limit": None,
         "title": None,
-        "year": re.search(regex_is_year, ' '.join(args[1:2])), # None if no matches
+        "year": re.search(regex_is_year, ' '.join(args[1:2])),  # None if no matches
         "decade": None,
         "actor": None,
         "director": None,
@@ -125,24 +113,56 @@ def search_dispatch(args):
         "subtitle_language": None,
         "content_rating": None,
     }
+    # print(f'options set: {options}')
+
+    # check if no parameters were passed
+    basic_search = True
+    for each in args:
+        if each.startswith('-'):
+            basic_search = False
+            break
+    if basic_search:
+        options["title"] = ' '.join(args)
 
     # Handle special options
+    # help
     if {'-h', '--help'}.intersection(args):
         return get_search_help()
+    # all
     if {'-a', '--all'}.intersection(args):
         options["limit"] = None
+    # title
+    if '-t' in args:
+        start = args[args.index('-t') + 1]
+        for _ in args[args.index(start):]:
+            if _.startswith('-'):
+                break
+            else:
+                options["title"] = f'{start} {_}'
+    elif '--title' in args:
+        start = args[args.index('--title') + 1]
+        for _ in args[args.index(start):]:
+            if _.startswith('-'):
+                break
+            else:
+                options["title"] = f'{start} {_}'
+    # limit
     if '-l' in args:
-        options["limit"] = args[args.index('-l') + 1]
+        options["limit"] = int(args[args.index('-l') + 1])
     elif '--limit' in args:
-        options["limit"] = args[args.index('--limit') + 1]
+        options["limit"] = int(args[args.index('--limit') + 1])
+    # year
     if '-y' in args:
         options["year"] = args[args.index('-y') + 1]
     elif '--year' in args:
         options["year"] = args[args.index('--year') + 1]
+    # decade
     if '-d' in args:
         options["decade"] = args[args.index('-d') + 1]
     elif '--decade' in args:
         options["decade"] = args[args.index('--decade') + 1]
+    # TODO update to match title search style to handle 3+ part names
+    # actor
     if '-A' in args:
         options["actor"] = args[args.index('-a') + 1]
         # Check if both first and last name were provided
@@ -152,6 +172,7 @@ def search_dispatch(args):
         options["actor"] = args[args.index('--actor') + 1]
         if not args[args.index(options["actor"]) + 1].startswith('-'):
             options["actor"] = f'{options["actor"]} {args[args.index(options["actor"]) + 1]}'
+    # director
     if '-D' in args:
         options["director"] = args[args.index('-D') + 1]
         # Check if both first and last name were provided
@@ -161,153 +182,273 @@ def search_dispatch(args):
         options["director"] = args[args.index('--director') + 1]
         if not args[args.index(options["director"]) + 1].startswith('-'):
             options["director"] = f'{options["director"]} {args[args.index(options["director"]) + 1]}'
+    # library section
+    if '-L' in args:
+        options["library"] = args[args.index('-L') + 1]
+    elif '--library' in args:
+        options["library"] = args[args.index('--library') + 1]
+    # genre
     if '-g' in args:
         options["genre"] = args[args.index('-g') + 1]
     elif '--genre' in args:
         options["genre"] = args[args.index('--genre') + 1]
+    # audio language
     if '-al' in args:
         options["audio_language"] = args[args.index('-al') + 1]
     elif '--audio' in args:
         options["audio_language"] = args[args.index('--audio') + 1]
+    # subtitle language
     if '-sl' in args:
         options["subtitle_language"] = args[args.index('-sl') + 1]
     elif '--sub' in args:
         options["subtitle_language"] = args[args.index('--sub') + 1]
+    # content rating
     if '-cr' in args:
         options["content_rating"] = args[args.index('-cr') + 1]
-    elif '--sub' in args:
+    elif '--contentrating' in args:
         options["content_rating"] = args[args.index('--contentrating') + 1]
-
-
-    # Determine library
-    # We require this of the user to prevent search results taking too long
-    if args[0] in {'tv', 'television'}:
-        library = 'TV'
-    elif args[0] in {'movie', 'movies', 'film', 'films'}:
-        library = 'Movies'
-    elif args[0] in {'music'}:
-        library = 'Music'
-    else:
-        return 'Please specify whether to search `movie`, `tv`, or `music`. ' \
-               'See `plex search help` for more information.'
+    # print(f'parameters set: {options}')
 
     # User entered simply "plex search"
-    if not args[1]:
+    if not args[0]:
         return 'Please specify a search parameter. ' \
                'See `plex search help` for more information.'
     # Handle specific search cases
-    if args[1] in {'library', 'libraries', 'lib', 'libs'}:
+    if args[0] in {'library', 'libraries', 'lib', 'libs'}:
         return get_library_list()
-    elif args[1] in {'random', 'rand'}:
-        return get_random(library, options)
-    elif args[1] in {'collection', 'collections'}:
-        return get_collections_list(library)
-    elif args[1] in {'unwatched'}:
-        return get_unwatched(library, options)
-    elif args[1] in {'inprogress'}:
-        return get_in_progress(library, options)
-    elif args[1] in {'recent', 'new'}:
-        return get_recently_added(library, options)
-
-    if not args[2]:
-        return 'Additional search parameters required. ' \
-               'See `plex search help` for more information.'
-    # Handle generic search
+    # Determine library
+    # We require this of the user to prevent search results taking too long
+    elif {args[0], options["library"]}.intersection({
+        'movie', 'movies', 'film', 'films'}):
+        options["library"] = 'Movies'
+    elif {args[0], options["library"]}.intersection({
+        'music', 'songs'}):
+        options["library"] = 'Music'
+    elif {args[0], options["library"]}.intersection({
+        'tv', 'television', 'tv shows', 'shows'}):
+        options["library"] = 'TV Shows'
     else:
-        return search_library(library, options)
+        if not options["library"]:
+            options["library"] = 'Movies'
+    # print(f'library determined: {options["library"]}')
+    if args[0] in {'random', 'rand'}:
+        return get_random(options)
+    elif args[0] in {'collection', 'collections'}:
+        return get_collections_list(options)
+    elif args[0] in {'unwatched'}:
+        return get_unwatched(options)
+    elif args[0] in {'inprogress'}:
+        return get_in_progress(options)
+    elif args[0] in {'recent', 'new'}:
+        return get_recently_added(options)
+    # print(f'special searches passed')
 
-# TODO dummy method needs replacing
+    # Generic search
+    return search_library(options)
+
+
+# TODO dummy method
+@debug
+def search_library(options: dict) -> list:
+    """
+    The main search function of the Plex instance
+    :param options:
+    :return:
+    """
+
+    selection = plex.library.section(options["library"])
+    advancedFilters = {
+        'and': [
+            {'year': options["year"]},
+            {'title': options["title"]},
+            {'decade': options["decade"]},
+            {'actor': options["actor"]},
+            {'director': options["director"]},
+            {'genre': options["genre"]},
+            {'audioLanguage': options["audio_language"]},
+            {'subtitleLanguage': options["subtitle_language"]},
+            {'contentRating': options["content_rating"]}
+        ]
+    }
+    # drop none values
+    filtered = {}
+    for each in advancedFilters["and"]:
+        for k, v in each.items():
+            if v:
+                filtered[k] = v
+    # advancedFilters["or"] = [k: v for k, v in advancedFilters["or"].items() if v is not None]
+    advancedFilters["and"] = [filtered]
+    print(advancedFilters)
+    try:
+        selection = selection.search(filters=advancedFilters)
+    except:
+        print('advanced filters failed')
+    print(selection)
+    result = []
+    choices = []
+    if options["limit"] is None:
+        options["limit"] = 10
+    result = random.choices(selection, k=options["limit"])
+    print(result)
+    for each in result:
+        choices.append(f'{each.title} ({each.year})')
+    print(f'\n---\n{choices}')
+    result = list(set(choices))
+    # Breaks if not enough movies match
+    # while len(result) < options["limit"]:
+    #     choice = random.choice(selection)
+    #     result.append(f'{choice.title} ({choice.year})')
+    #     result = list(set(result))
+    return wrap('\r'.join(choices), 1999)
+
+
 def get_library_list() -> list:
     """
     Get list of libraries available on the Plex instance
     :return:
     """
-    return ['Movies', 'TV', 'Music']
+    result = [section.title for section in plex.library.sections()]
+    # TODO update to embed
+    return '\r'.join(result)
 
 
-def get_random(library: str, options: dict) -> list:
+def get_random(options: dict) -> list:
     """
     Get LIMIT [default: 10] number of random titles from LIBRARY
-    :param library:
-    :param limit:
-    :return:
-    """
-    # replace search with search_library()
-    result = plex.library.selection(library)
-    return random.choices(result, options["limit"])
-
-
-# TODO dummy method
-def get_collections_list(library: str) -> list:
-    """
-    Get list of collections available in the library
-    :param library:
-    :return:
-    """
-    return None
-
-
-# TODO implement limit
-# try search()[:limit]
-def get_unwatched(library: str, options: dict) -> list:
-    """
-    Get list of unplayed media in the library
-    :param library:
-    :param limit:
-    :return:
-    """
-    # replace search with search_library()
-    result = plex.library.section(library)
-    return result.search(unwatched=True)
-
-
-# TODO dummy method
-def get_in_progress(library: str, options: dict) -> list:
-    """
-    Get list of media that has been partially played
-    :param library:
-    :param limit:
-    :return:
-    """
-    return None
-
-
-# TODO dummy method
-def get_recently_added(library: str, options: dict) -> list:
-    """
-    Get list of most recently added media
-    :param library:
-    :param limit:
-    :return:
-    """
-    return None
-
-
-# TODO dummy method
-def search_library(library: str, options: dict) -> list:
-    """
-    The main search function of the Plex instance
-    :param library:
     :param options:
     :return:
     """
-    # Determine which options were passed
-    return None
+    # replace search with search_library()
+    selection = plex.library.section(options["library"])
+    selection = selection.search()
+    result = []
+    if options["limit"] is None:
+        options["limit"] = 10
+    # TODO janky method to prevent repitition
+    result = random.choices(selection, k=options["limit"])
+    for each in result:
+        each = f'{each.title} ({each.year})'
+    result = list(set(result))
+    # while len(result) < options["limit"]:
+    #     choice = random.choice(selection)
+    #     result.append(f'{choice.title} ({choice.year})')
+    #     result = list(set(result))
+    # TODO update to embed
+    return wrap('\r'.join(result), 1999)
+
+
+def get_collections_list(options: dict) -> list:
+    """
+    Get list of collections available in the library
+    :param options:
+    :return:
+    """
+    selection = plex.library.section(options["library"])
+    selection = [_.title for _ in selection.collections()]
+    result = []
+    # result = [_.title for _ in result.collections]
+    if not options["limit"]:
+        options["limit"] = 10
+
+    # TODO janky method to prevent repitition
+    while len(result) < options["limit"]:
+        result.append(random.choice(selection))
+        result = list(set(result))
+    # result = random.choices(result, k=options["limit"])
+    # TODO convert to embed
+    return wrap('\r'.join(result), 1999)
+
+
+# TODO convert to parameter -U --unwatched
+def get_unwatched(options: dict) -> list:
+    """
+    Get list of unplayed media in the library
+    :param options:
+    :return:
+    """
+    # replace search with search_library()
+    selection = plex.library.section(options["library"])
+    selection = selection.search(unwatched=True)
+    result = []
+    if not options["limit"]:
+        options["limit"] = 10
+    result = random.choices(selection, k=options["limit"])
+    for each in result:
+        each = f'{each.title} ({each.year})'
+    result = list(set(result))
+    # while len(result) < options["limit"]:
+    #     choice = random.choice(selection)
+    #     result.append(f'{choice.title} ({choice.year})')
+    #     result = list(set(result))
+    return wrap('\r'.join(result), 1999)
+
+
+# TODO convert to parameter -ip --inprogress
+def get_in_progress(options: dict) -> list:
+    """
+    Get list of media that has been partially played
+    :param options:
+    :return:
+    """
+    selection = plex.library.section(options["library"])
+    selection = selection.search(filters={"episode.inProgress": True})
+    print(selection)
+    if not len(selection):
+        return 'No media in progress.'
+    result = []
+    if not options["limit"]:
+        options["limit"] = 10
+    result = random.choices(selection, k=options["limit"])
+    for each in result:
+        each = f'{each.title} ({each.year})'
+    result = list(set(result))
+    # while len(result) < options["limit"]:
+    #     choice = random.choice(selection)
+    #     result.append(choice.title)
+    #     result = list(set(result))
+    return wrap('\r'.join(result), 1999)
+
+
+def get_recently_added(options: dict) -> list:
+    """
+    Get list of most recently added media
+    :param options:
+    :return:
+    """
+    selection = plex.library.section(options["library"])
+    selection = selection.recentlyAdded()
+    result = []
+    if not options["limit"]:
+        options["limit"] = 10
+    result = random.choices(selection, k=options["limit"])
+    for each in result:
+        each = f'{each.title} ({each.year})'
+    result = list(set(result))
+    # while len(result) < options["limit"]:
+    #     choice = random.choice(selection)
+    #     result.append(f'{choice.title} ({choice.year})')
+    #     result = list(set(result))
+    return wrap('\r'.join(result), 1999)
 
 
 def get_search_help() -> str:
+    """
+    Return help file for usage
+    :return:
+    """
     return """Search the Plex instance.
 
     plex search libraries
-    plex search (movie | tv | music) --option <argument>
-    plex search (movie | tv | music) ([<title>] [<year>]) --option <argument>
-    plex search (movie | tv | music) random
-    plex search (movie | tv | music) collections
-    plex search (movie | tv | music) unwatched
-    plex search (movie | tv | music) recent
-    plex search (movie | tv | music) inprogress
+    plex search <library> --option <argument>
+    plex search <library> ([<title>] [<year>]) --option <argument>
+    plex search <library> random
+    plex search <library> collections
+    plex search <library> unwatched
+    plex search <library> recent
+    plex search <library> inprogress
 
     Options:
+      library              Which library section to search [Default: Movies]
       -h --help            Show this help prompt
       -a --all             List everything, overrides --limit
       -l --limit           Limit results to N elements [Default: 10]
@@ -322,6 +463,9 @@ def get_search_help() -> str:
       -cr --contentrating  Search for a specific content rating (e.g. PG-13, R)
     """
 
+# TODO update to match when finished
+def get_help():
+    pass
 
 # play
 # @bot.command()
@@ -366,86 +510,4 @@ def get_search_help() -> str:
 #     except plexapi.exceptions.NotFound:
 #         await ctx.message.reply("Movie not found!")
 
-#
-# @debug
-# def list_movies(args: list) -> list:
-#     movies = plex.library.section('Movies')
-#     msg = ''
-#     if 'unwatched' in args:
-#         for video in movies.search(unwatched=True):
-#             msg = f'{msg}{video.title}\n'
-#     elif 'random' in args:
-#         choice = random.choice(movies.search())
-#         msg = f'{choice.title} ({choice.year})'
-#     else:
-#         for video in movies.search():
-#             msg = f'{msg}{video.title}\n'
-#     return wrap(msg, 1999)
-#
-#
-# @debug
-# def list_movies_year(year: str) -> list:
-#     """
-#     List all movies released in a specified year.
-#     :param year:
-#     :return:
-#     """
-#     msg = 'No movie found'
-#     movies = plex.library.section('Movies')
-#     result = movies.all(year=year)
-#     if len(result) > 0:
-#         for video in result:
-#             msg = f'**{year}**\r{DIVIDER}\r`{video.title}`\r'
-#     return wrap(msg, 1999)
-#
-#
-#
-#
-# @debug
-# def search_movies(args: list) -> list:
-#     # Define blank message
-#     msg = 'No movie found'
-#     year = None
-#     name = ' '.join(args).strip()
-#     # Check if specific year was requested to avoid remakes
-#     year = re.findall(regex_is_year, args[-1])
-#     # Get the name of the movie from the message
-#     # Define the movie library
-#     movies = plex.library.section('Movies')
-#     if year:
-#         name = ' '.join(args[:-1]).strip()
-#         result = movies.search(name, year=year)
-#     else:
-#         result = movies.search(name)
-#     if len(result) > 0:
-#         # Loop through the search results and add them to the message
-#         for video in result:
-#             msg = f'{msg}`{video.title} - {video.year}`\r'
-#     return wrap(msg, 1999)
-#
-#
-# def search_tv(args):
-#     # Define blank message
-#     msg = ''
-#     # Get the name of the video from the message
-#     name = ' '.join(args[1])
-#     # Define the tv library
-#     tv = plex.library.section('TV Shows')
-#     if len(tv.search(name)) > 0:
-#         # Loop through the search results and add them to the message
-#         for video in tv.search(name):
-#             msg = msg + "```\r" + video.title
-#             for season in video.seasons():
-#                 msg = msg + "\rSeason " + str(season.index) + "\r"
-#                 for episode in season.episodes():
-#                     msg = msg + str(episode.index) + " "
-#         msg = msg + '```'
-#     else:
-#         msg = 'No TV show found'
-#     # Send message with search results
-#     return wrap(msg, 1999)
-#
-#
-# # TODO update to match when finished
-# def help():
-#     pass
+
