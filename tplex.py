@@ -12,7 +12,6 @@ import re
 
 import discord
 from plexapi.myplex import MyPlexAccount
-from plexapi.library import Library
 
 from tutil import wrap, debug, flatten_sublist
 from constants import DEFAULT_DIR, DIVIDER
@@ -113,7 +112,7 @@ def search_dispatch(args):
         "subtitle_language": None,
         "content_rating": None,
     }
-    # print(f'options set: {options}')
+    print(f'options set: {options}')
 
     # check if no parameters were passed
     basic_search = True
@@ -134,14 +133,16 @@ def search_dispatch(args):
     # title
     if '-t' in args:
         start = args[args.index('-t') + 1]
-        for _ in args[args.index(start):]:
+        options["title"] = start
+        for _ in args[args.index(start) + 1:]:
             if _.startswith('-'):
                 break
             else:
                 options["title"] = f'{start} {_}'
     elif '--title' in args:
         start = args[args.index('--title') + 1]
-        for _ in args[args.index(start):]:
+        options["title"] = start
+        for _ in args[args.index(start) + 1:]:
             if _.startswith('-'):
                 break
             else:
@@ -299,7 +300,7 @@ def search_library(options: dict) -> list:
     #     choice = random.choice(selection)
     #     result.append(f'{choice.title} ({choice.year})')
     #     result = list(set(result))
-    return wrap('\r'.join(choices), 1999)
+    return wrap('\r'.join(result), 1999)
 
 
 def get_library_list() -> list:
@@ -436,7 +437,9 @@ def get_search_help() -> str:
     Return help file for usage
     :return:
     """
-    return """Search the Plex instance.
+    return """
+    ```
+    Search the Plex instance.
 
     plex search libraries
     plex search <library> --option <argument>
@@ -461,6 +464,7 @@ def get_search_help() -> str:
       -al --audio          Search for a specific audio language (3 character code, e.g. jpn)
       -sl --sub            Search for a specific subtitle language (3 character code, e.g. eng)
       -cr --contentrating  Search for a specific content rating (e.g. PG-13, R)
+    ```
     """
 
 # TODO update to match when finished
