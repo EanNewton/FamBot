@@ -4,6 +4,13 @@ import discord
 from discord import Embed
 from discord import File as DiscordFile
 
+from selenium import webdriver
+import selenium.webdriver.support.expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.by import By
+
+
 import tword
 import tquote
 import tsched
@@ -58,6 +65,20 @@ async def get_plex(result: dict) -> dict:
     print(result)
     return result
 
+
+async def play_movie(movie):
+    driver = webdriver.Firefox()
+    driver.get('about:preferences')
+    # search_bar = driver.find_element(By.ID, "searchInput")
+    # search_bar.send_keys('playDRMContent')
+    # WebDriverWait(driver, 20).until(EC.presence_of_element_located(By.ID, 'playDRMContent')).click()
+    driver.find_element(By.ID, 'playDRMContent').click()
+    # movies = plex.library.section('Movies')
+    driver.get("http://app.plex.tv")
+    WebDriverWait(driver, 20).until(EC.presence_of_element_located(By.ID, "universalsearchinput")).click()
+    search_bar = driver.find_element(By.ID, "universalSearchInput")
+    search_bar.send_keys(movie)
+    search_bar.send_keys(Keys.RETURN)
 
 
 async def get_wolfram(result: dict) -> dict:
@@ -173,6 +194,10 @@ async def dispatch(message: discord.Message) -> (None, dict):
     if operator in {'plex'}:
         print('calling plex')
         result = await get_plex(result)
+
+    if operator in {'play'}:
+        print('calling play')
+        result = await play_movie('hellbender')
 
   #    Wolfram Alpha
     elif operator in {'w', 'wolf', 'wolfram'}:
