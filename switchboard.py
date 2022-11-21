@@ -10,7 +10,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 
-
+import thltb
 import tword
 import tquote
 import tsched
@@ -66,6 +66,23 @@ async def get_plex(result: dict) -> dict:
     return result
 
 
+@debug
+async def get_hltb(result: dict) -> dict:
+    """
+    Pass off to thltb.py
+
+    :param result:
+    :return:
+    """
+    banner = await thltb.helper(result["message"])
+    print(type(banner))
+    print(banner)
+    result["rawText"] = banner
+    print(result)
+    return result
+
+
+# TODO opens plex site but doesn't search / play yet
 async def play_movie(movie):
     driver = webdriver.Firefox()
     driver.get('about:preferences')
@@ -191,13 +208,22 @@ async def dispatch(message: discord.Message) -> (None, dict):
         print('getting quote')
         result = await get_quote(result)
 
+    if operator in {'invite'}:
+        result["rawText"] = "https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=7433793&scope=bot"
+        return result
+
     if operator in {'plex'}:
         print('calling plex')
         result = await get_plex(result)
 
-    if operator in {'play'}:
-        print('calling play')
-        result = await play_movie('hellbender')
+    if operator in {'hltb'}:
+        print('calling hltb')
+        result = await get_hltb(result)
+
+    # TODO doesn't work yet, see above
+    # if operator in {'play'}:
+    #     print('calling play')
+    #     result = await play_movie('hellbender')
 
   #    Wolfram Alpha
     elif operator in {'w', 'wolf', 'wolfram'}:

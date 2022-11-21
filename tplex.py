@@ -39,7 +39,7 @@ async def helper(message: discord.Message, op_override=None):
     """
 
     args = message.content.split()
-    ops = {'search', 'help', 'play'}
+    ops = {'search', 'help', 'play', 'def'}
 
     operator = 'help'
     if len(args) > 1 and args[1] in ops:
@@ -50,6 +50,7 @@ async def helper(message: discord.Message, op_override=None):
     result = {
         'search': lambda: search_dispatch(args),
         'help': lambda: get_help(),
+        'def': lambda: help(search_dispatch),
     }.get(operator, lambda: None)()
     if not result:
         return 'Nothing found. Please see `$plex search -h` or `$plex help` for more information.'
