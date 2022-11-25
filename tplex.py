@@ -20,7 +20,7 @@ config.read(DEFAULT_DIR + '/config.ini')
 # Connect to plex server
 account = MyPlexAccount(config['plex']['Username'], config['plex']['Password'])
 plex = account.resource(config['plex']['Server']).connect()
-client_name = config['Name']
+client_name = config['plex']['Name']
 
 regex_is_year = r"\d{4}"
 queue = []
