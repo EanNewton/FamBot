@@ -65,6 +65,7 @@ async def helper(message: discord.Message, op_override=None):
     if operator == 'search':
         if not {'help', '-h', '--help'}.intersection(args):
             for each in result[0]:
+                last.clear()
                 last.append(each)
             if not result:
                 return 'Nothing found. Please see `$plex search -h` or `$plex help` for more information.'
