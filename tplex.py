@@ -20,6 +20,7 @@ config.read(DEFAULT_DIR + '/config.ini')
 # Connect to plex server
 account = MyPlexAccount(config['plex']['Username'], config['plex']['Password'])
 plex = account.resource(config['plex']['Server']).connect()
+client_name = config['Name']
 
 regex_is_year = r"\d{4}"
 queue = []
@@ -111,7 +112,7 @@ def play_media() -> str:
     :return:
     """
     try:
-        player = plex.client("AHAB")
+        player = plex.client(client_name)
     except Exception as e:
         print(e)
         return f"Oops something went wrong! {e}"
@@ -129,7 +130,7 @@ def pause_media() -> str:
     :return:
     """
     try:
-        player = plex.client("AHAB")
+        player = plex.client(client_name)
         player.pause()
         return "Paused. Use `$plex resume` to start again."
     except Exception as e:
@@ -149,7 +150,7 @@ def resume_media(args: list) -> str:
         print(e)
         return f"Oops something went wrong! {e}"
     try:
-        player = plex.client("AHAB")
+        player = plex.client(client_name)
         result = play_media()
         player.seekTo(ms)
         return f'{result} at {args[2]}'
