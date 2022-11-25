@@ -29,7 +29,7 @@ async def helper(message: discord.Message, op_override=None):
     args = message.content.split()
     ops = {'search', 'help'}
 
-    operator = 'help'
+    operator = 'search'
     if len(args) > 1 and args[1] in ops:
         operator = args[1]
     if op_override:
