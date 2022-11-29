@@ -258,7 +258,7 @@ async def next_queue(message: discord.Message) -> str:
     """
     if len(queue):
         voice_channel = BOT.get_channel(voice_channel_id)  # type: discord.VoiceChannel
-        if await is_admin(message.author, message) or len(skip_votes) > int(len(voice_channel.members) / 2):
+        if await is_admin(message.author, message) or len(skip_votes) > ceil(len(voice_channel.members) / 2):
             queue.pop(0)
             skip_votes.clear()
             return play_media()
