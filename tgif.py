@@ -1,10 +1,10 @@
 #!/usr/bin/python3
-
-
+import os.path
 import random
 from os import listdir
-from os.path import isdir
+from os.path import isdir, exists
 from pathlib import Path
+from platform import system
 
 import aiofiles
 import aiohttp
@@ -12,6 +12,9 @@ import discord
 
 from constants import DEFAULT_DIR, VERBOSE
 from tutil import increment_usage
+# from tutil import debug
+
+running_os = system()
 
 
 def get_react(message: discord.Message) -> str:
@@ -22,23 +25,41 @@ def get_react(message: discord.Message) -> str:
     """
     increment_usage(message.guild, 'gif')
 
-    # Generate a list of possible gif files to choose from
-    reacts = ['{}/emotes/{}'.format(DEFAULT_DIR, each) for each in listdir('./emotes')]
-    guild = message.guild.id
+    # TODO collapse into single statement / DRY
+    if exists('./emotes') and running_os == 'Linux':
+        # Generate a list of possible gif files to choose from
+        reacts = [os.path.abspath("emotes/"+file) for file in listdir('./emotes')]
+        guild = message.guild.id
+        # Include guild-specific results
+        if isdir('{}/emotes/{}'.format(DEFAULT_DIR, guild)):
+            reacts.extend(
+                [os.path.abspath('emotes/{}/{}'.format(guild, each)) for each in
+                 listdir('./emotes/{}'.format(guild))])
+        # Include guild-specific nsfw results
+        if 'nsfw' in message.content.lower() and isdir('{}/emotes/{}/nsfw'.format(DEFAULT_DIR, guild)):
+            reacts.extend([os.path.abspath('emotes/{}/nsfw/{}'.format(guild, each)) for each in
+                           listdir('./emotes/{}/nsfw'.format(guild))])
+        return random.choice(reacts)
 
-    # Include guild-specific results
-    if isdir('{}/emotes/{}'.format(DEFAULT_DIR, guild)):
-        reacts.extend(
-            ['{}/emotes/{}/{}'.format(DEFAULT_DIR, guild, each) for each in
-             listdir('./emotes/{}'.format(guild))])
-    # Include guild-specific nsfw results
-    if 'nsfw' in message.content.lower() and isdir('{}/emotes/{}/nsfw'.format(DEFAULT_DIR, guild)):
-        reacts.extend(['{}/emotes/{}/nsfw/{}'.format(DEFAULT_DIR, guild, each) for each in
-                       listdir('./emotes/{}/nsfw'.format(guild))])
+    if exists('./emotes') and running_os == 'Windows':
+        # Generate a list of possible gif files to choose from
+        reacts = [os.path.abspath("emotes\\"+file) for file in listdir('./emotes')]
+        guild = message.guild.id
+        # Include guild-specific results
+        if isdir('{}/emotes/{}'.format(DEFAULT_DIR, guild)):
+            reacts.extend(
+                [os.path.abspath('emotes\\{}\\{}'.format(guild, each)) for each in
+                 listdir('./emotes/{}'.format(guild))])
+        # Include guild-specific nsfw results
+        if 'nsfw' in message.content.lower() and isdir('{}/emotes/{}/nsfw'.format(DEFAULT_DIR, guild)):
+            reacts.extend([os.path.abspath('emotes\\{}\\nsfw\\{}'.format(guild, each)) for each in
+                           listdir('./emotes/{}/nsfw'.format(guild))])
+        return random.choice(reacts)
 
-    return random.choice(reacts)
+    return "Emotes directory does not exist."
 
 
+# TODO untested
 async def fetch_react(message: discord.Message) -> str:
     """
     Save a gif a user added with !gif add

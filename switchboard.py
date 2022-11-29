@@ -4,12 +4,6 @@ import discord
 from discord import Embed
 from discord import File as DiscordFile
 
-# from selenium import webdriver
-# import selenium.webdriver.support.expected_conditions as EC
-# from selenium.webdriver.support.wait import WebDriverWait
-# from selenium.webdriver.common.keys import Keys
-# from selenium.webdriver.common.by import By
-
 import thltb
 import tword
 import tquote
@@ -23,9 +17,9 @@ from tutil import is_admin, config_helper, fetch_file, increment_usage, debug, i
 from speller import Speller
 from constants import EIGHTBALL, DEFAULT_DIR, help_general, VERBOSE
 
+
 # Break out functions to prevent dispatch() from
 # becoming overly lengthy
-@debug
 async def get_quote(result: dict) -> dict:
     """
     Pass off to tquote.py
@@ -43,59 +37,30 @@ async def get_quote(result: dict) -> dict:
     return result
 
 
-@debug
 async def get_plex(result: dict) -> dict:
     """
-    Pass off to tquote.py
+    Pass off to tplex.py
     :param result:
     :return:
     """
+    # TODO add rich embeds
     banner = await tplex.helper(result["message"])
-    print(type(banner))
     result["rawText"] = banner
-    # if type(banner) is str:
-    #     print('raw')
-    #     result["rawText"] = banner
-    # elif type(banner) is list:
-    #     print('list')
-    #     result["rawText"] = banner[0]
-    #     result["file"] = banner[1]
-    # else:
-    #     result["embed"] = banner
-    print(result)
     return result
 
 
-@debug
 async def get_hltb(result: dict) -> dict:
     """
     Pass off to thltb.py
-
+    How Long to Beat dot com search results.
     :param result:
     :return:
     """
+    # TODO build this out
+    # TODO add rich embeds
     banner = await thltb.helper(result["message"])
-    print(type(banner))
-    print(banner)
     result["rawText"] = banner
-    print(result)
     return result
-
-
-# TODO opens plex site but doesn't search / play yet
-# async def play_movie(movie):
-#     driver = webdriver.Firefox()
-#     driver.get('about:preferences')
-#     # search_bar = driver.find_element(By.ID, "searchInput")
-#     # search_bar.send_keys('playDRMContent')
-#     # WebDriverWait(driver, 20).until(EC.presence_of_element_located(By.ID, 'playDRMContent')).click()
-#     driver.find_element(By.ID, 'playDRMContent').click()
-#     # movies = plex.library.section('Movies')
-#     driver.get("http://app.plex.tv")
-#     WebDriverWait(driver, 20).until(EC.presence_of_element_located(By.ID, "universalsearchinput")).click()
-#     search_bar = driver.find_element(By.ID, "universalSearchInput")
-#     search_bar.send_keys(movie)
-#     search_bar.send_keys(Keys.RETURN)
 
 
 async def get_wolfram(result: dict) -> dict:
@@ -113,6 +78,7 @@ async def get_wolfram(result: dict) -> dict:
     return result
 
 
+@debug
 async def get_gif(result: dict) -> dict:
     """
     Pass off to tgif.py
@@ -121,7 +87,7 @@ async def get_gif(result: dict) -> dict:
     """
     args = result["message"].content.split()
     if len(args) > 1 and args[1] == 'add':
-        await tgif.get_react(result["message"])
+        await tgif.fetch_react(result["message"])
     else:
         result["file"] = tgif.get_react(result["message"])
     return result
@@ -192,12 +158,13 @@ async def dispatch(message: discord.Message) -> (None, dict):
         return result
 
     # Correct minor typos
+    # TODO rewrite library defs before using
 #    print('correcting typos')
     # spell = Speller('cmd')
     # operator = spell(args[0][1:])
  #   print(args)
     operator = args[0][1:]
-    print(operator)
+    # TODO move this config.ini + constants file
     if args[0][0] != '!':
         return None
     if VERBOSE >= 2:
@@ -205,7 +172,7 @@ async def dispatch(message: discord.Message) -> (None, dict):
 
     # Quotes
     if operator in {'quote', 'lore', 'q', 'l'}:
-        print('getting quote')
+        # print('getting quote')
         result = await get_quote(result)
 
     if operator in {'invite'}:
@@ -213,11 +180,11 @@ async def dispatch(message: discord.Message) -> (None, dict):
         return result
 
     if operator in {'plex', 'movie', 'movies'}:
-        print('calling plex')
+        # print('calling plex')
         result = await get_plex(result)
 
     if operator in {'hltb'}:
-        print('calling hltb')
+        # print('calling hltb')
         result = await get_hltb(result)
 
     # TODO doesn't work yet, see above

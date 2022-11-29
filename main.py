@@ -66,7 +66,7 @@ async def on_message(message: discord.Message) -> None:
     """
     Dispatch the raw message object to switchboard.py
     Switchboard filters input then redirects to dedicated functions
-    Send discord.message object to Discord API for posting, return None
+    Send discord.Message object to Discord API for posting, return None
     :param message:
     :return:
     """
@@ -90,7 +90,9 @@ async def on_message(message: discord.Message) -> None:
                 await message.channel.send(embed=banner["embed"])
 
         elif banner["file"]:
-            await message.channel.send(file=banner["file"])
+            print(banner)
+            with open(banner["file"], 'rb') as fp:
+                await message.channel.send(file=discord.File(fp, fp.name.split('\\')[-1]))
 
         elif banner["rawText"]:
             # TODO notify results are too long and clip
@@ -99,8 +101,6 @@ async def on_message(message: discord.Message) -> None:
                     await message.channel.send(each)
             else:
                 await message.channel.send(banner["rawText"])
-#        else:
- #           await message.channel.send("No results.")
 
 
 @BOT.event

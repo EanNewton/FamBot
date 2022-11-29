@@ -1,13 +1,19 @@
-# TODO add shuffle / sort queue command
+# TODO add sort queue command
 # TODO page-ize long results
 # TODO add play music / tv
 # TODO break out resume / seek_to
+# TODO prevent multiple 'play' commands from restarting video
+# TODO add rich embeds
+# TODO add imdb / rotten tomato info
+# TODO add summary search
+# TODO add similar / related search
 
 import configparser
 import random
 import re
 import time
 from typing import Union
+from math import ceil
 
 import discord
 import plexapi.video
@@ -69,6 +75,7 @@ async def helper(message: discord.Message, op_override=None):
            'pause',
            'resume',
            'queue',
+           'shuffle',
            # 'play music'
            }
 
@@ -96,6 +103,7 @@ async def helper(message: discord.Message, op_override=None):
             'pause': lambda: pause_media(),
             'resume': lambda: resume_media(args),
             'queue': lambda: show_queue(),
+            'shuffle': lambda: shuffle_queue(),
         }.get(operator, lambda: None)()
     print(f'Result is: {result}')
 
@@ -210,6 +218,17 @@ def show_queue() -> str:
     return '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
 
 
+def shuffle_queue() -> str:
+    """
+    Randomize the order of the play queue.
+    :return:
+    """
+    random.shuffle(queue)
+    # Must be done on two lines as f-strings cannot contain backslash fragments.
+    result = '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
+    return f"Play queue has been shuffled:\n{result}"
+
+
 def clear_queue(args: list) -> str:
     """
     Remove everything in queue.
@@ -246,7 +265,7 @@ async def next_queue(message: discord.Message) -> str:
         else:
             if message.author.id not in skip_votes:
                 skip_votes.append(message.author.id)
-                return f"Added vote to skip. {len(skip_votes)}/{len(voice_channel.members)}"
+                return f"Added vote to skip. {len(skip_votes)}/{ceil(len(voice_channel.members)/2)}"
             else:
                 return f"You have already voted {message.author.name}.\n" \
                        f"All votes can be cleared with `$plex clear votes`."
