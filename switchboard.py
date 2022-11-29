@@ -14,7 +14,7 @@ import tstat
 import tgif
 import tplex
 from tutil import is_admin, config_helper, fetch_file, increment_usage, debug, is_admin_test
-from speller import Speller
+# from speller import Speller
 from constants import EIGHTBALL, DEFAULT_DIR, help_general, VERBOSE
 
 
@@ -78,7 +78,6 @@ async def get_wolfram(result: dict) -> dict:
     return result
 
 
-@debug
 async def get_gif(result: dict) -> dict:
     """
     Pass off to tgif.py
@@ -117,7 +116,7 @@ async def get_help(result: dict) -> dict:
     result["embed"] = banner
     return result
 
-@debug
+
 async def dispatch(message: discord.Message) -> (None, dict):
     """
     Process raw discord.Message object and send it to dedicated function.
@@ -175,24 +174,22 @@ async def dispatch(message: discord.Message) -> (None, dict):
         # print('getting quote')
         result = await get_quote(result)
 
+    # TODO update link
     if operator in {'invite'}:
         result["rawText"] = "https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=7433793&scope=bot"
         return result
 
+    # Plex Media Server
     if operator in {'plex', 'movie', 'movies'}:
         # print('calling plex')
         result = await get_plex(result)
 
+    # How Long to Beat
     if operator in {'hltb'}:
         # print('calling hltb')
         result = await get_hltb(result)
 
-    # TODO doesn't work yet, see above
-    # if operator in {'play'}:
-    #     print('calling play')
-    #     result = await play_movie('hellbender')
-
-  #    Wolfram Alpha
+    # Wolfram Alpha
     elif operator in {'w', 'wolf', 'wolfram'}:
         result = await get_wolfram(result)
 
@@ -257,5 +254,4 @@ async def dispatch(message: discord.Message) -> (None, dict):
     if result["file"] and type(result["file"]) is not DiscordFile:
         result["file"] = DiscordFile(result["file"])
 
-    print(result)
     return result

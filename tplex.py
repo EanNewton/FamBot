@@ -265,7 +265,7 @@ async def next_queue(message: discord.Message) -> str:
         else:
             if message.author.id not in skip_votes:
                 skip_votes.append(message.author.id)
-                return f"Added vote to skip. {len(skip_votes)}/{ceil(len(voice_channel.members)/2)}"
+                return f"Added vote to skip. {len(skip_votes)}/{ceil(len(voice_channel.members) / 2)}"
             else:
                 return f"You have already voted {message.author.name}.\n" \
                        f"All votes can be cleared with `$plex clear votes`."
