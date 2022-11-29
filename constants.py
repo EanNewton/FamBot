@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from googletrans.constants import LANGCODES
 from nltk.data import find as nltk_find
 from nltk import download as nltk_download
+import discord
 
 try:
     nltk_find('stopwords')
@@ -30,8 +31,17 @@ TOKEN = getenv('DISCORD_TOKEN')
 POC_TOKEN = getenv('POC_TOKEN')
 GUILD = getenv('DISCORD_GUILD')
 WOLFRAM = getenv('WOLFRAM_TOKEN')
-VERSION = '06.19.2021'
-VERBOSE = 1
+VERSION = '11.28.2022'
+VERBOSE = 3
+# Intents
+intents = discord.Intents.default()
+# TODO remove unneeded
+intents.messages = True
+intents.voice_states = True
+intents.presences = True
+intents.guild_messages = True
+intents.message_content = True
+BOT = discord.Client(intents=intents)
 
 #################################
 # Internal Function Static Data #
@@ -105,7 +115,7 @@ jsonFormatter = [[
     ['filtered', 'Blacklisted Words'],
     ['mod_roles', 'Moderator Roles'],
     ['anonymous', 'Anonymous Mode'],
-    ['timer_channel', 'Timer Channel ID'],
+    # ['timer_channel', 'Timer Channel ID'],
 ]]
 
 TZ_ABBRS = {

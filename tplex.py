@@ -1,32 +1,59 @@
 # TODO add command to see queue
-# TODO add skip vote command
 # TODO add shuffle / sort queue command
 # TODO page-ize long results
+# TODO add play music / tv
 
 import configparser
 import random
 import re
+import time
 
 import discord
 import plexapi.video
 from plexapi.myplex import MyPlexAccount
 
-from constants import DEFAULT_DIR
-from tutil import wrap, debug, flatten_sublist, get_sec
-
-# Read in config
-config = configparser.ConfigParser()
-config.read(DEFAULT_DIR + '/config.ini')
-# Connect to plex server
-account = MyPlexAccount(config['plex']['Username'], config['plex']['Password'])
-plex = account.resource(config['plex']['Server']).connect()
-client_name = config['plex']['Name']
-
-regex_is_year = r"\d{4}"
-queue = []
-last = []
+from constants import DEFAULT_DIR, VERBOSE, BOT
+from tutil import wrap, debug, flatten_sublist, get_sec, is_admin
+config, queue, last, skip_votes, account, plex, client_name, voice_channel, regex_is_year, voice_channel_id = \
+    None, None, None, None, None, None, None, None, None, None
 
 
+def setup() -> None:
+    """
+
+    :return:
+    """
+    global config, queue, last, skip_votes, account, plex, client_name, voice_channel, regex_is_year, voice_channel_id
+    # Read in config
+    # print('reading config')
+    config = configparser.ConfigParser()
+    config.read(DEFAULT_DIR + '/config.ini')
+
+    regex_is_year = r"\d{4}"
+    # Contains Plex Movie objects
+    queue = []
+    last = []
+    # TODO for use with resume vs seek_to
+    # last_known_time = 0
+    skip_votes = []
+
+    # print('getting channel')
+    # voice_channel = BOT.get_channel(579812270167687182)
+    # print(voice_channel)
+    # Connect to plex server
+    # print('connecting to plex')
+    try:
+        account = MyPlexAccount(config['plex']['Username'], config['plex']['Password'])
+        plex = account.resource(config['plex']['Server']).connect()
+        voice_channel_id = config['discord']['VC_ID']
+        client_name = config['plex']['Name']
+    except Exception as e:
+        print(e)
+    if VERBOSE >= 0:
+        print('[+] End Plex Setup')
+
+
+@debug
 async def helper(message: discord.Message, op_override=None):
     """
     Main entry point from main.py
@@ -43,7 +70,10 @@ async def helper(message: discord.Message, op_override=None):
            'add',
            'clear',
            'pause',
-           'resume'}
+           'resume',
+           'queue',
+           # 'play music'
+           }
 
     operator = 'help'
     if len(args) > 1 and args[1] in ops:
@@ -51,21 +81,31 @@ async def helper(message: discord.Message, op_override=None):
     if op_override:
         operator = op_override
 
-    result = {
-        'search': lambda: search_dispatch(args),
-        'help': lambda: get_help(),
-        'next': lambda: next_queue(),
-        'clients': lambda: list_clients(),
-        'add': lambda: add_to_queue(),
-        'play': lambda: play_media(),
-        'clear': lambda: clear_queue(),
-        'pause': lambda: pause_media(),
-        'resume': lambda: resume_media(args),
-    }.get(operator, lambda: None)()
+    if operator == 'next':
+        result = await next_queue(message)
+    else:
+        result = {
+            'search': lambda: search_dispatch(args),
+            'help': lambda: get_help(),
+            # lambda functions cannot be awaited
+            # This should work but it is resolving to standard Generator instead of Async Generator
+            # 'next': lambda x: (await next_queue(message) for _ in '_').__anext__(),
+            'clients': lambda: list_clients(),
+            'add': lambda: add_to_queue(),
+            'play': lambda: play_media(),
+            # 'play music': lambda: play_music(),
+            'clear': lambda: clear_queue(),
+            'pause': lambda: pause_media(),
+            'resume': lambda: resume_media(args),
+            'queue': lambda: show_queue(),
+        }.get(operator, lambda: None)()
+    print(f'Result is: {result}')
+
     if operator == 'search':
         if not {'help', '-h', '--help'}.intersection(args):
+            # TODO check if this even works
+            last.clear()
             for each in result[0]:
-                last.clear()
                 last.append(each)
             if not result:
                 return 'Nothing found. Please see `$plex search -h` or `$plex help` for more information.'
@@ -93,6 +133,8 @@ def rendered(result: list) -> str:
                 banner.append(f'`{each.title} - ({each.year}) -- {h:02d}:{m:02d}:{s:02d}`\r --{each.summary}')
             else:
                 banner.append(f'`{each.title} - ({each.year}) -- {h:02d}:{m:02d}:{s:02d}`')
+        else:
+            banner.append(f'{each.title}')
     return '\r'.join(banner)
 
 
@@ -102,6 +144,11 @@ def list_clients() -> str:
     :return:
     """
     print(plex)
+    print('getting channel')
+    voice_channel = BOT.get_channel(voice_channel_id)
+    print(voice_channel)
+    for member in voice_channel.members:
+        print(member)
     for each in plex.clients():
         print(each)
     return '\r'.join(plex.clients())
@@ -139,6 +186,7 @@ def pause_media() -> str:
         return f"Oops something went wrong! {e}"
 
 
+@debug
 def resume_media(args: list) -> str:
     """
     Skip to given hh:mm:ss of current media.
@@ -147,17 +195,29 @@ def resume_media(args: list) -> str:
     """
     try:
         ms = get_sec(args[2]) * 1000
+        # last_known_time = ms
     except Exception as e:
         print(e)
         return f"Oops something went wrong! {e}"
     try:
         player = plex.client(client_name)
         result = play_media()
+        # We need to sleep() because if we call player.seekTo() to soon
+        # it will be ignored if movie is still loading. A value between 2-4 seconds seems to work best.
+        time.sleep(3)
         player.seekTo(ms)
         return f'{result} at {args[2]}'
     except Exception as e:
         print(e)
         return f"Oops something went wrong! {e}"
+
+
+def show_queue() -> str:
+    """
+    Show what is currently contained in queue[]
+    :return:
+    """
+    return '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
 
 
 def clear_queue() -> str:
@@ -166,20 +226,34 @@ def clear_queue() -> str:
     :return:
     """
     if len(queue):
+        skip_votes.clear()
         queue.clear()
         return "Cleared queue."
     else:
         return "There is already nothing in queue."
 
 
-def next_queue() -> str:
+@debug
+async def next_queue(message: discord.Message) -> str:
     """
     Remove first item in queue and start the second item.
     :return:
     """
+    voice_channel = BOT.get_channel(voice_channel_id)
+    # print(skip_votes)
+    # print(f'Have {len(skip_votes)} out of {(len(voice_channel.members) / 2)}')
+    # print(is_admin(message.author, message))
     if len(queue):
-        queue.pop(0)
-        return play_media()
+        if await is_admin(message.author, message) or len(skip_votes) > (len(voice_channel.members) / 2):
+            queue.pop(0)
+            skip_votes.clear()
+            return play_media()
+        else:
+            if message.author.id not in skip_votes:
+                skip_votes.append(message.author.id)
+                return f"Added vote to skip. {len(skip_votes)}/{len(voice_channel.members)}"
+            else:
+                return f"You have already voted {message.author.name}."
     else:
         return "There is already nothing in queue."
 
@@ -198,7 +272,7 @@ def add_to_queue() -> str:
             banner.append(each.title)
         return '\r'.join(banner)
 
-
+@debug
 def parse_options(args: list, options: dict) -> tuple:
     similar = False
     summary = False
@@ -242,7 +316,7 @@ def parse_options(args: list, options: dict) -> tuple:
     # actor
     if '-A' in args:
         options["actor"] = args[args.index('-a') + 1]
-        # Check if both first and last name were provided
+        # Check if BOTh first and last name were provided
         if not args[args.index(options["actor"]) + 1].startswith('-'):
             options["actor"] = f'{options["actor"]} {args[args.index(options["actor"]) + 1]}'
     elif '--actor' in args:
@@ -252,7 +326,7 @@ def parse_options(args: list, options: dict) -> tuple:
     # director
     if '-D' in args:
         options["director"] = args[args.index('-D') + 1]
-        # Check if both first and last name were provided
+        # Check if BOTh first and last name were provided
         if not args[args.index(options["director"]) + 1].startswith('-'):
             options["director"] = f'{options["director"]} {args[args.index(options["director"]) + 1]}'
     elif '--director' in args:
@@ -300,6 +374,7 @@ def parse_options(args: list, options: dict) -> tuple:
     return (options, similar, summary)
 
 
+@debug
 def search_dispatch(args):
     """
     Search the Plex instance.
@@ -351,14 +426,14 @@ def search_dispatch(args):
         return [get_search_help()]
     else:
         options, similar, summary = parse_options(args, options)
-        # print(f'parameters set: {options}')
+        print(f'parameters set: {options}')
         # User entered simply "plex search"
         if not args[0]:
             result = ['Please specify a search parameter. ' \
                       'See `plex search help` for more information.']
         # Handle specific search cases
         if args[0] in {'library', 'libraries', 'lib', 'libs'}:
-            result = get_library_list()
+            return [get_library_list()]
         # Determine library
         # We require this of the user to prevent search results taking too long
         elif {args[0], options["library"]}.intersection({
@@ -387,6 +462,7 @@ def search_dispatch(args):
         return [result, similar, summary]
 
 
+@debug
 def search_library(options: dict) -> list:
     """
     The main search function of the Plex instance
@@ -394,38 +470,44 @@ def search_library(options: dict) -> list:
     :return:
     """
     selection = plex.library.section(options["library"])
-    advancedFilters = {
-        'and': [
-            {'year': options["year"]},
-            {'title': options["title"]},
-            {'decade': options["decade"]},
-            {'actor': options["actor"]},
-            {'director': options["director"]},
-            {'genre': options["genre"]},
-            {'audioLanguage': options["audio_language"]},
-            {'subtitleLanguage': options["subtitle_language"]},
-            {'contentRating': options["content_rating"]},
-            {'unwatched': options["unwatched"]}
-        ]
-    }
-    # drop none values
-    filtered = {}
-    for each in advancedFilters["and"]:
-        for k, v in each.items():
-            if v:
-                filtered[k] = v
-    advancedFilters["and"] = [filtered]
     try:
-        selection = selection.search(filters=advancedFilters)
+        # TODO implement 'or' and 'not'
+        advancedFilters = {
+            'and': [
+                {'year': options["year"]},
+                {'title': options["title"]},
+                {'decade': options["decade"]},
+                {'actor': options["actor"]},
+                {'director': options["director"]},
+                {'genre': options["genre"]},
+                {'audioLanguage': options["audio_language"]},
+                {'subtitleLanguage': options["subtitle_language"]},
+                {'contentRating': options["content_rating"]},
+                {'unwatched': options["unwatched"]}
+            ]
+        }
+        # drop none values
+        filtered = {}
+        for each in advancedFilters["and"]:
+            for k, v in each.items():
+                if v:
+                    filtered[k] = v
+        advancedFilters["and"] = [filtered]
+        try:
+            selection = selection.search(filters=advancedFilters)
+        except Exception as e:
+            print('advanced filters failed')
+            return [f'Oops something went wrong! {e}']
+        if options["limit"] is None:
+            options["limit"] = 10
     except Exception as e:
-        print('advanced filters failed')
-        return [f'Oops something went wrong! {e}']
-    if options["limit"] is None:
-        options["limit"] = 10
+        print(e)
+        selection = selection.search(options["title"])
     return list(set(random.choices(selection, k=options["limit"])))
 
 
-def get_library_list() -> list:
+@debug
+def get_library_list() -> str:
     """
     Get list of libraries available on the Plex instance
     :return:
@@ -445,6 +527,7 @@ def get_random(options: dict) -> list:
     if options["limit"] is None:
         options["limit"] = 10
     result = random.choices(selection, k=options["limit"])
+    # result = [f'{each.title} {each.year}' for each in result]
     for each in result:
         each = f'{each.title} ({each.year})'
     return wrap('\r'.join(list(set(result))), 1999)
@@ -568,3 +651,25 @@ def get_search_help() -> str:
       -cr --contentrating  Search for a specific content rating (e.g. PG-13, R)
     ```
     """
+
+
+setup()
+
+
+
+# def play_music() -> str:
+#     """
+#     Start the first item in queue.
+#     :return:
+#     """
+#     try:
+#         player = plex.client(client_name)
+#     except Exception as e:
+#         print(e)
+#         return f"Oops something went wrong! {e}"
+#     if len(queue) > 0:
+#         movie = plex.library.section('Music').get(queue[0].title)
+#         player.playMedia(media=movie)
+#         return f'Now playing: {movie.title}'
+#     else:
+#         return "No media in queue."

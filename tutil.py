@@ -7,12 +7,13 @@
 # TODO Add option to delete command request message
 # TODO Server counts
 
-import json
 import functools
-import aiohttp
-import aiofiles
-import discord
+import json
+import time
 
+import aiofiles
+import aiohttp
+import discord
 from sqlalchemy import select, MetaData, Table, Column, Integer, String
 
 from constants import DEFAULT_DIR, jsonFormatter, ENGINE, VERBOSE
@@ -36,7 +37,7 @@ def setup() -> None:
         Column('filtered', String),
         Column('mod_roles', String),
         Column('anonymous', Integer),
-    #    Column('timer_channel', Integer),
+        #    Column('timer_channel', Integer),
     )
     Stats = Table(
         'usageCounts', meta,
@@ -89,6 +90,34 @@ def debug(func):
         return func
 
 
+def sleep(timeout, retry=3):
+    """
+    Sleep decorator, usage: @sleep(3)
+    :param timeout:
+    :param retry:
+    :return:
+    """
+
+    def the_real_decorator(function):
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < retry:
+                try:
+                    value = function(*args, **kwargs)
+                    if value is None:
+                        return
+                except Exception as e:
+                    if VERBOSE >= 1:
+                        print(e)
+                        print(f'Sleeping for {timeout} seconds')
+                    time.sleep(timeout)
+                    retries += 1
+
+        return wrapper
+
+    return the_real_decorator
+
+
 def fetch_file(directory: str, filename: str):
     """
     Safely read in a dynamically designated local file
@@ -108,8 +137,11 @@ async def is_admin(author: discord.User, message: discord.Message) -> bool:
 	:param author: <Discord.message.author object>
 	:return: <bool>
 	"""
-
-
+    try:
+        print(type(author))
+        print(author)
+    except Exception as e:
+        print(e)
     if type(author) is discord.User and not author.bot:
         if author.id == 184474309891194880 or author.id == message.guild.owner_id:
             return True
@@ -136,6 +168,7 @@ channels. Please try again in a different channel, or the guild owner can issue 
             else:
                 pass
         return False
+
 
 @debug
 async def is_admin_test(author: discord.User, message: discord.Message) -> bool:
@@ -266,6 +299,7 @@ def increment_usage(guild: discord.guild, command: str) -> int:
             return increment_usage(guild, command)
 
 
+@debug
 async def config_helper(message: discord.Message):
     """
 	Create or reset the server config entry
@@ -297,6 +331,7 @@ def update_mod_roles() -> None:
                 print('[+] Updated mod roles')
 
 
+@debug
 def config_create(guild: discord.guild) -> str:
     """
 	Get the config file for the server and give to the user
@@ -357,7 +392,7 @@ def config_create_default(guild: discord.guild) -> None:
             filtered='none',
             mod_roles='mod;admin;discord mod;',
             anonymous=1,
-         #   timer_channel=0,
+            #   timer_channel=0,
         )
         conn.execute(ins)
 
@@ -388,7 +423,7 @@ def config_load(guild: int) -> None:
             filtered=dict_['filtered'],
             mod_roles=dict_['mod_roles'],
             anonymous=dict_['anonymous'],
-         #   timer_channel=dict_['timer_channel'],
+            #   timer_channel=dict_['timer_channel'],
         )
         conn.execute(ins)
     # TODO ensure to lower
@@ -431,7 +466,6 @@ async def config_fetch_embed(message: discord.Message) -> None:
     config_load(message.guild.id)
 
 
-@debug
 def fetch_value(guild: int, val: str, delim=None) -> list:
     """
 	Get a specific cell from the guilds config table

@@ -4,11 +4,11 @@ import discord
 from discord import Embed
 from discord import File as DiscordFile
 
-from selenium import webdriver
-import selenium.webdriver.support.expected_conditions as EC
-from selenium.webdriver.support.wait import WebDriverWait
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
+# from selenium import webdriver
+# import selenium.webdriver.support.expected_conditions as EC
+# from selenium.webdriver.support.wait import WebDriverWait
+# from selenium.webdriver.common.keys import Keys
+# from selenium.webdriver.common.by import By
 
 import thltb
 import tword
@@ -16,7 +16,7 @@ import tquote
 import tsched
 import tlog
 import tstat
-import tcustom
+# import tcustom
 import tgif
 import tplex
 from tutil import is_admin, config_helper, fetch_file, increment_usage, debug, is_admin_test
@@ -83,19 +83,19 @@ async def get_hltb(result: dict) -> dict:
 
 
 # TODO opens plex site but doesn't search / play yet
-async def play_movie(movie):
-    driver = webdriver.Firefox()
-    driver.get('about:preferences')
-    # search_bar = driver.find_element(By.ID, "searchInput")
-    # search_bar.send_keys('playDRMContent')
-    # WebDriverWait(driver, 20).until(EC.presence_of_element_located(By.ID, 'playDRMContent')).click()
-    driver.find_element(By.ID, 'playDRMContent').click()
-    # movies = plex.library.section('Movies')
-    driver.get("http://app.plex.tv")
-    WebDriverWait(driver, 20).until(EC.presence_of_element_located(By.ID, "universalsearchinput")).click()
-    search_bar = driver.find_element(By.ID, "universalSearchInput")
-    search_bar.send_keys(movie)
-    search_bar.send_keys(Keys.RETURN)
+# async def play_movie(movie):
+#     driver = webdriver.Firefox()
+#     driver.get('about:preferences')
+#     # search_bar = driver.find_element(By.ID, "searchInput")
+#     # search_bar.send_keys('playDRMContent')
+#     # WebDriverWait(driver, 20).until(EC.presence_of_element_located(By.ID, 'playDRMContent')).click()
+#     driver.find_element(By.ID, 'playDRMContent').click()
+#     # movies = plex.library.section('Movies')
+#     driver.get("http://app.plex.tv")
+#     WebDriverWait(driver, 20).until(EC.presence_of_element_located(By.ID, "universalsearchinput")).click()
+#     search_bar = driver.find_element(By.ID, "universalSearchInput")
+#     search_bar.send_keys(movie)
+#     search_bar.send_keys(Keys.RETURN)
 
 
 async def get_wolfram(result: dict) -> dict:
@@ -198,7 +198,7 @@ async def dispatch(message: discord.Message) -> (None, dict):
  #   print(args)
     operator = args[0][1:]
     print(operator)
-    if args[0][0] != '$':
+    if args[0][0] != '!':
         return None
     if VERBOSE >= 2:
         print('[-] {} by {} in {} - {}'.format(operator, message.author.name, message.channel.name, message.guild.name))
@@ -212,7 +212,7 @@ async def dispatch(message: discord.Message) -> (None, dict):
         result["rawText"] = "https://discord.com/api/oauth2/authorize?client_id=663696399862595584&permissions=7433793&scope=bot"
         return result
 
-    if operator in {'plex'}:
+    if operator in {'plex', 'movie', 'movies'}:
         print('calling plex')
         result = await get_plex(result)
 

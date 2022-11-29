@@ -1,0 +1,14 @@
+
+.env
+
+config.ini
+
+log/err.log
+
+log/quotes.db
+
+*.pyc
+
+.idea/
+
+*.log

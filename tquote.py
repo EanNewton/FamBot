@@ -10,7 +10,7 @@ from tutil import fetch_file, is_admin, increment_usage, fetch_value, debug
 from constants import DEFAULT_DIR, ENGINE, VERBOSE, extSet
 
 
-def setup():
+def setup() -> None:
     global meta, Quotes, Lore, Config
     meta = MetaData()
     Config = Table(

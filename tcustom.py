@@ -38,7 +38,7 @@ def setup() -> None:
     if VERBOSE >= 0:
         print('[+] End Custom Commands Setup')
 
-@debug
+
 def import_custom_commands(guild: int) -> None:
     """
     Internal function to grab any custom commands from the database

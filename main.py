@@ -17,43 +17,34 @@ import tquote
 import tcustom
 from tutil import is_admin, config_create, fetch_file, is_admin_test
 from tutil import setup as util_setup
-from constants import TOKEN, POC_TOKEN, VERSION, DIVIDER, VERBOSE, DEFAULT_DIR
+from constants import TOKEN, POC_TOKEN, VERSION, DIVIDER, VERBOSE, DEFAULT_DIR, BOT
 
 # Read in server config
 config = configparser.ConfigParser()
 config.read(DEFAULT_DIR + '/config.ini')
-# Intents
-intents = discord.Intents.default()
-# TODO remove unneeded
-intents.messages = True
-intents.voice_states = True
-intents.presences = True
-intents.guild_messages = True
-intents.message_content = True
-bot = discord.Client(intents=intents)
 
 
-@bot.event
+@BOT.event
 async def on_ready() -> None:
     print(
-        f'{bot.user} has connected to Discord!\n'
+        f'{BOT.user} has connected to Discord!\n'
         f'Revision date: {VERSION}\n'
     )
     if VERBOSE >= 0:
         count = 0
-        for each in bot.guilds:
+        for each in BOT.guilds:
             print(
                 f'{each.name}(id: {each.id})\n'
                 f'Member count: {each.member_count}'
             )
             count += each.member_count
-    print('Total guilds: {}'.format(len(bot.guilds)))
+    print('Total guilds: {}'.format(len(BOT.guilds)))
     print('Total members: {}'.format(count))
     print('***🟢 ------------ Server Online ------------ 🟢***')
-    await bot.change_presence(status=discord.Status.idle, activity=None)
+    await BOT.change_presence(status=discord.Status.idle, activity=None)
 
 
-@bot.event
+@BOT.event
 async def on_guild_join(guild: discord.guild) -> None:
     """
     Create a blank new config in the database and send a DM to the guild owner.
@@ -70,7 +61,7 @@ async def on_guild_join(guild: discord.guild) -> None:
     util_setup()
 
 
-@bot.event
+@BOT.event
 async def on_message(message: discord.Message) -> None:
     """
     Dispatch the raw message object to switchboard.py
@@ -112,7 +103,7 @@ async def on_message(message: discord.Message) -> None:
  #           await message.channel.send("No results.")
 
 
-@bot.event
+@BOT.event
 async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
     """
     Called whenever a reaction is added to a message.
@@ -123,17 +114,17 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
     :param payload:
     :return:
     """
-    channel = bot.get_channel(payload.channel_id)
+    channel = BOT.get_channel(payload.channel_id)
     message = await channel.fetch_message(payload.message_id)
     print(payload)
     print(payload.emoji)
 
     # Add a quote
     # emoji is :speech_left:
-    if str(payload.emoji) == '🗨️' and not message.author.bot:
-        print('caught speech')
+    if str(payload.emoji) == '🗨️' and not message.author.BOT:
+        # print('caught speech')
         if not tquote.check_if_exists(message.guild.id, message.id):
-            print('does not exist yet')
+            # print('does not exist yet')
             banner = tquote.insert_quote(message, None, payload.member.name)
             if VERBOSE >= 2:
                 print('[+] Added quote {}.'.format(banner))
@@ -164,9 +155,9 @@ async def on_raw_reaction_add(payload: discord.RawReactionActionEvent) -> None:
 
 
 # TODO redo logging with loguru
-@bot.event
+@BOT.event
 async def on_error(event, *args, **kwargs):
-    # For errors with the bot itself
+    # For errors with the BOT itself
     with open('./log/err.log', 'a') as f:
         if event == 'on_message':
             timestamp = pendulum.now(tz='America/Phoenix').to_datetime_string()
@@ -184,6 +175,6 @@ async def on_error(event, *args, **kwargs):
         else:
             return
 
-bot.run(POC_TOKEN)
+BOT.run(POC_TOKEN)
 
 # client.run(config['discord']['Key'])
