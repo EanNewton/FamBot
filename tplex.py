@@ -1,3 +1,5 @@
+#!/usr/bin/python3
+
 # TODO add sort queue command
 # TODO page-ize long results
 # TODO add play music / tv
@@ -7,19 +9,21 @@
 # TODO add imdb / rotten tomato info
 # TODO add summary search
 # TODO add similar / related search
-import asyncio
+
+
 import configparser
 import random
 import re
 import threading
 import time
-from typing import Union
+from typing import Union, Any
 from math import ceil
 
 import discord
 import plexapi.video
 import plexapi.audio
 from plexapi.myplex import MyPlexAccount
+# from plexapi.video import Movie
 
 from constants import DEFAULT_DIR, VERBOSE, BOT
 from tutil import flatten_sublist, get_sec, get_sec_rev, is_admin
@@ -27,11 +31,9 @@ from tutil import debug
 
 config, account, plex, client_name, voice_channel_id = \
     configparser.ConfigParser, str, plexapi.myplex.PlexClient, str, int
-# 'queue' and 'last' are a list of plexapi.Video.Movie
 queue = []  # type: list[plexapi.video.Movie]
 last = []  # type: list[Union[plexapi.video.Movie, str]]
-music_queue = [] # type: list[plexapi.audio.Audio]
-album_queue = []
+music_queue = []  # type: list[plexapi.audio.Track]
 # 'skip_votes' is a list of Discord Member ID's to ensure uniqueness
 skip_votes = []  # type: list[discord.Member.id]
 # Confirm we received a valid 4-length digit for --year search
@@ -60,13 +62,14 @@ def setup() -> None:
         voice_channel_id = int(config['discord']['VC_ID'])  # type: int
         client_name = config['plex']['Name']  # type: str
     except Exception as e:
-        print(f'Oops! Something went wrong: {e}')
-        print('Is the Plex instance online?')
+        print(f'[!] Oops! Something went wrong:\n'
+              f'{e}\n'
+              f'[!] Is the Plex instance online?')
     if VERBOSE >= 0:
         print('[+] End Plex Setup')
 
 
-async def helper(message: discord.Message, op_override=None):
+async def helper(message: discord.Message, op_override=None) -> str:
     """
     Main entry point from main.py
     :param op_override: Activate a specific operator
@@ -74,24 +77,11 @@ async def helper(message: discord.Message, op_override=None):
     :return: <lambda function> Internal function dispatch
     """
     args = message.content.split()
-    ops = {'search',
-           'help',
-           'play',
-           'next',
-           'clients',
-           'add',
-           'clear',
-           'pause',
-           'resume',
-           'queue',
-           'shuffle',
-           # 'play music'
-           }
-
-    # If the user calls simple "$plex" with no options, return the help statement
-    operator = 'help'
-    if len(args) > 1 and args[1] in ops:
-        operator = args[1]
+    if len(args) > 1:
+        operator = args[1]  # type: str
+    else:
+        # If the user calls simple "$plex" with no options, return the help statement
+        operator = 'help'
     # 'op_override' exists for testing purposes, it should never be possible for a user to declare it from Discord
     if op_override:
         operator = op_override
@@ -114,7 +104,8 @@ async def helper(message: discord.Message, op_override=None):
             'queue': lambda: show_queue(),
             'shuffle': lambda: shuffle_queue(),
         }.get(operator, lambda: None)()
-    print(f'Result is: {result}')
+    if VERBOSE > 2:
+        print(f'[-] Result is: {result}')
 
     if operator == 'search':
         if not {'help', '-h', '--help'}.intersection(args):
@@ -136,11 +127,11 @@ def rendered(result: list) -> str:
     """
     # We were given a result from a non-search function
     if len(result) == 1:
+        # TODO check if anything hits this
         return result[0]
     # We were given a result from a search function
     else:
-        summary = result[2]
-        result = result[0]
+        result = result[0]   # Search results
         banner = []
         for each in result:
             # print(type(each))
@@ -148,14 +139,11 @@ def rendered(result: list) -> str:
                 duration = int(each.duration / 1000)
                 m, s = divmod(duration, 60)
                 h, m = divmod(m, 60)
-                if summary:
-                    banner.append(f'`{each.title} - ({each.year}) -- {h:02d}:{m:02d}:{s:02d}`\r --{each.summary}')
-                else:
-                    banner.append(f'`{each.title} - ({each.year}) -- {h:02d}:{m:02d}:{s:02d}`')
+                banner.append(f'`{each.title} - ({each.year}) -- {h:02d}:{m:02d}:{s:02d}`')
             elif type(each) == plexapi.audio.Album:
                 banner.append(f'`{each.parentTitle} - {each.title} ({each.year})`')
                 for index, track in enumerate(each.tracks()):
-                    banner.append(f'`  {str(index+1).zfill(2)}. - {track.title} ({get_sec_rev(track.duration)})`')
+                    banner.append(f'`  {str(index + 1).zfill(2)}. - {track.title} ({get_sec_rev(track.duration)})`')
             elif type(each) == plexapi.audio.Artist:
                 for album in each.albums():
                     banner.append(f'`{album.parentTitle} - {album.title} ({album.year})`')
@@ -164,11 +152,7 @@ def rendered(result: list) -> str:
         return '\r'.join(banner)
 
 
-async def connect():
-    channel = BOT.get_channel(voice_channel_id)
-    await channel.connect()
-
-
+# TODO update to match
 def get_help() -> str:
     """
     Return help file for usage.
@@ -201,7 +185,6 @@ def get_help() -> str:
 ############
 # SEARCH   #
 ############
-@debug
 def parse_movie_options(args: list, options: dict) -> dict:
     """
     Check with --options were specified and convert them to dictionary values for library search.
@@ -209,8 +192,6 @@ def parse_movie_options(args: list, options: dict) -> dict:
     :param options:
     :return:
     """
-    # similar = False
-    # summary = False
     # Handle special options
     # TODO is --all needed?
     # all
@@ -314,18 +295,10 @@ def parse_movie_options(args: list, options: dict) -> dict:
     elif '--contentrating' in args:
         options["content_rating"] = args[args.index('--contentrating') + 1]
     # TODO similar / summary search currently unimplemented
-    # if '-sim' in args:
-    #     similar = True
-    # elif '--similar' in args:
-    #     similar = True
-    # if '-sum' in args:
-    #     summary = True
-    # elif '--summary' in args:
-    #     summary = True
     return options
 
 
-def search_dispatch(args):
+def search_dispatch(args: list) -> list:
     """
     Search the Plex instance.
     :param args:
@@ -333,17 +306,13 @@ def search_dispatch(args):
     """
     # Sanitize input
     # Some users will do --option=argument while some will do --option argument
-    try:
-        args = [arg.split('=') for arg in args]
-        args = flatten_sublist(args)
-    # TODO over broad exception, can we even break anything here? is this needed?
-    except Exception as e:
-        print(e)
-        pass
+    args = flatten_sublist([arg.split('=') for arg in args])
     # Add if statement to this to avoid -D becoming equivalent to -d, etc
     args = [arg.lower().strip() if not arg.startswith('-') else arg for arg in args]
     # TODO add Speller library
-    args = args[2:]
+    # Drop '$plex <operator>' and keep only '--options [option]'
+    args = args[2:]  # type: list[str]
+    result = None
     if VERBOSE >= 2:
         print(f'args are: {args}')
 
@@ -352,7 +321,7 @@ def search_dispatch(args):
         "library": None,
         "limit": None,
         "title": None,
-        "year": re.search(regex_is_year, ' '.join(args[1:2])),  # None if no matches
+        "year": re.search(regex_is_year, ' '.join(args[1:2])),  # 'None' if no matches
         "decade": None,
         "actor": None,
         "director": None,
@@ -362,12 +331,6 @@ def search_dispatch(args):
         "content_rating": None,
         "unwatched": None,
     }
-    # music_options = {
-    #     "album": None,
-    #     "artist": None
-    #     "track": None,
-    # }
-    result = None
     if VERBOSE >= 2:
         print(f'options set: {options}')
 
@@ -393,7 +356,9 @@ def search_dispatch(args):
         if not args[0]:
             result = ['Please specify a search parameter.\nSee `plex search help` for more information.']
 
-        # Determine library
+        #####################
+        # Determine library #
+        #####################
         # We require this of the user to prevent search results taking too long
         if args[0] in {'library', 'libraries', 'lib', 'libs'}:
             return [get_library_list()]
@@ -407,6 +372,10 @@ def search_dispatch(args):
             if not options["library"]:
                 options["library"] = 'Movies'
 
+
+        #################
+        # Search Movies #
+        #################
         if options["library"] == 'Movies':
             # Handle specific search cases
             if args[0] in {'random', 'rand'}:
@@ -418,40 +387,45 @@ def search_dispatch(args):
             elif args[0] in {'recent', 'new'}:
                 result = get_recently_added(options)
 
-            # Generic search
-            if not result:
-                result = search_library(options)
-
+        #################
+        # Search Music  #
+        #################
         elif options["library"] == 'Music':
             music = plex.library.section('Music')
             if {'-album', '-albums'}.intersection(args):
                 start = args.index('-album')
-                query = ' '.join([word for word in args[start+1:] if not word.startswith('-')])
+                query = ' '.join([word for word in args[start + 1:] if not word.startswith('-')])
                 result = music.searchAlbums(title=query)
-                # if {'-track', '-tracks'}.intersection(args):
-                #     temp = [track for track in result.tracks()]
-                #     result = temp
             elif {'-artist', '-artists'}.intersection(args):
                 start = args.index('-artist')
-                query = ' '.join([word for word in args[start+1:] if not word.startswith('-')])
+                query = ' '.join([word for word in args[start + 1:] if not word.startswith('-')])
                 result = music.searchArtists(title=query)
-                # if {'-album', '-albums'}.intersection(args):
-                #     temp = [album for album in result.albums()]
-                #     result = temp
             else:
                 result = music.searchTracks(title=options["title"])
+
+        #################
+        # Search TV     #
+        #################
+        # TODO: Implement TV search and playback
+
+        ##################
+        # Generic Search #
+        ##################
+        if not result:
+            result = search_library(options)
     # 'False' values are placeholders for future implementation of 'similar' and 'summary' searches.
     # Currently, need to keep them to indicate to 'rendered()' we are returning search results.
-    return [result, options["library"], False]
+    return [result, options["library"], False]  # type: list[list[Any], str, bool]
 
-@debug
+
 def search_library(options: dict) -> list:
     """
     The main search function of the Plex instance
     :param options:
     :return:
     """
-    selection = plex.library.section(options["library"])
+    # noinspection PyUnresolvedReferences
+    selection = plex.library.section(options["library"])  # type: plexapi.library.Library
     try:
         # TODO implement 'or' and 'not'
         # Why are you using camelCase and not following PEP8 guidelines?
@@ -477,21 +451,21 @@ def search_library(options: dict) -> list:
         # drop none values
         filtered = {}
         for each in advancedFilters["and"]:
-            for k, v in each.items():
-                if v:
-                    filtered[k] = v
+            # noinspection PyUnresolvedReferences
+            for key, value in each.items():
+                if value:
+                    filtered[key] = value
         advancedFilters["and"] = [filtered]
         selection = selection.search(filters=advancedFilters)
-        if options["limit"] is None:
-            options["limit"] = 10
     except Exception as e:
-        print(f'Oops! Something went wrong during Advanced Filter selection.\n'
-              f'Trying to fall back to default title search.\n{e}')
+        print(f'[!] Oops! Something went wrong during Advanced Filter selection.\n'
+              f'[!] Trying to fall back to default title search.\n'
+              f'[!] {e}')
         try:
             selection = selection.search(options["title"])
         except Exception as e:
-            return [f'Oops! Something went wrong. Please check your search and try again.\n{e}']
-    return list(set(random.choices(selection, k=options["limit"])))
+            return [f'[!] Oops! Something went wrong. Please check your search and try again.\n{e}']
+    return list(set(random.choices(selection, k=options["limit"])))  # type: list[Any]
 
 
 def get_library_list() -> str:
@@ -510,8 +484,6 @@ def get_random(options: dict) -> list:
     """
     selection = plex.library.section(options["library"])
     selection = selection.search()
-    if options["limit"] is None:
-        options["limit"] = 10
     return [*set(random.choices(selection, k=options["limit"]))]
 
 
@@ -767,6 +739,7 @@ def add_to_queue() -> str:
                     for track in album.tracks():
                         music_queue.append(track)
             elif type(each) == plexapi.audio.Track:
+                # noinspection PyTypeChecker
                 music_queue.append(each)
             elif type(each) == plexapi.video.Movie:
                 queue.append(each)
@@ -775,6 +748,7 @@ def add_to_queue() -> str:
 
 
 setup()
+
 
 ###########
 # DEBUG   #
@@ -794,33 +768,11 @@ def list_clients() -> str:
     return '\r'.join(plex.clients())
 
 
-
-# def play_music(options: dict) -> str:
-#     """
-#     Start playing from Music.
-#     :return:
-#     """
-#     try:
-#         player = plex.client(client_name)
-#     except Exception as e:
-#         return f"Oops something went wrong! {e}\nIs the Plex instance online?"
-#     random = plex.library.section('Music').all()
-#     player.goToMusic()
-#     player.playMedia(media=random)
-
-# def play_music() -> str:
-#     """
-#     Start the first item in queue.
-#     :return:
-#     """
-#     try:
-#         player = plex.client(client_name)
-#     except Exception as e:
-#         print(e)
-#         return f"Oops something went wrong! {e}"
-#     if len(queue) > 0:
-#         movie = plex.library.section('Music').get(queue[0].title)
-#         player.playMedia(media=movie)
-#         return f'Now playing: {movie.title}'
-#     else:
-#         return "No media in queue."
+# Currently unused
+async def connect() -> None:
+    """
+    Connect Bot to the voice channel.
+    :return:
+    """
+    channel = BOT.get_channel(voice_channel_id)
+    await channel.connect()

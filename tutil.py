@@ -10,6 +10,7 @@
 import functools
 import json
 import time
+import datetime
 
 import aiofiles
 import aiohttp
@@ -97,7 +98,6 @@ def sleep(timeout, retry=3):
     :param retry:
     :return:
     """
-
     def the_real_decorator(function):
         def wrapper(*args, **kwargs):
             retries = 0
@@ -112,9 +112,7 @@ def sleep(timeout, retry=3):
                         print(f'Sleeping for {timeout} seconds')
                     time.sleep(timeout)
                     retries += 1
-
         return wrapper
-
     return the_real_decorator
 
 
@@ -217,10 +215,19 @@ def wrap(s: str, w: int) -> list:
     return [s[i:i + w] for i in range(0, len(s), w)]
 
 
-def get_sec(time_str):
+def get_sec(time_str: str) -> int:
     """Get seconds from time."""
     h, m, s = time_str.split(':')
     return int(h) * 3600 + int(m) * 60 + int(s)
+
+
+def get_sec_rev(time_str: int) -> str:
+    """
+    Convert ms to hh:mm:ss format.
+    :param time_str:
+    :return:
+    """
+    return datetime.datetime.fromtimestamp(time_str / 1000).strftime('%M:%S')
 
 
 def flatten_sublist(l: list):
