@@ -2,13 +2,9 @@
 Username =
 Password =
 Server =
-RemappedFolders = /data/media1:/plexmedia1,/data/media2:/plexmedia2
 Name =
 [discord]
 Key =
 AuthorizedUsers =
 AllowedChannels =
-VC_ID = 
-[stream]
-Destination = https://app.plex.tv/desktop/#!/media/[Some String]/com.plexapp.plugins.library?source=1
-FFMPEGLocation = ffmpeg
+VC_ID =
