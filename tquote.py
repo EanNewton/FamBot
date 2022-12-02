@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 import discord
+import pandas as pd
 import pendulum
 import sqlalchemy
 from discord import Embed
-import pandas as pd
 from sqlalchemy import and_, func, select, MetaData, Table, Column, Integer, String
 
-from tutil import fetch_file, is_admin, increment_usage, fetch_value, debug
 from constants import DEFAULT_DIR, ENGINE, VERBOSE, extSet
+from tutil import fetch_file, is_admin, increment_usage, fetch_value, debug
 
 
 def setup() -> None:
@@ -33,7 +33,7 @@ def setup() -> None:
         Column('guild', String),
         Column('guild_name', String),
         Column('embed', String),
-#        Column('context', String),
+        #        Column('context', String),
     )
     Lore = Table(
         'famLore', meta,
@@ -57,13 +57,10 @@ async def helper(message: discord.Message):
 	:param message: <Discord.message object>
 	:return: <lambda function> Internal function dispatch
 	"""
-
     text = message.content
     for each in message.mentions:
         text = text.replace('<@!{}>'.format(each.id), each.name)
     args = text.split()
-    print(args)
-
     # Lore
     if args[0] == '!lore':
         increment_usage(message.guild, 'lore')
@@ -78,7 +75,6 @@ async def helper(message: discord.Message):
                 return get_quote(message, Lore, ' '.join(args[1:]), True)
         else:
             return get_quote(message, Lore, None, True)
-
     # Quote with options
     elif len(args) > 1:
         increment_usage(message.guild, 'quote')
@@ -90,7 +86,6 @@ async def helper(message: discord.Message):
             return get_quote_log(message.guild.id)
         else:
             return get_quote(message, Quotes, ' '.join(args[1:]), True)
-
     # Any random quote
     else:
         increment_usage(message.guild, 'quote')
@@ -104,24 +99,21 @@ def get_quote_log(guild: int) -> list:
 	:param guild:
 	:return:
 	"""
-    df = [None, None]
+    data_frame = [None, None]
     for idx, Table in enumerate({Quotes, Lore}):
         select_st = select([Table]).where(
             Table.c.guild == guild)
         with ENGINE.connect() as conn:
             result = conn.execute(select_st).fetchall()
             keys = conn.execute(select_st).keys()
-
             entries = [each.values() for each in result]
             for each in entries:
                 each[0] = 'id_{}'.format(each[0])
                 each[4] = 'g_{}'.format(each[4])
-
-            df[idx] = pd.DataFrame(entries, columns=keys)
-
+            data_frame[idx] = pd.DataFrame(entries, columns=keys)
     with pd.ExcelWriter('{}/log/quoteLog_{}.xlsx'.format(DEFAULT_DIR, guild), engine='xlsxwriter') as writer:
-        df[1].to_excel(writer, sheet_name='Sheet_1')
-        df[0].to_excel(writer, sheet_name='Sheet_2')
+        data_frame[1].to_excel(writer, sheet_name='Sheet_1')
+        data_frame[0].to_excel(writer, sheet_name='Sheet_2')
     return ['Log of all quotes and lore for this guild:', '{}/log/quoteLog_{}.xlsx'.format(DEFAULT_DIR, guild)]
 
 
@@ -134,10 +126,8 @@ def insert_quote(message: discord.Message, Table: (None, sqlalchemy.Table), adde
 	:param adder: <String> Username of the member who added the :speech_left:
 	:return: <String> Notifying of message being added
 	"""
-
     if Table is None:
         Table = Quotes
-
     config = load_config(message.guild.id)
     if config:
         server_locale = config[2]
@@ -145,7 +135,6 @@ def insert_quote(message: discord.Message, Table: (None, sqlalchemy.Table), adde
     else:
         server_locale = 'Asia/Tokyo'
         stm = '--{} on {}'
-
     # Suppress any user or role mentions
     text = message.content
     for each in message.mentions:
@@ -154,10 +143,8 @@ def insert_quote(message: discord.Message, Table: (None, sqlalchemy.Table), adde
         text = text.replace('<@&{}>'.format(each.id), each.name)
     text = text.replace('@everyone', '@ everyone')
     text = text.replace('@here', '@ here')
-
-    jump_url = message.jump_url
+    # jump_url = message.jump_url
     args = text.split()
-
     embed = str(message.attachments[0].url) if message.attachments else None
     if not embed:
         embed = ''
@@ -166,7 +153,6 @@ def insert_quote(message: discord.Message, Table: (None, sqlalchemy.Table), adde
                 if each.split('.')[-1] in extSet['image']:
                     embed = '{}\n{}'.format(embed, each)
     date = pendulum.now(tz=server_locale).to_day_datetime_string()
-
     with ENGINE.connect() as conn:
         if Table.name == 'famQuotes':
             ins = Table.insert().values(
@@ -177,7 +163,7 @@ def insert_quote(message: discord.Message, Table: (None, sqlalchemy.Table), adde
                 guild=str(message.guild.id),
                 guild_name=message.guild.name,
                 embed=embed,
-#                context=jump_url,
+                #                context=jump_url,
             )
             conn.execute(ins)
             if not fetch_value(message.guild.id, 10):
@@ -187,7 +173,6 @@ def insert_quote(message: discord.Message, Table: (None, sqlalchemy.Table), adde
             if embed:
                 banner.set_image(url=embed)
             banner.set_footer(text=stm.format(message.author.name, date))
-
         elif Table.name == 'famLore':
             ins = Table.insert().values(
                 id=message.id,
@@ -216,9 +201,7 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
 	:param username: (Optional) <str> Case sensitive Discord username, without discriminator
     :param raw:
 	"""
-
     Table = Quotes
-
     if username:
         select_user = select([Table]).where(and_(
             Table.c.name == username,
@@ -226,11 +209,9 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
         select_id = select([Table]).where(and_(
             Table.c.id == username,
             Table.c.guild == message.guild.id))
-#        print(select_user)
     else:
         select_rand = select([Table]).where(
             Table.c.guild == message.guild.id).order_by(func.random())
- #       print(select_rand)
 
     with ENGINE.connect() as conn:
         if username:
@@ -238,21 +219,12 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
             if not result:
                 result = conn.execute(select_user).fetchone()
         else:
-  #          print('selecting')
-   #         print(conn)
-    #        print(conn.execute(select_rand))
-     #       result = conn.execute(select_rand)
-      #      print(result)
             result = conn.execute(select_rand).fetchone()
-       # print("result:")
-       # print(result)
 
         # Result fields translate as
         # [0]: message id, [1]: author, [2]: quote, [3]: date, [6]: embed url, [7]: jump_url
         if result:
             config = load_config(message.guild.id)
-        #    print('config:')
-         #   print(config)
             stm = '---{} on {}'
             context_url = 'blank'
             title = 'Quote {}'.format(result[0])
@@ -274,7 +246,6 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
                 elif Table.name == 'famLore':
                     stm = '---Scribed by the Lore Master {}, on the blessed day of {}'
                     title = "Lore {}".format(result[0])
-         #   print(stm, title, context_url)
         if raw:
             # Check if there is an attached img or file to send as well
             if len(result) > 6 and result[6]:
@@ -288,10 +259,8 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
             else:
                 text = result[2]
             return stm.format(title, text, result[1], result[3])
-
         else:
             stm = stm.format(result[1], result[3])
-
             if len(result) > 6 and result[6]:
                 result[2].replace(result[6], '')
             banner = Embed(title=title, description=result[2])
@@ -299,7 +268,6 @@ def get_quote(message: discord.Message, Table: sqlalchemy.Table, username=None, 
             if len(result) > 6 and result[6]:
                 banner.set_image(url=result[6])
             banner.set_footer(text=stm)
-
             return banner
 
 
@@ -310,7 +278,6 @@ def delete_quote(guild: int, msg_id: int) -> (str, None):
 	:param msg_id: <Int> Discord message ID
 	:return: <String> Notify if quote has been removed
 	"""
-
     with ENGINE.connect() as conn:
         for Table in {Quotes, Lore}:
             select_st = select([Table]).where(and_(
@@ -321,14 +288,12 @@ def delete_quote(guild: int, msg_id: int) -> (str, None):
                 result = conn.execute(select_st).fetchone()
                 if result:
                     quote = '{}\n ---{} on {}'.format(result[2], result[1], result[3])
-
                     ins = Table.delete().where(and_(
                         Table.c.id == msg_id,
                         Table.c.guild == guild
                     ))
                     conn.execute(ins)
                 return "Deleted quote: {}".format(quote)
-
             except Exception as e:
                 if VERBOSE >= 1:
                     print('[!] Exception in tquote: {}'.format(e))
@@ -344,17 +309,11 @@ def check_if_exists(guild, msg_id) -> bool:
 	:param msg_id: <Int> Discord message ID
 	:return: <Bool>
 	"""
-
-    print(type(guild), type(msg_id))
     with ENGINE.connect() as conn:
-        print('connected')
-        print(guild, msg_id)
         select_st = select([Quotes]).where(and_(
             Quotes.c.id == msg_id,
             Quotes.c.guild == guild))
-        print(select_st)
         result = conn.execute(select_st).fetchall()
-        print("Result: {}".format(result))
         if result:
             return True
     return False
@@ -366,7 +325,6 @@ def load_config(guild: int) -> (None, list):
 	:param guild: <Int> Discord guild ID
 	:return: <List> SQLAlchemy row entry from Config Table
 	"""
-
     result = None
     with ENGINE.connect() as conn:
         select_st = select([Config]).where(Config.c.id == guild)
@@ -380,12 +338,10 @@ async def get_help(message: discord.Message) -> discord.Embed:
 	:param message: <Discord.message.author object>
 	:return: <String> The local help file
 	"""
-
     text = fetch_file('help', 'quotes')
     if not await is_admin(message.author, message):
         text = text.split('For Admins:')[0]
-    banner = Embed(title='General Help', description=text)
-    return banner
+    return Embed(title='General Help', description=text)
 
 
 setup()

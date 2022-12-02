@@ -7,33 +7,40 @@
 # TODO add imdb / rotten tomato info
 # TODO add summary search
 # TODO add similar / related search
-
+import asyncio
 import configparser
 import random
 import re
+import threading
 import time
 from typing import Union
 from math import ceil
 
 import discord
 import plexapi.video
+import plexapi.audio
 from plexapi.myplex import MyPlexAccount
 
 from constants import DEFAULT_DIR, VERBOSE, BOT
 from tutil import flatten_sublist, get_sec, is_admin
-# from tutil import debug
+from tutil import debug
 
 config, account, plex, client_name, voice_channel_id = \
     configparser.ConfigParser, str, plexapi.myplex.PlexClient, str, int
 # 'queue' and 'last' are a list of plexapi.Video.Movie
 queue = []  # type: list[plexapi.video.Movie]
 last = []  # type: list[Union[plexapi.video.Movie, str]]
+music_queue = [] # type: list[plexapi.audio.Audio]
+album_queue = []
 # 'skip_votes' is a list of Discord Member ID's to ensure uniqueness
 skip_votes = []  # type: list[discord.Member.id]
 # Confirm we received a valid 4-length digit for --year search
 regex_is_year = r"\d{4}"  # type: re
 
 
+###########
+# GENERAL #
+###########
 def setup() -> None:
     """
     Establish global variables, then connect to the Plex instance.
@@ -42,11 +49,13 @@ def setup() -> None:
     global config, account, plex, client_name, voice_channel_id
     # Read in config
     config = configparser.ConfigParser()
+    print('[-] Reading Plex config')
     config.read(DEFAULT_DIR + '/config.ini')
 
     # Connect to Plex
     try:
         account = MyPlexAccount(config['plex']['Username'], config['plex']['Password'])
+        print('[-] Connecting to Plex')
         plex = account.resource(config['plex']['Server']).connect()
         voice_channel_id = int(config['discord']['VC_ID'])  # type: int
         client_name = config['plex']['Name']  # type: str
@@ -98,7 +107,7 @@ async def helper(message: discord.Message, op_override=None):
             'help': lambda: get_help(),
             'clients': lambda: list_clients(),
             'add': lambda: add_to_queue(),
-            'play': lambda: play_media(),
+            'play': lambda: play(args),
             'clear': lambda: clear_queue(args),
             'pause': lambda: pause_media(),
             'resume': lambda: resume_media(args),
@@ -134,6 +143,7 @@ def rendered(result: list) -> str:
         result = result[0]
         banner = []
         for each in result:
+            # print(type(each))
             if type(each) == plexapi.video.Movie:
                 duration = int(each.duration / 1000)
                 m, s = divmod(duration, 60)
@@ -142,153 +152,57 @@ def rendered(result: list) -> str:
                     banner.append(f'`{each.title} - ({each.year}) -- {h:02d}:{m:02d}:{s:02d}`\r --{each.summary}')
                 else:
                     banner.append(f'`{each.title} - ({each.year}) -- {h:02d}:{m:02d}:{s:02d}`')
+            elif type(each) == plexapi.audio.Album:
+                banner.append(f'`{each.parentTitle} - {each.title} ({each.year})`')
+                for index, track in enumerate(each.tracks()):
+                    banner.append(f'`  {str(index+1).zfill(2)}. - {track.title}`')
+            elif type(each) == plexapi.audio.Artist:
+                for album in each.albums():
+                    banner.append(f'`{album.parentTitle} - {album.title} ({album.year})`')
             else:
                 banner.append(f'{each.title}')
         return '\r'.join(banner)
 
 
-# TODO allow admins to establish which client to use if there are multiple.
-def list_clients() -> str:
+async def connect():
+    channel = BOT.get_channel(voice_channel_id)
+    await channel.connect()
+
+
+def get_help() -> str:
     """
-    Helper function to get names of connected plexapi.Clients on network.
-    This is for internal testing only.
+    Return help file for usage.
     :return:
     """
-    voice_channel = BOT.get_channel(voice_channel_id)
-    print(voice_channel)
-    print(voice_channel.members)
-    for each in plex.clients():
-        print(each)
-    return '\r'.join(plex.clients())
+    return """
+    ```
+    Control the Plex instance.
 
+    plex search libraries
+    plex search <library> -option <argument>
+    plex add
+    plex play
+    plex pause
+    plex resume <hh:mm:ss>
+    plex next
+    plex clear
 
-def play_media() -> str:
+    See plex search -h for more information about searching.
+    To start a movie(s) first use plex search, then plex add to queue up the most recent search results.
+    plex play will then start the queue.
+
+    There is currently no way to un-pause a movie, so, take note of what time it was stopped at, then,
+    use plex resume hh:mm:ss where h is hours, m is minutes, and s is seconds (e.g. 00:30:00 will start the
+    movie at 30 minutes in). You must provide zeros as needed (e.g. do NOT do :30: or 30 for thirty minutes).
+    ```
     """
-    Start the first item in queue.
-    :return:
-    """
-    try:
-        player = plex.client(client_name)
-    except Exception as e:
-        return f"Oops something went wrong! {e}\nIs the Plex instance online?"
-    if len(queue) > 0:
-        movie = plex.library.section('Movies').get(queue[0].title)
-        player.playMedia(media=movie)
-        return f'Now playing: {movie.title}'
-    else:
-        return "No media in queue."
 
 
-def pause_media() -> str:
-    """
-    Pause anything currently playing.
-    :return:
-    """
-    try:
-        player = plex.client(client_name)
-        player.pause()
-        return "Paused. Use `$plex resume hh:mm:ss` to start again."
-    except Exception as e:
-        return f"Oops something went wrong! {e}"
-
-
-def resume_media(args: list) -> str:
-    """
-    Skip to given hh:mm:ss of current media.
-    :param args:
-    :return:
-    """
-    ms = get_sec(args[2]) * 1000
-    try:
-        result = play_media()
-        # We need to sleep() because if we call player.seekTo() too soon it will be ignored if movie is still loading.
-        # A value between 2-4 seconds seems to work best.
-        time.sleep(3)
-        plex.client(client_name).seekTo(ms)
-        return f'{result} at {args[2]}'
-    except Exception as e:
-        return f"Oops something went wrong! {e}"
-
-
-def show_queue() -> str:
-    """
-    Show what is currently contained in 'queue'
-    :return:
-    """
-    return '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
-
-
-def shuffle_queue() -> str:
-    """
-    Randomize the order of the play queue.
-    :return:
-    """
-    random.shuffle(queue)
-    # Must be done on two lines as f-strings cannot contain backslash fragments.
-    result = '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
-    return f"Play queue has been shuffled:\n{result}"
-
-
-def clear_queue(args: list) -> str:
-    """
-    Remove everything in queue.
-    :return:
-    """
-    if {'q', 'queue'}.intersection(args):
-        if len(queue):
-            skip_votes.clear()
-            queue.clear()
-            return "Cleared queue."
-        else:
-            return "There is already nothing in queue."
-    elif {'vote', 'votes', 'skip'}.intersection(args):
-        skip_votes.clear()
-        return "Cleared all votes to skip."
-    else:
-        return "Please specify either `votes` or `queue`."
-
-
-async def next_queue(message: discord.Message) -> str:
-    """
-    Remove first item in queue and start the second item.
-    Based on a simple majority vote of users in the config['discord']['VC_ID'] channel.
-    Users with admin / mod roles can always skip.
-    :param message: <Discord.message object>
-    :return:
-    """
-    if len(queue):
-        voice_channel = BOT.get_channel(voice_channel_id)  # type: discord.VoiceChannel
-        if await is_admin(message.author, message) or len(skip_votes) > ceil(len(voice_channel.members) / 2):
-            queue.pop(0)
-            skip_votes.clear()
-            return play_media()
-        else:
-            if message.author.id not in skip_votes:
-                skip_votes.append(message.author.id)
-                return f"Added vote to skip. {len(skip_votes)}/{ceil(len(voice_channel.members) / 2)}"
-            else:
-                return f"You have already voted {message.author.name}.\n" \
-                       f"All votes can be cleared with `$plex clear votes`."
-    else:
-        return "There is already nothing in queue."
-
-
-def add_to_queue() -> str:
-    """
-    Add the results of the most recent search to the play queue.
-    :return:
-    """
-    if not last:
-        return "Nothing to add. Use `$plex search` first."
-    else:
-        banner = ["Added the following to play queue: "]
-        for each in last:
-            queue.append(each)
-            banner.append(each.title)
-        return '\r'.join(banner)
-
-
-def parse_options(args: list, options: dict) -> dict:
+############
+# SEARCH   #
+############
+@debug
+def parse_movie_options(args: list, options: dict) -> dict:
     """
     Check with --options were specified and convert them to dictionary values for library search.
     :param args:
@@ -448,6 +362,11 @@ def search_dispatch(args):
         "content_rating": None,
         "unwatched": None,
     }
+    # music_options = {
+    #     "album": None,
+    #     "artist": None
+    #     "track": None,
+    # }
     result = None
     if VERBOSE >= 2:
         print(f'options set: {options}')
@@ -465,7 +384,7 @@ def search_dispatch(args):
     if {'-h', '--help'}.intersection(args):
         return [get_search_help()]
     else:
-        options = parse_options(args, options)
+        options = parse_movie_options(args, options)
         if not options["limit"]:
             options["limit"] = 10
         if VERBOSE >= 2:
@@ -488,24 +407,44 @@ def search_dispatch(args):
             if not options["library"]:
                 options["library"] = 'Movies'
 
-        # Handle specific search cases
-        if args[0] in {'random', 'rand'}:
-            result = get_random(options)
-        elif args[0] in {'collection', 'collections'}:
-            result = get_collections_list(options)
-        elif args[0] in {'inprogress'}:
-            result = get_in_progress(options)
-        elif args[0] in {'recent', 'new'}:
-            result = get_recently_added(options)
+        if options["library"] == 'Movies':
+            # Handle specific search cases
+            if args[0] in {'random', 'rand'}:
+                result = get_random(options)
+            elif args[0] in {'collection', 'collections'}:
+                result = get_collections_list(options)
+            elif args[0] in {'inprogress'}:
+                result = get_in_progress(options)
+            elif args[0] in {'recent', 'new'}:
+                result = get_recently_added(options)
 
-        # Generic search
-        if not result:
-            result = search_library(options)
-        # 'False' values are placeholders for future implementation of 'similar' and 'summary' searches.
-        # Currently, need to keep them to indicate to 'rendered()' we are returning search results.
-        return [result, False, False]
+            # Generic search
+            if not result:
+                result = search_library(options)
 
+        elif options["library"] == 'Music':
+            music = plex.library.section('Music')
+            if {'-album', '-albums'}.intersection(args):
+                start = args.index('-album')
+                query = ' '.join([word for word in args[start+1:] if not word.startswith('-')])
+                result = music.searchAlbums(title=query)
+                # if {'-track', '-tracks'}.intersection(args):
+                #     temp = [track for track in result.tracks()]
+                #     result = temp
+            elif {'-artist', '-artists'}.intersection(args):
+                start = args.index('-artist')
+                query = ' '.join([word for word in args[start+1:] if not word.startswith('-')])
+                result = music.searchArtists(title=query)
+                # if {'-album', '-albums'}.intersection(args):
+                #     temp = [album for album in result.albums()]
+                #     result = temp
+            else:
+                result = music.searchTracks(title=options["title"])
+    # 'False' values are placeholders for future implementation of 'similar' and 'summary' searches.
+    # Currently, need to keep them to indicate to 'rendered()' we are returning search results.
+    return [result, options["library"], False]
 
+@debug
 def search_library(options: dict) -> list:
     """
     The main search function of the Plex instance
@@ -612,35 +551,6 @@ def get_recently_added(options: dict) -> list:
     return [*set(random.choices(selection, k=options["limit"]))]
 
 
-def get_help() -> str:
-    """
-    Return help file for usage.
-    :return:
-    """
-    return """
-    ```
-    Control the Plex instance.
-
-    plex search libraries
-    plex search <library> -option <argument>
-    plex add
-    plex play
-    plex pause
-    plex resume <hh:mm:ss>
-    plex next
-    plex clear
-
-    See plex search -h for more information about searching.
-    To start a movie(s) first use plex search, then plex add to queue up the most recent search results.
-    plex play will then start the queue.
-
-    There is currently no way to un-pause a movie, so, take note of what time it was stopped at, then,
-    use plex resume hh:mm:ss where h is hours, m is minutes, and s is seconds (e.g. 00:30:00 will start the
-    movie at 30 minutes in). You must provide zeros as needed (e.g. do NOT do :30: or 30 for thirty minutes).
-    ```
-    """
-
-
 # TODO update to reflect current state
 def get_search_help() -> str:
     """
@@ -679,7 +589,223 @@ def get_search_help() -> str:
     """
 
 
+############
+# PLAYBACK #
+############
+def play(args) -> str:
+    if 'music' in args:
+        return play_music()
+    elif 'movie' in args:
+        return play_media()
+    else:
+        return "Please specify either `play music` or `play movie`. "
+
+
+def play_media() -> str:
+    """
+    Start the first item in queue.
+    :return:
+    """
+    try:
+        player = plex.client(client_name)
+    except Exception as e:
+        return f"Oops something went wrong! {e}\nIs the Plex instance online?"
+    if len(queue) > 0:
+        movie = plex.library.section('Movies').get(queue[0].title)
+        player.playMedia(media=movie)
+        return f'Now playing: {movie.title}'
+    else:
+        return "No media in queue."
+
+
+def play_music() -> str:
+    """
+    Start the first item in queue.
+    :return:
+    """
+    try:
+        player = plex.client(client_name)
+    except Exception as e:
+        return f"Oops something went wrong! {e}\nIs the Plex instance online?"
+    if len(music_queue) > 0:
+        try:
+            player.playMedia(media=music_queue[0])
+            threading.Timer(float(music_queue[0].duration / 1000), play_next_song).start()
+        except Exception as e:
+            print(f'[!] {e}')
+        return f'Now playing: {music_queue[0].title}'
+    else:
+        return "No media in queue."
+
+
+def play_next_song() -> None:
+    """
+
+    :return:
+    """
+    music_queue.pop(0)
+    if len(music_queue) > 0:
+        player = plex.client(client_name)
+        player.playMedia(media=music_queue[0])
+        threading.Timer(float(music_queue[0].duration / 1000), play_next_song).start()
+
+
+def pause_media() -> str:
+    """
+    Pause anything currently playing.
+    :return:
+    """
+    try:
+        player = plex.client(client_name)
+        player.pause()
+        return "Paused. Use `$plex resume hh:mm:ss` to start again."
+    except Exception as e:
+        return f"Oops something went wrong! {e}"
+
+
+def resume_media(args: list) -> str:
+    """
+    Skip to given hh:mm:ss of current media.
+    :param args:
+    :return:
+    """
+    ms = get_sec(args[2]) * 1000
+    try:
+        if {'movie', 'movies'}.intersection(args):
+            result = play_media()
+        else:
+            result = play_music()
+        # We need to sleep() because if we call player.seekTo() too soon it will be ignored if movie is still loading.
+        # A value between 2-4 seconds seems to work best.
+        time.sleep(3)
+        plex.client(client_name).seekTo(ms)
+        return f'{result} at {args[2]}'
+    except Exception as e:
+        return f"Oops something went wrong! {e}"
+
+
+def show_queue() -> str:
+    """
+    Show what is currently contained in 'queue'
+    :return:
+    """
+    return '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
+
+
+def shuffle_queue() -> str:
+    """
+    Randomize the order of the play queue.
+    :return:
+    """
+    random.shuffle(queue)
+    # Must be done on two lines as f-strings cannot contain backslash fragments.
+    result = '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
+    return f"Play queue has been shuffled:\n{result}"
+
+
+def clear_queue(args: list) -> str:
+    """
+    Remove everything in queue.
+    :return:
+    """
+    if {'q', 'queue'}.intersection(args):
+        if len(queue):
+            skip_votes.clear()
+            queue.clear()
+            music_queue.clear()
+            return "Cleared queue."
+        else:
+            return "There is already nothing in queue."
+    elif {'vote', 'votes', 'skip'}.intersection(args):
+        skip_votes.clear()
+        return "Cleared all votes to skip."
+    else:
+        return "Please specify either `votes` or `queue`."
+
+
+async def next_queue(message: discord.Message) -> str:
+    """
+    Remove first item in queue and start the second item.
+    Based on a simple majority vote of users in the config['discord']['VC_ID'] channel.
+    Users with admin / mod roles can always skip.
+    :param message: <Discord.message object>
+    :return:
+    """
+    if len(queue):
+        voice_channel = BOT.get_channel(voice_channel_id)  # type: discord.VoiceChannel
+        if await is_admin(message.author, message) or len(skip_votes) > ceil(len(voice_channel.members) / 2):
+            queue.pop(0)
+            skip_votes.clear()
+            return play_media()
+        else:
+            if message.author.id not in skip_votes:
+                skip_votes.append(message.author.id)
+                return f"Added vote to skip. {len(skip_votes)}/{ceil(len(voice_channel.members) / 2)}"
+            else:
+                return f"You have already voted {message.author.name}.\n" \
+                       f"All votes can be cleared with `$plex clear votes`."
+    else:
+        return "There is already nothing in queue."
+
+
+def add_to_queue() -> str:
+    """
+    Add the results of the most recent search to the play queue.
+    :return:
+    """
+    if not last:
+        return "Nothing to add. Use `$plex search` first."
+    else:
+        banner = ["Added the following to play queue: "]
+        for each in last:
+            if type(each) == plexapi.audio.Album:
+                for track in each.tracks():
+                    music_queue.append(track)
+            elif type(each) == plexapi.audio.Artist:
+                for album in each.albums():
+                    for track in album.tracks():
+                        music_queue.append(track)
+            elif type(each) == plexapi.audio.Track:
+                music_queue.append(each)
+            elif type(each) == plexapi.video.Movie:
+                queue.append(each)
+            banner.append(each.title)
+        return '\r'.join(banner)
+
+
 setup()
+
+###########
+# DEBUG   #
+###########
+# TODO allow admins to establish which client to use if there are multiple.
+def list_clients() -> str:
+    """
+    Helper function to get names of connected plexapi.Clients on network.
+    This is for internal testing only.
+    :return:
+    """
+    voice_channel = BOT.get_channel(voice_channel_id)
+    print(voice_channel)
+    print(voice_channel.members)
+    for each in plex.clients():
+        print(each)
+    return '\r'.join(plex.clients())
+
+
+
+# def play_music(options: dict) -> str:
+#     """
+#     Start playing from Music.
+#     :return:
+#     """
+#     try:
+#         player = plex.client(client_name)
+#     except Exception as e:
+#         return f"Oops something went wrong! {e}\nIs the Plex instance online?"
+#     random = plex.library.section('Music').all()
+#     player.goToMusic()
+#     player.playMedia(media=random)
 
 # def play_music() -> str:
 #     """
