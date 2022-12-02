@@ -22,7 +22,7 @@ import plexapi.audio
 from plexapi.myplex import MyPlexAccount
 
 from constants import DEFAULT_DIR, VERBOSE, BOT
-from tutil import flatten_sublist, get_sec, is_admin
+from tutil import flatten_sublist, get_sec, get_sec_rev, is_admin
 from tutil import debug
 
 config, account, plex, client_name, voice_channel_id = \
@@ -155,7 +155,7 @@ def rendered(result: list) -> str:
             elif type(each) == plexapi.audio.Album:
                 banner.append(f'`{each.parentTitle} - {each.title} ({each.year})`')
                 for index, track in enumerate(each.tracks()):
-                    banner.append(f'`  {str(index+1).zfill(2)}. - {track.title}`')
+                    banner.append(f'`  {str(index+1).zfill(2)}. - {track.title} ({get_sec_rev(track.duration)})`')
             elif type(each) == plexapi.audio.Artist:
                 for album in each.albums():
                     banner.append(f'`{album.parentTitle} - {album.title} ({album.year})`')
@@ -638,6 +638,7 @@ def play_music() -> str:
         return "No media in queue."
 
 
+# TODO add stopper to pause_media()
 def play_next_song() -> None:
     """
 
