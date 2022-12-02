@@ -2,7 +2,7 @@
 
 # TODO add sort queue command
 # TODO page-ize long results
-# TODO add play music / tv
+# TODO add play tv
 # TODO break out resume / seek_to
 # TODO prevent multiple 'play' commands from restarting video
 # TODO add rich embeds
@@ -27,12 +27,12 @@ from plexapi.myplex import MyPlexAccount
 
 from constants import DEFAULT_DIR, VERBOSE, BOT
 from tutil import flatten_sublist, get_sec, get_sec_rev, is_admin
-from tutil import debug
+# from tutil import debug
 
 config, account, plex, client_name, voice_channel_id = \
     configparser.ConfigParser, str, plexapi.myplex.PlexClient, str, int
 queue = []  # type: list[plexapi.video.Movie]
-last = []  # type: list[Union[plexapi.video.Movie, str]]
+last = []  # type: list[Union[plexapi.video.Movie, plexapi.audio.Audio, str]]
 music_queue = []  # type: list[plexapi.audio.Track]
 # 'skip_votes' is a list of Discord Member ID's to ensure uniqueness
 skip_votes = []  # type: list[discord.Member.id]
@@ -182,9 +182,9 @@ def get_help() -> str:
     """
 
 
-############
-# SEARCH   #
-############
+###########
+# SEARCH  #
+###########
 def parse_movie_options(args: list, options: dict) -> dict:
     """
     Check with --options were specified and convert them to dictionary values for library search.
@@ -670,10 +670,18 @@ def shuffle_queue() -> str:
     Randomize the order of the play queue.
     :return:
     """
-    random.shuffle(queue)
+    result = None
     # Must be done on two lines as f-strings cannot contain backslash fragments.
-    result = '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
-    return f"Play queue has been shuffled:\n{result}"
+    if len(queue):
+        random.shuffle(queue)
+        result = '\r'.join([f'{_.title} - ({_.year})' for _ in queue])
+    if len(music_queue):
+        random.shuffle(music_queue)
+        result = 'music.'
+    if result:
+        return f"Play queue has been shuffled:\n{result}"
+    else:
+        return 'Nothing in queue to shuffle.'
 
 
 def clear_queue(args: list) -> str:
@@ -682,7 +690,7 @@ def clear_queue(args: list) -> str:
     :return:
     """
     if {'q', 'queue'}.intersection(args):
-        if len(queue):
+        if len(queue) or len(music_queue):
             skip_votes.clear()
             queue.clear()
             music_queue.clear()
@@ -750,9 +758,9 @@ def add_to_queue() -> str:
 setup()
 
 
-###########
-# DEBUG   #
-###########
+#########
+# DEBUG #
+#########
 # TODO allow admins to establish which client to use if there are multiple.
 def list_clients() -> str:
     """
